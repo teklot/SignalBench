@@ -3,6 +3,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Data.Core.Plugins;
 using Avalonia.Markup.Xaml;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using SignalBench.Core.Data;
 using SignalBench.ViewModels;
 using SignalBench.Views;
@@ -40,6 +41,12 @@ public partial class App : Application
 
     private void ConfigureServices(IServiceCollection services)
     {
+        services.AddLogging(builder =>
+        {
+            builder.AddConsole();
+            builder.SetMinimumLevel(LogLevel.Debug);
+        });
+
         services.AddSingleton<IDataStore, SqliteDataStore>();
         services.AddTransient<MainWindowViewModel>();
     }

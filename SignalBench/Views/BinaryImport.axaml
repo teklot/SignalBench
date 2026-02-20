@@ -1,0 +1,132 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:SignalBench.ViewModels"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:ic="using:FluentIcons.Avalonia.Fluent"
+        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
+        x:Class="SignalBench.Views.BinaryImport"
+        x:DataType="vm:BinaryImportViewModel"
+        Title="Import Binary"
+        WindowStartupLocation="CenterOwner"
+        Width="900" Height="650">
+
+    <Grid RowDefinitions="*, Auto">
+        <!-- Main Content -->
+        <Grid Grid.Row="0" RowDefinitions="Auto, *">
+            <!-- Top Section: Schema Settings -->
+            <Border Grid.Row="0"
+                    BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
+                    BorderThickness="0,0,0,1"
+                    Padding="20">
+                <StackPanel Spacing="15">
+                    <TextBlock Text="SCHEMA"
+                               FontWeight="Bold"
+                               FontSize="11"
+                               Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                    
+                    <Grid ColumnDefinitions="*, 300">
+                        <!-- File Selection -->
+                        <StackPanel Grid.Column="0" Spacing="8" Margin="0,0,30,0">
+                            <TextBlock Text="Schema File:" FontSize="13"/>
+                            <Grid ColumnDefinitions="*, Auto, Auto">
+                                <TextBox Grid.Column="0" Text="{Binding SchemaFilePath}" IsReadOnly="True" Watermark="No schema selected..."/>
+                                <Button Grid.Column="1" Command="{Binding BrowseSchemaCommand}" Margin="5,0,0,0" ToolTip.Tip="Open Schema File">
+                                    <ic:SymbolIcon Symbol="FolderOpen" FontSize="16"/>
+                                </Button>
+                                <Button Grid.Column="2" Command="{Binding CreateSchemaCommand}" Margin="5,0,0,0" ToolTip.Tip="Create New Schema">
+                                    <ic:SymbolIcon Symbol="Add" FontSize="16"/>
+                                </Button>
+                            </Grid>
+                        </StackPanel>
+
+                        <!-- Schema Details -->
+                        <Grid Grid.Column="1">
+                            <!-- Details -->
+                            <StackPanel Spacing="10" IsVisible="{Binding SelectedSchema, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                <TextBlock Text="Details:" FontWeight="SemiBold" FontSize="13"/>
+                                <Grid ColumnDefinitions="Auto, *" RowDefinitions="Auto, Auto">
+                                    <TextBlock Text="Name:"
+                                               Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
+                                               Margin="0,0,10,2"
+                                               FontSize="12"/>
+                                    <TextBlock Grid.Column="1"
+                                               Text="{Binding SelectedSchema.Name}"
+                                               FontWeight="Medium"
+                                               FontSize="12"/>
+
+                                    <TextBlock Grid.Row="1"
+                                               Text="Fields:"
+                                               Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
+                                               Margin="0,0,10,0"
+                                               FontSize="12"/>
+                                    <TextBlock Grid.Row="1"
+                                               Grid.Column="1"
+                                               Text="{Binding SelectedSchema.Fields.Count}"
+                                               FontWeight="Medium"
+                                               FontSize="12"/>
+                                </Grid>
+                            </StackPanel>
+
+                            <!-- Placeholder -->
+                            <TextBlock IsVisible="{Binding SelectedSchema, Converter={x:Static ObjectConverters.IsNull}}"
+                                       Text="Please select a schema to preview data."
+                                       FontStyle="Italic"
+                                       VerticalAlignment="Center"
+                                       Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
+                                       TextWrapping="Wrap"
+                                       FontSize="12"/>
+                        </Grid>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- Bottom Section: Data Preview -->
+            <Border Grid.Row="1" Padding="20">
+                <Grid RowDefinitions="Auto, *">
+                    <TextBlock Grid.Row="0"
+                               Text="PREVIEW"
+                               FontWeight="Bold"
+                               FontSize="11"
+                               Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
+                               Margin="0,0,0,10"/>
+                    <Border Grid.Row="1"
+                            BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
+                            BorderThickness="1">
+                        <DataGrid Name="PreviewGrid"
+                                  ItemsSource="{Binding PreviewRecords}"
+                                  AutoGenerateColumns="False"
+                                  IsReadOnly="True"
+                                  GridLinesVisibility="All"
+                                  HeadersVisibility="All"
+                                  Background="{DynamicResource SystemControlBackgroundAltHighBrush}"
+                                  x:CompileBindings="False">
+                        </DataGrid>
+                    </Border>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- Footer Actions -->
+        <Border Grid.Row="1"
+                Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}"
+                Padding="20,15"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
+                BorderThickness="0,1,0,0">
+            <StackPanel Orientation="Horizontal"
+                        HorizontalAlignment="Right"
+                        Spacing="12">
+                <Button Content="Cancel"
+                        Command="{Binding CancelCommand}"
+                        Width="100"
+                        HorizontalContentAlignment="Center"/>
+                <Button Content="Import"
+                        Command="{Binding ImportCommand}"
+                        IsEnabled="{Binding IsImportEnabled}"
+                        Width="100"
+                        HorizontalContentAlignment="Center"
+                        Classes="accent"/>
+            </StackPanel>
+        </Border>
+    </Grid>
+</Window>

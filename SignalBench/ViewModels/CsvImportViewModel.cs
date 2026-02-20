@@ -11,7 +11,8 @@ public class CsvImportViewModel : ViewModelBase
     public string Delimiter
     {
         get => _delimiter;
-        set {
+        set
+        {
             this.RaiseAndSetIfChanged(ref _delimiter, value);
             LoadPreview();
         }
@@ -40,10 +41,10 @@ public class CsvImportViewModel : ViewModelBase
     public CsvImportViewModel(string filePath)
     {
         _filePath = filePath;
-        ImportCommand = ReactiveCommand.Create(() => (CsvImportResult?)new CsvImportResult 
-        { 
-            Delimiter = GetActualDelimiter(), 
-            TimestampColumn = TimestampColumn 
+        ImportCommand = ReactiveCommand.Create(() => (CsvImportResult?)new CsvImportResult
+        {
+            Delimiter = GetActualDelimiter(),
+            TimestampColumn = TimestampColumn
         });
         CancelCommand = ReactiveCommand.Create(() => (CsvImportResult?)null);
 
@@ -56,7 +57,7 @@ public class CsvImportViewModel : ViewModelBase
         {
             var source = new CsvTelemetrySource(_filePath, GetActualDelimiter());
             var packets = source.ReadPackets().Take(10).ToList();
-            
+
             var newRecords = new List<IDictionary<string, object>>();
             var newColumns = new List<string>();
 
@@ -71,7 +72,7 @@ public class CsvImportViewModel : ViewModelBase
 
             PreviewRecords.Clear();
             AvailableColumns.Clear();
-            
+
             foreach (var col in newColumns) AvailableColumns.Add(col);
             foreach (var rec in newRecords) PreviewRecords.Add(rec);
 
@@ -79,7 +80,7 @@ public class CsvImportViewModel : ViewModelBase
             {
                 if (string.IsNullOrEmpty(TimestampColumn) || !AvailableColumns.Contains(TimestampColumn))
                 {
-                    TimestampColumn = AvailableColumns.FirstOrDefault(c => c.Contains("time", StringComparison.OrdinalIgnoreCase)) 
+                    TimestampColumn = AvailableColumns.FirstOrDefault(c => c.Contains("time", StringComparison.OrdinalIgnoreCase))
                                       ?? AvailableColumns.FirstOrDefault();
                 }
             }
