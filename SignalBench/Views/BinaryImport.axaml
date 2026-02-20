@@ -3,7 +3,7 @@
         xmlns:vm="using:SignalBench.ViewModels"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:ic="using:FluentIcons.Avalonia.Fluent"
+        xmlns:mi="using:Material.Icons.Avalonia"
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
         x:Class="SignalBench.Views.BinaryImport"
         x:DataType="vm:BinaryImportViewModel"
@@ -29,13 +29,28 @@
                         <!-- File Selection -->
                         <StackPanel Grid.Column="0" Spacing="8" Margin="0,0,30,0">
                             <TextBlock Text="Schema File:" FontSize="13"/>
-                            <Grid ColumnDefinitions="*, Auto, Auto">
-                                <TextBox Grid.Column="0" Text="{Binding SchemaFilePath}" IsReadOnly="True" Watermark="No schema selected..."/>
-                                <Button Grid.Column="1" Command="{Binding BrowseSchemaCommand}" Margin="5,0,0,0" ToolTip.Tip="Open Schema File">
-                                    <ic:SymbolIcon Symbol="FolderOpen" FontSize="16"/>
+                            <Grid ColumnDefinitions="*, Auto, Auto, Auto">
+                                <TextBox Grid.Column="0"
+                                         Text="{Binding SchemaFilePath}"
+                                         IsReadOnly="True"
+                                         Watermark="No schema selected..."/>
+                                <Button Grid.Column="1"
+                                        Command="{Binding BrowseSchemaCommand}"
+                                        Margin="5,0,0,0"
+                                        ToolTip.Tip="Open Schema File">
+                                    <mi:MaterialIcon Kind="FileChartOutline" Width="16" Height="16"/>
                                 </Button>
-                                <Button Grid.Column="2" Command="{Binding CreateSchemaCommand}" Margin="5,0,0,0" ToolTip.Tip="Create New Schema">
-                                    <ic:SymbolIcon Symbol="Add" FontSize="16"/>
+                                <Button Grid.Column="2"
+                                        Command="{Binding CreateSchemaCommand}"
+                                        Margin="5,0,0,0"
+                                        ToolTip.Tip="Create New Schema">
+                                    <mi:MaterialIcon Kind="Plus" Width="16" Height="16"/>
+                                </Button>
+                                <Button Grid.Column="3"
+                                        Command="{Binding EditSchemaCommand}"
+                                        Margin="5,0,0,0"
+                                        ToolTip.Tip="Edit Selected Schema">
+                                    <mi:MaterialIcon Kind="FileEditOutline" Width="16" Height="16"/>
                                 </Button>
                             </Grid>
                         </StackPanel>

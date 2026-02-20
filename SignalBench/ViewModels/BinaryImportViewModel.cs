@@ -1,6 +1,4 @@
 using Microsoft.Extensions.Logging;
-using MsBox.Avalonia;
-using MsBox.Avalonia.Enums;
 using ReactiveUI;
 using SignalBench.Core.Data;
 using SignalBench.Core.Decoding;
@@ -43,16 +41,18 @@ public class BinaryImportViewModel : ViewModelBase
     public ReactiveCommand<Unit, PacketSchema?> CancelCommand { get; }
     public ReactiveCommand<Unit, Unit> BrowseSchemaCommand { get; }
     public ReactiveCommand<Unit, Unit> CreateSchemaCommand { get; }
+    public ReactiveCommand<Unit, Unit> EditSchemaCommand { get; }
 
     public BinaryImportViewModel(string telemetryPath, ILogger<BinaryImportViewModel> logger)
     {
         _telemetryPath = telemetryPath;
         _logger = logger;
-        
+
         ImportCommand = ReactiveCommand.Create(() => SelectedSchema);
         CancelCommand = ReactiveCommand.Create(() => (PacketSchema?)null);
         BrowseSchemaCommand = ReactiveCommand.CreateFromTask(BrowseSchemaAsync);
         CreateSchemaCommand = ReactiveCommand.CreateFromTask(CreateSchemaAsync);
+        EditSchemaCommand = ReactiveCommand.CreateFromTask(EditSchemaAsync);
     }
 
     private async Task ShowError(string title, string message, Exception? ex = null)
@@ -66,11 +66,42 @@ public class BinaryImportViewModel : ViewModelBase
             _logger.LogError("{Title}: {Message}", title, message);
         }
 
-        var box = MessageBoxManager.GetMessageBoxStandard(title, message);
+        var box = MsBox.Avalonia.MessageBoxManager.GetMessageBoxStandard(title, message);
+
         var topLevel = (App.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)?.MainWindow;
         if (topLevel != null)
         {
-            await box.ShowAsPopupAsync(topLevel);
+            await box.ShowWindowDialogAsync(topLevel);
+        }
+    }
+
+    private async Task EditSchemaAsync()
+    {
+        try
+        {
+            if (SelectedSchema == null) return;
+
+            var topLevel = (App.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)?.MainWindow;
+            if (topLevel == null) return;
+
+            var dialog = new SignalBench.Views.SchemaEditor
+            {
+                DataContext = new SchemaEditorViewModel(SelectedSchema)
+            };
+
+            var result = await dialog.ShowDialog<SchemaEditorResult?>(topLevel);
+            if (result != null)
+            {
+                SelectedSchema = result.Schema;
+                if (!string.IsNullOrEmpty(result.FilePath))
+                {
+                    SchemaFilePath = result.FilePath;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            await ShowError("Editor Error", "Failed to open schema editor.", ex);
         }
     }
 
@@ -80,18 +111,18 @@ public class BinaryImportViewModel : ViewModelBase
         {
             var topLevel = (App.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)?.MainWindow;
             if (topLevel == null) return;
-        
+
             var dialog = new SignalBench.Views.SchemaEditor
             {
                 DataContext = new SchemaEditorViewModel()
             };
-        
+
             var result = await dialog.ShowDialog<SchemaEditorResult?>(topLevel);
             if (result != null)
             {
                 SelectedSchema = result.Schema;
-                SchemaFilePath = string.IsNullOrEmpty(result.FilePath) 
-                    ? "New Schema (unsaved)" 
+                SchemaFilePath = string.IsNullOrEmpty(result.FilePath)
+                    ? "New Schema (unsaved)"
                     : result.FilePath;
             }
         }

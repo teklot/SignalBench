@@ -1,7 +1,6 @@
 using Microsoft.Extensions.Logging;
-using MsBox.Avalonia;
-using MsBox.Avalonia.Enums;
 using ReactiveUI;
+using SignalBench.Core;
 using SignalBench.Core.Data;
 using SignalBench.Core.Decoding;
 using SignalBench.Core.Models.Schema;
@@ -14,8 +13,17 @@ using System.Reactive;
 
 namespace SignalBench.ViewModels;
 
+public class RecentFileViewModel
+{
+    public int Index { get; set; }
+    public string Path { get; set; } = string.Empty;
+    public string DisplayName => $"{Index}. {Path}";
+}
+
 public class MainWindowViewModel : ViewModelBase
 {
+    public string AppTitle => $"{AppInfo.Name} v{AppInfo.Version}";
+
     private string _statusText = "Ready";
     public string StatusText
     {
@@ -42,34 +50,51 @@ public class MainWindowViewModel : ViewModelBase
 
     public ObservableCollection<SignalItemViewModel> AvailableSignals { get; } = [];
     public ObservableCollection<dynamic> DecodedRecords { get; } = [];
+    public ObservableCollection<RecentFileViewModel> RecentFiles { get; } = [];
 
     private readonly IDataStore _dataStore;
     private readonly ILogger<MainWindowViewModel> _logger;
     private readonly ILoggerFactory _loggerFactory;
+    private readonly ISettingsService _settingsService;
     private readonly SessionManager _sessionManager = new();
 
     public Action<List<DateTime>, Dictionary<string, List<double>>>? RequestPlotUpdate { get; set; }
 
     public ReactiveCommand<Unit, Unit> OpenFileCommand { get; }
+    public ReactiveCommand<string, Unit> OpenRecentFileCommand { get; }
     public ReactiveCommand<Unit, Unit> SaveSessionCommand { get; }
     public ReactiveCommand<Unit, Unit> OpenSessionCommand { get; }
     public ReactiveCommand<Unit, Unit> ExportCsvCommand { get; }
     public ReactiveCommand<Unit, Unit> ToggleSignalsPaneCommand { get; }
     public ReactiveCommand<Unit, Unit> CreateSchemaCommand { get; }
+    public ReactiveCommand<Unit, Unit> LoadSchemaCommand { get; }
+    public ReactiveCommand<Unit, Unit> EditSchemaCommand { get; }
+    public ReactiveCommand<Unit, Unit> OpenSettingsCommand { get; }
+    public ReactiveCommand<Unit, Unit> OpenAboutCommand { get; }
     public ReactiveCommand<Unit, Unit> ExitCommand { get; }
 
-    public MainWindowViewModel(IDataStore dataStore, ILogger<MainWindowViewModel> logger, ILoggerFactory loggerFactory)
+    public MainWindowViewModel(IDataStore dataStore, ILogger<MainWindowViewModel> logger, ILoggerFactory loggerFactory, ISettingsService settingsService)
     {
         _dataStore = dataStore;
         _logger = logger;
         _loggerFactory = loggerFactory;
+        _settingsService = settingsService;
+
+        RefreshRecentFiles();
+
         OpenFileCommand = ReactiveCommand.CreateFromTask(OpenFileAsync);
+        OpenRecentFileCommand = ReactiveCommand.CreateFromTask<string>(path => LoadTelemetryFileAsync(path));
         SaveSessionCommand = ReactiveCommand.CreateFromTask(SaveSessionAsync);
         OpenSessionCommand = ReactiveCommand.CreateFromTask(OpenSessionAsync);
         ExportCsvCommand = ReactiveCommand.Create(ExportCsv);
         ToggleSignalsPaneCommand = ReactiveCommand.Create(() => { IsSignalsPaneOpen = !IsSignalsPaneOpen; });
         CreateSchemaCommand = ReactiveCommand.CreateFromTask(CreateSchemaAsync);
-        ExitCommand = ReactiveCommand.Create(() => {
+        LoadSchemaCommand = ReactiveCommand.CreateFromTask(LoadSchemaAsync);
+        EditSchemaCommand = ReactiveCommand.CreateFromTask(EditSchemaAsync);
+        OpenSettingsCommand = ReactiveCommand.CreateFromTask(OpenSettingsAsync);
+        OpenAboutCommand = ReactiveCommand.CreateFromTask(OpenAboutAsync);
+        ExitCommand = ReactiveCommand.Create(() =>
+        {
             if (App.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop)
             {
                 desktop.Shutdown();
@@ -95,6 +120,33 @@ public class MainWindowViewModel : ViewModelBase
         };
     }
 
+    private void RefreshRecentFiles()
+    {
+        RecentFiles.Clear();
+        int i = 1;
+        foreach (var path in _settingsService.Current.RecentFiles)
+        {
+            RecentFiles.Add(new RecentFileViewModel { Index = i++, Path = path });
+        }
+    }
+
+    private void AddToRecentFiles(string path)
+    {
+        var list = _settingsService.Current.RecentFiles;
+        if (list.Contains(path))
+        {
+            list.Remove(path);
+        }
+        list.Insert(0, path);
+        if (list.Count > _settingsService.Current.MaxRecentFiles)
+        {
+            list.RemoveAt(list.Count - 1);
+        }
+
+        _settingsService.Save();
+        RefreshRecentFiles();
+    }
+
     private async Task ShowError(string title, string message, Exception? ex = null)
     {
         if (ex != null)
@@ -106,25 +158,116 @@ public class MainWindowViewModel : ViewModelBase
             _logger.LogError("{Title}: {Message}", title, message);
         }
 
-        var box = MessageBoxManager.GetMessageBoxStandard(title, message);
+        var box = MsBox.Avalonia.MessageBoxManager.GetMessageBoxStandard(title, message);
+
         var topLevel = (App.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)?.MainWindow;
         if (topLevel != null)
         {
-            await box.ShowAsPopupAsync(topLevel);
+            await box.ShowWindowDialogAsync(topLevel);
+        }
+    }
+
+    private async Task OpenSettingsAsync()
+    {
+        try
+        {
+            var topLevel = (App.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)?.MainWindow;
+            if (topLevel == null) return;
+
+            var dialog = new SignalBench.Views.SettingsWindow
+            {
+                DataContext = new SettingsViewModel(_settingsService)
+            };
+
+            await dialog.ShowDialog(topLevel);
+        }
+        catch (Exception ex)
+        {
+            await ShowError("Settings Error", "Failed to open settings.", ex);
+        }
+    }
+
+    private async Task LoadSchemaAsync()
+    {
+        try
+        {
+            var topLevel = (App.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)?.MainWindow;
+            if (topLevel == null) return;
+
+            var files = await topLevel.StorageProvider.OpenFilePickerAsync(new Avalonia.Platform.Storage.FilePickerOpenOptions
+            {
+                Title = "Open Schema File",
+                AllowMultiple = false,
+                SuggestedStartLocation = !string.IsNullOrEmpty(_settingsService.Current.DefaultSchemaPath)
+                    ? await topLevel.StorageProvider.TryGetFolderFromPathAsync(new Uri(_settingsService.Current.DefaultSchemaPath))
+                    : null,
+                FileTypeFilter = [
+                    new Avalonia.Platform.Storage.FilePickerFileType("YAML Schema") { Patterns = ["*.yaml", "*.yml"] }
+                ]
+            });
+
+            if (files.Count > 0)
+            {
+                var yaml = await File.ReadAllTextAsync(files[0].Path.LocalPath);
+                SelectedSchema = new SchemaLoader().Load(yaml);
+                _currentSchemaPath = files[0].Path.LocalPath;
+                StatusText = $"Loaded schema: {SelectedSchema.Name}";
+            }
+        }
+        catch (Exception ex)
+        {
+            await ShowError("Schema Error", "Failed to load schema file.", ex);
+        }
+    }
+
+    private async Task EditSchemaAsync()
+    {
+        try
+        {
+            if (SelectedSchema == null) return;
+
+            var topLevel = (App.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)?.MainWindow;
+            if (topLevel == null) return;
+
+            var dialog = new SignalBench.Views.SchemaEditor
+            {
+                DataContext = new SchemaEditorViewModel(SelectedSchema)
+            };
+
+            var result = await dialog.ShowDialog<SchemaEditorResult?>(topLevel);
+            if (result != null)
+            {
+                SelectedSchema = result.Schema;
+                if (!string.IsNullOrEmpty(result.FilePath))
+                {
+                    _currentSchemaPath = result.FilePath;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            await ShowError("Editor Error", "Failed to open schema editor.", ex);
         }
     }
 
     private async Task CreateSchemaAsync()
     {
-        var topLevel = (App.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)?.MainWindow;
-        if (topLevel == null) return;
-
-        var dialog = new SignalBench.Views.SchemaEditor
+        try
         {
-            DataContext = new SchemaEditorViewModel()
-        };
+            var topLevel = (App.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)?.MainWindow;
+            if (topLevel == null) return;
 
-        await dialog.ShowDialog<SchemaEditorResult?>(topLevel);
+            var dialog = new SignalBench.Views.SchemaEditor
+            {
+                DataContext = new SchemaEditorViewModel()
+            };
+
+            await dialog.ShowDialog<SchemaEditorResult?>(topLevel);
+        }
+        catch (Exception ex)
+        {
+            await ShowError("Editor Error", "Failed to open schema editor.", ex);
+        }
     }
 
     private void SignalItem_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -148,133 +291,79 @@ public class MainWindowViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Plot Error");
             StatusText = $"Plot Error: {ex.Message}";
         }
     }
 
-        private async Task OpenFileAsync()
+    private async Task OpenFileAsync()
+    {
+        try
         {
-            try
+            var topLevel = (App.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)?.MainWindow;
+            if (topLevel == null) return;
+
+            var files = await topLevel.StorageProvider.OpenFilePickerAsync(new Avalonia.Platform.Storage.FilePickerOpenOptions
             {
-                var topLevel = (App.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)?.MainWindow;
-                if (topLevel == null) return;
-    
-                var files = await topLevel.StorageProvider.OpenFilePickerAsync(new Avalonia.Platform.Storage.FilePickerOpenOptions
-                {
-                    Title = "Open Telemetry File",
-                    AllowMultiple = false,
-                    FileTypeFilter = [
-                        new Avalonia.Platform.Storage.FilePickerFileType("Telemetry Files") { Patterns = ["*.csv", "*.bin", "*.dat"] }
-                    ]
-                });
-    
-                if (files.Count > 0)
-                {
-                    await LoadTelemetryFileAsync(files[0].Path.LocalPath);
-                }
-            }
-            catch (Exception ex)
+                Title = "Open Telemetry File",
+                AllowMultiple = false,
+                SuggestedStartLocation = !string.IsNullOrEmpty(_settingsService.Current.DefaultTelemetryPath)
+                    ? await topLevel.StorageProvider.TryGetFolderFromPathAsync(new Uri(_settingsService.Current.DefaultTelemetryPath))
+                    : null,
+                FileTypeFilter = [
+                    new Avalonia.Platform.Storage.FilePickerFileType("Telemetry Files") { Patterns = ["*.csv", "*.bin", "*.dat"] }
+                ]
+            });
+
+            if (files.Count > 0)
             {
-                await ShowError("File Error", "Could not select file.", ex);
+                await LoadTelemetryFileAsync(files[0].Path.LocalPath);
             }
         }
-    
-        private async Task LoadTelemetryFileAsync(string path, string? schemaPath = null)
+        catch (Exception ex)
         {
-            _currentTelemetryPath = path;
-            _currentSchemaPath = schemaPath;
-    
-            if (path.EndsWith(".csv"))
+            await ShowError("File Error", "Could not select file.", ex);
+        }
+    }
+
+    private async Task LoadTelemetryFileAsync(string path, string? schemaPath = null)
+    {
+        _currentTelemetryPath = path;
+        _currentSchemaPath = schemaPath;
+
+        if (path.EndsWith(".csv"))
+        {
+            var topLevel = (App.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)?.MainWindow;
+            if (topLevel == null) return;
+
+            var dialog = new SignalBench.Views.CsvImport
             {
-                var topLevel = (App.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)?.MainWindow;
-                if (topLevel == null) return;
-    
-                var dialog = new SignalBench.Views.CsvImport
-                {
-                    DataContext = new CsvImportViewModel(path)
-                };
-                var result = await dialog.ShowDialog<CsvImportResult?>(topLevel);
-                if (result == null) return;
-    
-                StatusText = $"Loading {path}...";
-                await Task.Run(async () =>
-                {
-                    try
-                    {
-                        var dbPath = Path.Combine(Path.GetTempPath(), "signalbench_temp.db");
-                        _dataStore.Reset(dbPath);
-    
-                        var source = new SignalBench.Core.Ingestion.CsvTelemetrySource(path, result.Delimiter, result.TimestampColumn);
-                        var packets = source.ReadPackets().ToList();
-    
-                        if (packets.Count > 0)
-                        {
-                            var fields = new List<string>(packets[0].Fields.Keys);
-                            var schema = new PacketSchema { Name = "CSV Import" };
-                            foreach (var field in fields)
-                                schema.Fields.Add(new FieldDefinition { Name = field });
-    
-                            _dataStore.InitializeSchema(schema);
-                            _dataStore.InsertPackets(packets);
-    
-                            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
-                            {
-                                AvailableSignals.Clear();
-                                foreach (var field in fields)
-                                {
-                                    if (field.Equals("timestamp", StringComparison.OrdinalIgnoreCase)) continue;
-                                    bool shouldSelect = AvailableSignals.Count < 3;
-                                    AvailableSignals.Add(new SignalItemViewModel { Name = field, IsSelected = shouldSelect });
-                                }
-                                SelectedSchema = schema;
-                                UpdatePlot();
-                                StatusText = $"Loaded {packets.Count} records from {Path.GetFileName(path)}";
-                            });
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        await ShowError("Load Error", $"Failed to load CSV telemetry from {Path.GetFileName(path)}.", ex);
-                    }
-                });
-            }
-            else
+                DataContext = new CsvImportViewModel(path)
+            };
+            var result = await dialog.ShowDialog<CsvImportResult?>(topLevel);
+            if (result == null) return;
+
+            StatusText = $"Loading {path}...";
+            await Task.Run(async () =>
             {
-                PacketSchema? schema = null;
-                if (!string.IsNullOrEmpty(schemaPath))
+                try
                 {
-                    try
+                    var dbPath = Path.Combine(Path.GetTempPath(), "signalbench_temp.db");
+                    _dataStore.Reset(dbPath);
+
+                    var source = new SignalBench.Core.Ingestion.CsvTelemetrySource(path, result.Delimiter, result.TimestampColumn);
+                    var packets = source.ReadPackets().ToList();
+
+                    if (packets.Count > 0)
                     {
-                        var yaml = await File.ReadAllTextAsync(schemaPath);
-                        schema = new SchemaLoader().Load(yaml);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning(ex, "Could not load schema from session path: {Path}", schemaPath);
-                    }
-                }
-    
-                if (schema == null)
-                {
-                    schema = await PromptForSchemaAsync(path);
-                }
-    
-                if (schema == null) return;
-    
-                StatusText = $"Loading {path}...";
-                await Task.Run(async () =>
-                {
-                    try
-                    {
-                        var dbPath = Path.Combine(Path.GetTempPath(), "signalbench_temp.db");
-                        _dataStore.Reset(dbPath);
-    
+                        var fields = new List<string>(packets[0].Fields.Keys);
+                        var schema = new PacketSchema { Name = "CSV Import" };
+                        foreach (var field in fields)
+                            schema.Fields.Add(new FieldDefinition { Name = field });
+
                         _dataStore.InitializeSchema(schema);
-                        var source = new SignalBench.Core.Ingestion.BinaryTelemetrySource(path, schema);
-                        var packets = source.ReadPackets().ToList();
                         _dataStore.InsertPackets(packets);
-                        var fields = new List<string>(schema.Fields.Select(f => f.Name));
-    
+
                         Avalonia.Threading.Dispatcher.UIThread.Post(() =>
                         {
                             AvailableSignals.Clear();
@@ -285,37 +374,109 @@ public class MainWindowViewModel : ViewModelBase
                                 AvailableSignals.Add(new SignalItemViewModel { Name = field, IsSelected = shouldSelect });
                             }
                             SelectedSchema = schema;
+                            AddToRecentFiles(path);
                             UpdatePlot();
                             StatusText = $"Loaded {packets.Count} records from {Path.GetFileName(path)}";
                         });
                     }
-                    catch (Exception ex)
-                    {
-                        await ShowError("Load Error", $"Failed to load binary telemetry from {Path.GetFileName(path)}.", ex);
-                    }
-                });
-            }
+                }
+                catch (Exception ex)
+                {
+                    await ShowError("Load Error", $"Failed to load CSV telemetry from {Path.GetFileName(path)}.", ex);
+                }
+            });
         }
-    
-        private async Task<PacketSchema?> PromptForSchemaAsync(string telemetryPath)
+        else
         {
-            try
+            PacketSchema? schema = null;
+            if (!string.IsNullOrEmpty(schemaPath))
             {
-                var topLevel = (App.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)?.MainWindow;
-                if (topLevel == null) return null;
-    
-                            var dialog = new BinaryImport
-                            {
-                                DataContext = new BinaryImportViewModel(telemetryPath, _loggerFactory.CreateLogger<BinaryImportViewModel>())
-                            };    
-                return await dialog.ShowDialog<PacketSchema?>(topLevel);
+                try
+                {
+                    var yaml = await File.ReadAllTextAsync(schemaPath);
+                    schema = new SchemaLoader().Load(yaml);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Could not load schema from session path: {Path}", schemaPath);
+                }
             }
-            catch (Exception ex)
+
+            if (schema == null)
             {
-                await ShowError("Import Error", "Failed to open import dialog.", ex);
-                return null;
+                schema = await PromptForSchemaAsync(path);
             }
+
+            if (schema == null) return;
+
+            StatusText = $"Loading {path}...";
+            await Task.Run(async () =>
+            {
+                try
+                {
+                    var dbPath = Path.Combine(Path.GetTempPath(), "signalbench_temp.db");
+                    _dataStore.Reset(dbPath);
+
+                    _dataStore.InitializeSchema(schema);
+                    var source = new SignalBench.Core.Ingestion.BinaryTelemetrySource(path, schema);
+                    var packets = source.ReadPackets().ToList();
+                    _dataStore.InsertPackets(packets);
+                    var fields = new List<string>(schema.Fields.Select(f => f.Name));
+
+                    Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                    {
+                        AvailableSignals.Clear();
+                        foreach (var field in fields)
+                        {
+                            if (field.Equals("timestamp", StringComparison.OrdinalIgnoreCase)) continue;
+                            bool shouldSelect = AvailableSignals.Count < 3;
+                            AvailableSignals.Add(new SignalItemViewModel { Name = field, IsSelected = shouldSelect });
+                        }
+                        SelectedSchema = schema;
+                        AddToRecentFiles(path);
+                        UpdatePlot();
+                        StatusText = $"Loaded {packets.Count} records from {Path.GetFileName(path)}";
+                    });
+                }
+                catch (Exception ex)
+                {
+                    await ShowError("Load Error", $"Failed to load binary telemetry from {Path.GetFileName(path)}.", ex);
+                }
+            });
         }
+    }
+
+    private async Task<PacketSchema?> PromptForSchemaAsync(string telemetryPath)
+    {
+        try
+        {
+            var topLevel = (App.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)?.MainWindow;
+            if (topLevel == null) return null;
+
+            var dialog = new BinaryImport
+            {
+                DataContext = new BinaryImportViewModel(telemetryPath, _loggerFactory.CreateLogger<BinaryImportViewModel>())
+            };
+            return await dialog.ShowDialog<PacketSchema?>(topLevel);
+        }
+        catch (Exception ex)
+        {
+            await ShowError("Import Error", "Failed to open import dialog.", ex);
+            return null;
+        }
+    }
+
+    private async Task OpenAboutAsync()
+    {
+        var box = MsBox.Avalonia.MessageBoxManager.GetMessageBoxStandard($"About {AppInfo.Name}", $"{AppInfo.Name}\nVersion: {AppInfo.Version}\n\n{AppInfo.Copyright}\n\nA tool for high-performance telemetry analysis.");
+
+        var topLevel = (App.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)?.MainWindow;
+        if (topLevel != null)
+        {
+            await box.ShowWindowDialogAsync(topLevel);
+        }
+    }
+
     private async Task SaveSessionAsync()
     {
         try
@@ -359,7 +520,9 @@ public class MainWindowViewModel : ViewModelBase
             {
                 Title = "Open Session",
                 AllowMultiple = false,
-                FileTypeFilter = [new Avalonia.Platform.Storage.FilePickerFileType("SignalBench Session") { Patterns = ["*.sbs"] }]
+                FileTypeFilter = [
+                    new Avalonia.Platform.Storage.FilePickerFileType("SignalBench Session") { Patterns = ["*.sbs"] }
+                ]
             });
 
             if (files.Count > 0)
@@ -368,9 +531,10 @@ public class MainWindowViewModel : ViewModelBase
                 if (File.Exists(session.TelemetryFilePath))
                 {
                     await LoadTelemetryFileAsync(session.TelemetryFilePath, session.SchemaPath);
-                    
+
                     // Restore active signals after load
-                    Avalonia.Threading.Dispatcher.UIThread.Post(() => {
+                    Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                    {
                         foreach (var signal in AvailableSignals)
                         {
                             signal.IsSelected = session.ActivePlotSignals.Contains(signal.Name);
@@ -382,7 +546,7 @@ public class MainWindowViewModel : ViewModelBase
                 }
                 else
                 {
-                    await ShowError("Session Error", "Telemetry file in session not found.");
+                    await ShowError("Session Error", "Telemetry file referenced in session not found.");
                 }
             }
         }

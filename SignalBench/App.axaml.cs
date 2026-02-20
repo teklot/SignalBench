@@ -5,6 +5,7 @@ using Avalonia.Markup.Xaml;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using SignalBench.Core.Data;
+using SignalBench.Core.Services;
 using SignalBench.ViewModels;
 using SignalBench.Views;
 
@@ -47,8 +48,10 @@ public partial class App : Application
             builder.SetMinimumLevel(LogLevel.Debug);
         });
 
+        services.AddSingleton<ISettingsService, SettingsService>();
         services.AddSingleton<IDataStore, SqliteDataStore>();
         services.AddTransient<MainWindowViewModel>();
+        services.AddTransient<SettingsViewModel>();
     }
 
     private void DisableAvaloniaDataAnnotationValidation()

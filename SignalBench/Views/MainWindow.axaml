@@ -4,12 +4,12 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:scott="clr-namespace:ScottPlot.Avalonia;assembly=ScottPlot.Avalonia"
-        xmlns:ic="using:FluentIcons.Avalonia.Fluent"
+        xmlns:mi="using:Material.Icons.Avalonia"
         mc:Ignorable="d" d:DesignWidth="1100" d:DesignHeight="750"
         x:Class="SignalBench.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Icon="/Assets/signalbench_logo.ico"
-        Title="SignalBench v0.1">
+        Title="{Binding AppTitle}">
 
     <Design.DataContext>
         <vm:MainWindowViewModel/>
@@ -36,24 +36,39 @@
             <MenuItem Header="_File">
                 <MenuItem Header="_Open Telemetry..." Command="{Binding OpenFileCommand}">
                     <MenuItem.Icon>
-                        <ic:SymbolIcon Symbol="FolderOpen" FontSize="18"/>
+                        <mi:MaterialIcon Kind="FileChartOutline" Width="20" Height="20"/>
                     </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="Recent Telemetry" ItemsSource="{Binding RecentFiles}">
+                    <MenuItem.ItemTemplate>
+                        <DataTemplate>
+                            <MenuItem Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).OpenRecentFileCommand}"
+                                      CommandParameter="{Binding Path}">
+                                <MenuItem.Header>
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <TextBlock Text="{Binding Index, StringFormat='\{0\}.'}" FontWeight="Bold" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                                        <TextBlock Text="{Binding Path}"/>
+                                    </StackPanel>
+                                </MenuItem.Header>
+                            </MenuItem>
+                        </DataTemplate>
+                    </MenuItem.ItemTemplate>
                 </MenuItem>
                 <Separator/>
                 <MenuItem Header="Open _Session..." Command="{Binding OpenSessionCommand}">
                     <MenuItem.Icon>
-                        <ic:SymbolIcon Symbol="FolderSearch" FontSize="18"/>
+                        <mi:MaterialIcon Kind="FileSearchOutline" Width="20" Height="20"/>
                     </MenuItem.Icon>
                 </MenuItem>
                 <MenuItem Header="_Save Session..." Command="{Binding SaveSessionCommand}">
                     <MenuItem.Icon>
-                        <ic:SymbolIcon Symbol="Save" FontSize="18"/>
+                        <mi:MaterialIcon Kind="ContentSaveOutline" Width="20" Height="20"/>
                     </MenuItem.Icon>
                 </MenuItem>
                 <Separator/>
                 <MenuItem Header="_Export CSV..." Command="{Binding ExportCsvCommand}">
                     <MenuItem.Icon>
-                        <ic:SymbolIcon Symbol="ArrowExportUp" FontSize="18"/>
+                        <mi:MaterialIcon Kind="FileExportOutline" Width="20" Height="20"/>
                     </MenuItem.Icon>
                 </MenuItem>
                 <Separator/>
@@ -70,45 +85,108 @@
             </MenuItem>
 
             <MenuItem Header="_Tools">
-                <MenuItem Header="Schema Editor..." Command="{Binding CreateSchemaCommand}">
+                <MenuItem Header="_Open Schema..." Command="{Binding LoadSchemaCommand}">
                     <MenuItem.Icon>
-                        <ic:SymbolIcon Symbol="Edit" FontSize="18"/>
+                        <mi:MaterialIcon Kind="FileDocumentOutline" Width="20" Height="20"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="_New Schema..." Command="{Binding CreateSchemaCommand}">
+                    <MenuItem.Icon>
+                        <mi:MaterialIcon Kind="FilePlusOutline" Width="20" Height="20"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="_Edit Current Schema..." Command="{Binding EditSchemaCommand}">
+                    <MenuItem.Icon>
+                        <mi:MaterialIcon Kind="FileEditOutline" Width="20" Height="20"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+                <Separator/>
+                <MenuItem Header="_Settings..." Command="{Binding OpenSettingsCommand}">
+                    <MenuItem.Icon>
+                        <mi:MaterialIcon Kind="SettingsOutline" Width="20" Height="20"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+            </MenuItem>
+
+            <MenuItem Header="_Help">
+                <MenuItem Header="_About" Command="{Binding OpenAboutCommand}">
+                    <MenuItem.Icon>
+                        <mi:MaterialIcon Kind="InformationOutline" Width="20" Height="20"/>
                     </MenuItem.Icon>
                 </MenuItem>
             </MenuItem>
         </Menu>
 
         <!-- Top Toolbar -->
-        <Border DockPanel.Dock="Top" BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" BorderThickness="0,0,0,1">
+        <Border DockPanel.Dock="Top" BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" BorderThickness="0,0,0,1" Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}">
             <Grid ColumnDefinitions="Auto, *">
-                <StackPanel Orientation="Horizontal">
-                    <Button Classes="toolbar" Command="{Binding ToggleSignalsPaneCommand}" ToolTip.Tip="Toggle Signals Panel">
-                        <ic:SymbolIcon Symbol="Navigation" FontSize="18"/>
+                <StackPanel Orientation="Horizontal" Spacing="0" Margin="5,2">
+                    <Button Classes="toolbar" Command="{Binding ToggleSignalsPaneCommand}" ToolTip.Tip="Toggle Signals Panel" VerticalAlignment="Center">
+                        <mi:MaterialIcon Kind="Menu" Width="20" Height="20"/>
                     </Button>
-                    <Separator Width="1" Margin="4,8"/>
-                    <Button Classes="toolbar" Command="{Binding OpenFileCommand}" ToolTip.Tip="Open Telemetry File">
-                        <ic:SymbolIcon Symbol="FolderOpen" FontSize="18"/>
-                    </Button>
-                    <Separator Width="1" Margin="4,8"/>
-                    <Button Classes="toolbar" Command="{Binding OpenSessionCommand}" ToolTip.Tip="Open Session">
-                        <ic:SymbolIcon Symbol="FolderSearch" FontSize="18"/>
-                    </Button>
-                    <Button Classes="toolbar" Command="{Binding SaveSessionCommand}" ToolTip.Tip="Save Session">
-                        <ic:SymbolIcon Symbol="Save" FontSize="18"/>
-                    </Button>
-                    <Separator Width="1" Margin="4,8"/>
-                    <Button Classes="toolbar" Command="{Binding ExportCsvCommand}" ToolTip.Tip="Export CSV">
-                        <ic:SymbolIcon Symbol="ArrowExportUp" FontSize="18"/>
-                    </Button>
-                    <Separator Width="1" Margin="4,8"/>
-                    <Button Classes="toolbar" Command="{Binding CreateSchemaCommand}" ToolTip.Tip="Schema Editor">
-                        <ic:SymbolIcon Symbol="Edit" FontSize="18"/>
-                    </Button>
+                    
+                    <Separator Width="1" Margin="8,10"/>
+
+                    <!-- Session Group -->
+                    <StackPanel Orientation="Vertical" Spacing="2" Margin="5,0">
+                        <StackPanel Orientation="Horizontal" Spacing="2" HorizontalAlignment="Center">
+                            <Button Classes="toolbar" Command="{Binding OpenSessionCommand}" ToolTip.Tip="Open Session">
+                                <mi:MaterialIcon Kind="FileSearchOutline" Width="20" Height="20"/>
+                            </Button>
+                            <Button Classes="toolbar" Command="{Binding SaveSessionCommand}" ToolTip.Tip="Save Session">
+                                <mi:MaterialIcon Kind="ContentSaveOutline" Width="20" Height="20"/>
+                            </Button>
+                        </StackPanel>
+                        <TextBlock Text="SESSION" FontSize="9" FontWeight="Bold" HorizontalAlignment="Center" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                    </StackPanel>
+
+                    <Separator Width="1" Margin="8,10"/>
+
+                    <!-- Data Group -->
+                    <StackPanel Orientation="Vertical" Spacing="2" Margin="5,0">
+                        <StackPanel Orientation="Horizontal" Spacing="2" HorizontalAlignment="Center">
+                            <Button Classes="toolbar" Command="{Binding OpenFileCommand}" ToolTip.Tip="Open Telemetry File">
+                                <mi:MaterialIcon Kind="FileChartOutline" Width="20" Height="20"/>
+                            </Button>
+                            <Button Classes="toolbar" Command="{Binding ExportCsvCommand}" ToolTip.Tip="Export CSV">
+                                <mi:MaterialIcon Kind="FileExportOutline" Width="20" Height="20"/>
+                            </Button>
+                        </StackPanel>
+                        <TextBlock Text="DATA" FontSize="9" FontWeight="Bold" HorizontalAlignment="Center" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                    </StackPanel>
+
+                    <Separator Width="1" Margin="8,10"/>
+
+                    <!-- Schema Group -->
+                    <StackPanel Orientation="Vertical" Spacing="2" Margin="5,0">
+                        <StackPanel Orientation="Horizontal" Spacing="2" HorizontalAlignment="Center">
+                            <Button Classes="toolbar" Command="{Binding LoadSchemaCommand}" ToolTip.Tip="Open Schema File">
+                                <mi:MaterialIcon Kind="FileDocumentOutline" Width="20" Height="20"/>
+                            </Button>
+                            <Button Classes="toolbar" Command="{Binding CreateSchemaCommand}" ToolTip.Tip="Create New Schema">
+                                <mi:MaterialIcon Kind="FilePlusOutline" Width="20" Height="20"/>
+                            </Button>
+                            <Button Classes="toolbar" Command="{Binding EditSchemaCommand}" ToolTip.Tip="Edit Current Schema">
+                                <mi:MaterialIcon Kind="FileEditOutline" Width="20" Height="20"/>
+                            </Button>
+                        </StackPanel>
+                        <TextBlock Text="SCHEMA" FontSize="9" FontWeight="Bold" HorizontalAlignment="Center" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                    </StackPanel>
+
+                    <Separator Width="1" Margin="8,10"/>
+
+                    <!-- Settings -->
+                    <StackPanel Orientation="Vertical" Spacing="2" Margin="5,0">
+                        <Button Classes="toolbar" Command="{Binding OpenSettingsCommand}" ToolTip.Tip="Settings" HorizontalAlignment="Center">
+                            <mi:MaterialIcon Kind="SettingsOutline" Width="20" Height="20"/>
+                        </Button>
+                        <TextBlock Text="APP" FontSize="9" FontWeight="Bold" HorizontalAlignment="Center" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                    </StackPanel>
                 </StackPanel>
 
                 <Border Grid.Column="1" Padding="15,0">
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
-                        <ic:SymbolIcon Symbol="Info" FontSize="14" VerticalAlignment="Center"/>
+                        <mi:MaterialIcon Kind="InformationOutline" Width="14" Height="14" VerticalAlignment="Center"/>
                         <TextBlock Text="{Binding StatusText}"
                                    VerticalAlignment="Center"
                                    FontSize="12"
@@ -133,7 +211,7 @@
                                 BorderThickness="0"
                                 Padding="4"
                                 ToolTip.Tip="Close Panel">
-                            <ic:SymbolIcon Symbol="Dismiss" FontSize="14"/>
+                            <mi:MaterialIcon Kind="Close" Width="14" Height="14"/>
                         </Button>
                     </Grid>
                     

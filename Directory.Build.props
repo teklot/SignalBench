@@ -1,0 +1,7 @@
+<Project>
+  <PropertyGroup>
+    <Version>0.1.2</Version>
+    <Authors>TekLot</Authors>
+    <Product>SignalBench</Product>
+  </PropertyGroup>
+</Project>
