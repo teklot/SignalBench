@@ -1,4 +1,5 @@
 using ReactiveUI;
+using SignalBench.Core.Data;
 using SignalBench.Core.Decoding;
 using SignalBench.Core.Models.Schema;
 using System.Collections.ObjectModel;
@@ -27,7 +28,7 @@ public class MainWindowViewModel : ViewModelBase
     public ObservableCollection<SignalItemViewModel> AvailableSignals { get; } = [];
     public ObservableCollection<dynamic> DecodedRecords { get; } = [];
 
-    private SignalBench.Core.Data.SqliteDataStore? _dataStore;
+    private readonly IDataStore _dataStore;
 
     public Action<List<DateTime>, Dictionary<string, List<double>>>? RequestPlotUpdate { get; set; }
 
@@ -36,8 +37,9 @@ public class MainWindowViewModel : ViewModelBase
     public ReactiveCommand<Unit, Unit> ExportCsvCommand { get; }
     public ReactiveCommand<Unit, Unit> LoadSchemaCommand { get; }
 
-    public MainWindowViewModel()
+    public MainWindowViewModel(IDataStore dataStore)
     {
+        _dataStore = dataStore;
         OpenFileCommand = ReactiveCommand.CreateFromTask(OpenFileAsync);
         SaveSessionCommand = ReactiveCommand.Create(SaveSession);
         ExportCsvCommand = ReactiveCommand.Create(ExportCsv);
@@ -45,15 +47,18 @@ public class MainWindowViewModel : ViewModelBase
 
         AvailableSignals.CollectionChanged += (s, e) =>
         {
+            if (e.OldItems != null)
+            {
+                foreach (SignalItemViewModel item in e.OldItems)
+                {
+                    item.PropertyChanged -= SignalItem_PropertyChanged;
+                }
+            }
             if (e.NewItems != null)
             {
                 foreach (SignalItemViewModel item in e.NewItems)
                 {
-                    item.PropertyChanged += (s2, e2) =>
-                    {
-                        if (e2.PropertyName == nameof(SignalItemViewModel.IsSelected))
-                            UpdatePlot();
-                    };
+                    item.PropertyChanged += SignalItem_PropertyChanged;
                 }
             }
         };
@@ -62,17 +67,29 @@ public class MainWindowViewModel : ViewModelBase
         Schemas.Add(new PacketSchema { Name = "EPS Telemetry" });
     }
 
+    private void SignalItem_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(SignalItemViewModel.IsSelected))
+            UpdatePlot();
+    }
+
     private void UpdatePlot()
     {
-        if (_dataStore == null) return;
-        var timestamps = _dataStore.GetTimestamps();
-        var selectedSignals = AvailableSignals.Where(s => s.IsSelected).ToList();
-        var plotData = new Dictionary<string, List<double>>();
-        foreach (var signal in selectedSignals)
+        try
         {
-            plotData[signal.Name] = _dataStore.GetSignalData(signal.Name);
+            var timestamps = _dataStore.GetTimestamps();
+            var selectedSignals = AvailableSignals.Where(s => s.IsSelected).ToList();
+            var plotData = new Dictionary<string, List<double>>();
+            foreach (var signal in selectedSignals)
+            {
+                plotData[signal.Name] = _dataStore.GetSignalData(signal.Name);
+            }
+            RequestPlotUpdate?.Invoke(timestamps, plotData);
         }
-        RequestPlotUpdate?.Invoke(timestamps, plotData);
+        catch (Exception ex)
+        {
+            StatusText = $"Plot Error: {ex.Message}";
+        }
     }
 
     private async Task OpenFileAsync()
@@ -106,10 +123,8 @@ public class MainWindowViewModel : ViewModelBase
                 await Task.Run(() => {
                     try 
                     {
-                        _dataStore?.Dispose();
                         var dbPath = Path.Combine(Path.GetTempPath(), "signalbench_temp.db");
-                        if (File.Exists(dbPath)) File.Delete(dbPath);
-                        _dataStore = new SignalBench.Core.Data.SqliteDataStore(dbPath);
+                        _dataStore.Reset(dbPath);
 
                         var source = new SignalBench.Core.Ingestion.CsvTelemetrySource(path, result.Delimiter, result.TimestampColumn);
                         var packets = source.ReadPackets().ToList();
@@ -149,16 +164,14 @@ public class MainWindowViewModel : ViewModelBase
                 await Task.Run(() => {
                     try 
                     {
-                        _dataStore?.Dispose();
-                        var dbPath = Path.Combine(Path.GetTempPath(), "signalbench_temp.db");
-                        if (File.Exists(dbPath)) File.Delete(dbPath);
-                        _dataStore = new SignalBench.Core.Data.SqliteDataStore(dbPath);
-
                         if (SelectedSchema == null)
                         {
                             Avalonia.Threading.Dispatcher.UIThread.Post(() => StatusText = "Please select a schema first for binary files.");
                             return;
                         }
+
+                        var dbPath = Path.Combine(Path.GetTempPath(), "signalbench_temp.db");
+                        _dataStore.Reset(dbPath);
 
                         _dataStore.InitializeSchema(SelectedSchema);
                         var source = new SignalBench.Core.Ingestion.BinaryTelemetrySource(path, SelectedSchema);

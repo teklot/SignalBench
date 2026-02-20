@@ -1,0 +1,13 @@
+using SignalBench.Core.Decoding;
+using SignalBench.Core.Models.Schema;
+
+namespace SignalBench.Core.Data;
+
+public interface IDataStore : IDisposable
+{
+    void InitializeSchema(PacketSchema schema);
+    void InsertPackets(IEnumerable<DecodedPacket> packets);
+    List<DateTime> GetTimestamps();
+    List<double> GetSignalData(string fieldName);
+    void Reset(string dbPath);
+}

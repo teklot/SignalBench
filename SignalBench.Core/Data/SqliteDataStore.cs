@@ -4,20 +4,50 @@ using SignalBench.Core.Models.Schema;
 
 namespace SignalBench.Core.Data;
 
-public class SqliteDataStore : IDisposable
+public class SqliteDataStore : IDataStore
 {
-    private readonly SqliteConnection _connection;
+    private SqliteConnection? _connection;
     private readonly string _tableName = "telemetry";
+
+    public SqliteDataStore()
+    {
+    }
 
     public SqliteDataStore(string dbPath)
     {
-        _connection = new SqliteConnection($"Data Source={dbPath}");
+        Reset(dbPath);
+    }
+
+    public void Reset(string dbPath)
+    {
+        Dispose();
+
+        // Retry deletion a few times in case the file is briefly locked by the OS
+        for (int i = 0; i < 5; i++)
+        {
+            try
+            {
+                if (File.Exists(dbPath))
+                {
+                    File.Delete(dbPath);
+                }
+                break;
+            }
+            catch (IOException)
+            {
+                if (i == 4) throw;
+                Thread.Sleep(100);
+            }
+        }
+
+        _connection = new SqliteConnection($"Data Source={dbPath};Pooling=False");
         _connection.Open();
     }
 
     public void InitializeSchema(PacketSchema schema)
     {
-        var command = _connection.CreateCommand();
+        if (_connection == null) throw new InvalidOperationException("DataStore not initialized.");
+        using var command = _connection.CreateCommand();
         // Filter out 'timestamp' from dynamic columns if it's already explicitly defined
         var fieldCols = schema.Fields
             .Where(f => !f.Name.Equals("timestamp", StringComparison.OrdinalIgnoreCase))
@@ -35,8 +65,9 @@ public class SqliteDataStore : IDisposable
 
     public void InsertPackets(IEnumerable<DecodedPacket> packets)
     {
+        if (_connection == null) throw new InvalidOperationException("DataStore not initialized.");
         using var transaction = _connection.BeginTransaction();
-        var command = _connection.CreateCommand();
+        using var command = _connection.CreateCommand();
         command.Transaction = transaction;
 
         foreach (var packet in packets)
@@ -97,8 +128,9 @@ public class SqliteDataStore : IDisposable
 
     public List<DateTime> GetTimestamps()
     {
+        if (_connection == null) return [];
         var data = new List<DateTime>();
-        var command = _connection.CreateCommand();
+        using var command = _connection.CreateCommand();
         command.CommandText = $"SELECT timestamp FROM {_tableName} ORDER BY id";
         using var reader = command.ExecuteReader();
         while (reader.Read())
@@ -110,8 +142,9 @@ public class SqliteDataStore : IDisposable
 
     public List<double> GetSignalData(string fieldName)
     {
+        if (_connection == null) return [];
         var data = new List<double>();
-        var command = _connection.CreateCommand();
+        using var command = _connection.CreateCommand();
         command.CommandText = $"SELECT \"{fieldName}\" FROM {_tableName} ORDER BY id";
         using var reader = command.ExecuteReader();
         while (reader.Read())
@@ -123,6 +156,7 @@ public class SqliteDataStore : IDisposable
 
     public void Dispose()
     {
-        _connection.Dispose();
+        _connection?.Dispose();
+        _connection = null;
     }
 }

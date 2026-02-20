@@ -28,6 +28,7 @@
       <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
     </PackageReference>
     <PackageReference Include="FluentIcons.Avalonia.Fluent" Version="2.0.319" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.3" />
     <PackageReference Include="ScottPlot.Avalonia" Version="5.1.57" />
   </ItemGroup>
 
