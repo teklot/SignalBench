@@ -1,0 +1,14 @@
+namespace SignalBench.Core.Models.Schema;
+
+public enum FieldType
+{
+    Uint8,
+    Uint16,
+    Uint32,
+    Uint64,
+    Int8,
+    Int16,
+    Int32,
+    Float32,
+    Float64
+}

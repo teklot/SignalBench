@@ -1,0 +1,53 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:SignalBench.ViewModels"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="600" d:DesignHeight="500"
+        x:Class="SignalBench.Views.CsvImport"
+        x:DataType="vm:CsvImportViewModel"
+        Title="CSV Import Options"
+        WindowStartupLocation="CenterOwner"
+        Width="700" Height="550">
+
+    <Grid RowDefinitions="Auto, *, Auto" Margin="20">
+        <!-- Settings -->
+        <StackPanel Grid.Row="0" Spacing="15" Margin="0,0,0,20">
+            <Grid ColumnDefinitions="Auto, *, Auto, *">
+                <TextBlock Text="Delimiter:" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                <ComboBox Grid.Column="1" HorizontalAlignment="Stretch" SelectedItem="{Binding Delimiter}">
+                    <x:String>,</x:String>
+                    <x:String>;</x:String>
+                    <x:String>|</x:String>
+                    <x:String>Tab</x:String>
+                </ComboBox>
+
+                <TextBlock Grid.Column="2" Text="Timestamp Column:" VerticalAlignment="Center" Margin="20,0,10,0"/>
+                <ComboBox Grid.Column="3" HorizontalAlignment="Stretch" 
+                          ItemsSource="{Binding AvailableColumns}"
+                          SelectedItem="{Binding TimestampColumn}"/>
+            </Grid>
+        </StackPanel>
+
+        <!-- Preview -->
+        <Grid Grid.Row="1" RowDefinitions="Auto, *">
+            <TextBlock Text="Preview (First 10 rows):" Margin="0,0,0,5" FontWeight="Bold"/>
+            <Border Grid.Row="1" BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" BorderThickness="1">
+                <DataGrid Name="PreviewGrid"
+                          ItemsSource="{Binding PreviewRecords}" 
+                          AutoGenerateColumns="False"
+                          IsReadOnly="True" 
+                          GridLinesVisibility="All"
+                          HeadersVisibility="All"
+                          x:CompileBindings="False">
+                </DataGrid>
+            </Border>
+        </Grid>
+
+        <!-- Actions -->
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" Margin="0,20,0,0">
+            <Button Content="Cancel" Command="{Binding CancelCommand}"/>
+            <Button Content="Import" Command="{Binding ImportCommand}" Classes="accent"/>
+        </StackPanel>
+    </Grid>
+</Window>

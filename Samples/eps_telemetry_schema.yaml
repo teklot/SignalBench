@@ -1,0 +1,24 @@
+packet:
+  name: EPS_Telemetry
+  endianness: little
+  fields:
+    - name: timestamp
+      type: uint32
+      bit_offset: 0
+      bit_length: 32
+    - name: battery_voltage
+      type: float32
+      bit_offset: 32
+      bit_length: 32
+    - name: battery_current
+      type: float32
+      bit_offset: 64
+      bit_length: 32
+    - name: temperature_1
+      type: int16
+      bit_offset: 96
+      bit_length: 16
+    - name: status_flags
+      type: uint8
+      bit_offset: 112
+      bit_length: 8
