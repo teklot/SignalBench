@@ -5,6 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:scott="clr-namespace:ScottPlot.Avalonia;assembly=ScottPlot.Avalonia"
         xmlns:mi="using:Material.Icons.Avalonia"
+        xmlns:views="using:SignalBench.Views"
         mc:Ignorable="d" d:DesignWidth="1100" d:DesignHeight="750"
         x:Class="SignalBench.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
@@ -16,23 +17,47 @@
     </Design.DataContext>
 
     <Window.Styles>
+        <!-- Word-like Toolbar Button Style -->
         <Style Selector="Button.toolbar">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Padding" Value="12,6"/>
-            <Setter Property="VerticalAlignment" Value="Stretch"/>
+            <Setter Property="Padding" Value="8"/>
+            <Setter Property="Margin" Value="2,0"/>
+            <Setter Property="CornerRadius" Value="2"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
         </Style>
+        <Style Selector="Button.toolbar:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#edebe9"/>
+        </Style>
+        <Style Selector="Button.toolbar:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="#e1dfdd"/>
+        </Style>
+        <Style Selector="Button.toolbar:disabled">
+            <Setter Property="Opacity" Value="0.4"/>
+        </Style>
+        <Style Selector="Button.toolbar:disabled /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+
+        <!-- Sidebar Header Style -->
         <Style Selector="TextBlock.header">
             <Setter Property="FontSize" Value="11"/>
             <Setter Property="FontWeight" Value="Bold"/>
-            <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+            <Setter Property="Foreground" Value="#605e5c"/>
             <Setter Property="Margin" Value="0,0,0,5"/>
+        </Style>
+
+        <Style Selector="Menu">
+            <Setter Property="Background" Value="White"/>
+        </Style>
+        <Style Selector="MenuItem">
+            <Setter Property="Padding" Value="12,6"/>
         </Style>
     </Window.Styles>
 
-    <DockPanel>
-        <!-- Menu Bar -->
-        <Menu DockPanel.Dock="Top">
+    <DockPanel Background="White">
+        <!-- 1. Top Menu Bar -->
+        <Menu DockPanel.Dock="Top" BorderBrush="#e1dfdd" BorderThickness="0,0,0,1">
             <MenuItem Header="_File">
                 <MenuItem Header="_Open Telemetry..." Command="{Binding OpenFileCommand}">
                     <MenuItem.Icon>
@@ -46,7 +71,7 @@
                                       CommandParameter="{Binding Path}">
                                 <MenuItem.Header>
                                     <StackPanel Orientation="Horizontal" Spacing="8">
-                                        <TextBlock Text="{Binding Index, StringFormat='\{0\}.'}" FontWeight="Bold" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                                        <TextBlock Text="{Binding Index, StringFormat='\{0\}.'}" FontWeight="Bold" Foreground="#2b579a"/>
                                         <TextBlock Text="{Binding Path}"/>
                                     </StackPanel>
                                 </MenuItem.Header>
@@ -66,6 +91,12 @@
                     </MenuItem.Icon>
                 </MenuItem>
                 <Separator/>
+                <MenuItem Header="Close _All" Command="{Binding CloseAllCommand}">
+                    <MenuItem.Icon>
+                        <mi:MaterialIcon Kind="CloseBoxMultipleOutline" Width="20" Height="20"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+                <Separator/>
                 <MenuItem Header="_Export CSV..." Command="{Binding ExportCsvCommand}">
                     <MenuItem.Icon>
                         <mi:MaterialIcon Kind="FileExportOutline" Width="20" Height="20"/>
@@ -79,17 +110,18 @@
                 <MenuItem Header="Signals Panel" 
                           Command="{Binding ToggleSignalsPaneCommand}">
                     <MenuItem.Icon>
-                        <CheckBox IsChecked="{Binding IsSignalsPaneOpen}" IsHitTestVisible="False"/>
+                        <mi:MaterialIcon Kind="Check" IsVisible="{Binding IsSignalsPaneOpen}" Width="18" Height="18" Foreground="#2b579a"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="Toolbar" 
+                          Command="{Binding ToggleToolbarCommand}">
+                    <MenuItem.Icon>
+                        <mi:MaterialIcon Kind="Check" IsVisible="{Binding IsToolbarVisible}" Width="18" Height="18" Foreground="#2b579a"/>
                     </MenuItem.Icon>
                 </MenuItem>
             </MenuItem>
 
             <MenuItem Header="_Tools">
-                <MenuItem Header="_Open Schema..." Command="{Binding LoadSchemaCommand}">
-                    <MenuItem.Icon>
-                        <mi:MaterialIcon Kind="FileDocumentOutline" Width="20" Height="20"/>
-                    </MenuItem.Icon>
-                </MenuItem>
                 <MenuItem Header="_New Schema..." Command="{Binding CreateSchemaCommand}">
                     <MenuItem.Icon>
                         <mi:MaterialIcon Kind="FilePlusOutline" Width="20" Height="20"/>
@@ -117,139 +149,130 @@
             </MenuItem>
         </Menu>
 
-        <!-- Top Toolbar -->
-        <Border DockPanel.Dock="Top" BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" BorderThickness="0,0,0,1" Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}">
-            <Grid ColumnDefinitions="Auto, *">
-                <StackPanel Orientation="Horizontal" Spacing="0" Margin="5,2">
-                    <Button Classes="toolbar" Command="{Binding ToggleSignalsPaneCommand}" ToolTip.Tip="Toggle Signals Panel" VerticalAlignment="Center">
-                        <mi:MaterialIcon Kind="Menu" Width="20" Height="20"/>
-                    </Button>
-                    
-                    <Separator Width="1" Margin="8,10"/>
-
-                    <!-- Session Group -->
-                    <StackPanel Orientation="Vertical" Spacing="2" Margin="5,0">
-                        <StackPanel Orientation="Horizontal" Spacing="2" HorizontalAlignment="Center">
-                            <Button Classes="toolbar" Command="{Binding OpenSessionCommand}" ToolTip.Tip="Open Session">
-                                <mi:MaterialIcon Kind="FileSearchOutline" Width="20" Height="20"/>
-                            </Button>
-                            <Button Classes="toolbar" Command="{Binding SaveSessionCommand}" ToolTip.Tip="Save Session">
-                                <mi:MaterialIcon Kind="ContentSaveOutline" Width="20" Height="20"/>
-                            </Button>
-                        </StackPanel>
-                        <TextBlock Text="SESSION" FontSize="9" FontWeight="Bold" HorizontalAlignment="Center" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
-                    </StackPanel>
-
-                    <Separator Width="1" Margin="8,10"/>
-
-                    <!-- Data Group -->
-                    <StackPanel Orientation="Vertical" Spacing="2" Margin="5,0">
-                        <StackPanel Orientation="Horizontal" Spacing="2" HorizontalAlignment="Center">
-                            <Button Classes="toolbar" Command="{Binding OpenFileCommand}" ToolTip.Tip="Open Telemetry File">
-                                <mi:MaterialIcon Kind="FileChartOutline" Width="20" Height="20"/>
-                            </Button>
-                            <Button Classes="toolbar" Command="{Binding ExportCsvCommand}" ToolTip.Tip="Export CSV">
-                                <mi:MaterialIcon Kind="FileExportOutline" Width="20" Height="20"/>
-                            </Button>
-                        </StackPanel>
-                        <TextBlock Text="DATA" FontSize="9" FontWeight="Bold" HorizontalAlignment="Center" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
-                    </StackPanel>
-
-                    <Separator Width="1" Margin="8,10"/>
-
-                    <!-- Schema Group -->
-                    <StackPanel Orientation="Vertical" Spacing="2" Margin="5,0">
-                        <StackPanel Orientation="Horizontal" Spacing="2" HorizontalAlignment="Center">
-                            <Button Classes="toolbar" Command="{Binding LoadSchemaCommand}" ToolTip.Tip="Open Schema File">
-                                <mi:MaterialIcon Kind="FileDocumentOutline" Width="20" Height="20"/>
-                            </Button>
-                            <Button Classes="toolbar" Command="{Binding CreateSchemaCommand}" ToolTip.Tip="Create New Schema">
-                                <mi:MaterialIcon Kind="FilePlusOutline" Width="20" Height="20"/>
-                            </Button>
-                            <Button Classes="toolbar" Command="{Binding EditSchemaCommand}" ToolTip.Tip="Edit Current Schema">
-                                <mi:MaterialIcon Kind="FileEditOutline" Width="20" Height="20"/>
-                            </Button>
-                        </StackPanel>
-                        <TextBlock Text="SCHEMA" FontSize="9" FontWeight="Bold" HorizontalAlignment="Center" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
-                    </StackPanel>
-
-                    <Separator Width="1" Margin="8,10"/>
-
-                    <!-- Settings -->
-                    <StackPanel Orientation="Vertical" Spacing="2" Margin="5,0">
-                        <Button Classes="toolbar" Command="{Binding OpenSettingsCommand}" ToolTip.Tip="Settings" HorizontalAlignment="Center">
-                            <mi:MaterialIcon Kind="SettingsOutline" Width="20" Height="20"/>
+        <!-- 2. Ribbon Toolbar -->
+        <Border DockPanel.Dock="Top" Background="#f3f2f1" BorderBrush="#e1dfdd" BorderThickness="0,0,0,1" IsVisible="{Binding IsToolbarVisible}">
+            <StackPanel Orientation="Horizontal" Margin="5,0">
+                <!-- SESSION GROUP -->
+                <StackPanel Orientation="Vertical" Margin="8,6">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="2">
+                        <Button Classes="toolbar" Command="{Binding OpenSessionCommand}" ToolTip.Tip="Open Session">
+                            <mi:MaterialIcon Kind="FileSearchOutline" Width="22" Height="22" Foreground="#2b579a"/>
                         </Button>
-                        <TextBlock Text="APP" FontSize="9" FontWeight="Bold" HorizontalAlignment="Center" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                        <Button Classes="toolbar" Command="{Binding SaveSessionCommand}" ToolTip.Tip="Save Session">
+                            <mi:MaterialIcon Kind="ContentSaveOutline" Width="22" Height="22" Foreground="#2b579a"/>
+                        </Button>
+                        <Button Classes="toolbar" Command="{Binding CloseAllCommand}" ToolTip.Tip="Close All / Reset Workspace">
+                            <mi:MaterialIcon Kind="CloseBoxMultipleOutline" Width="22" Height="22" Foreground="#d83b01"/>
+                        </Button>
                     </StackPanel>
+                    <TextBlock Text="SESSION" FontSize="9" FontWeight="SemiBold" HorizontalAlignment="Center" Foreground="#605e5c" Margin="0,2,0,0"/>
                 </StackPanel>
-
-                <Border Grid.Column="1" Padding="15,0">
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
-                        <mi:MaterialIcon Kind="InformationOutline" Width="14" Height="14" VerticalAlignment="Center"/>
-                        <TextBlock Text="{Binding StatusText}"
-                                   VerticalAlignment="Center"
-                                   FontSize="12"
-                                   FontWeight="Medium"/>
+                <Border Width="1" Background="#e1dfdd" VerticalAlignment="Stretch"/>
+                
+                <!-- DATA GROUP -->
+                <StackPanel Orientation="Vertical" Margin="8,6">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="2">
+                        <Button Classes="toolbar" Command="{Binding OpenFileCommand}" ToolTip.Tip="Open Telemetry File">
+                            <mi:MaterialIcon Kind="FileChartOutline" Width="22" Height="22" Foreground="#2b579a"/>
+                        </Button>
+                        <Button Classes="toolbar" Command="{Binding ExportCsvCommand}" ToolTip.Tip="Export CSV">
+                            <mi:MaterialIcon Kind="FileExportOutline" Width="22" Height="22" Foreground="#2b579a"/>
+                        </Button>
                     </StackPanel>
-                </Border>
-            </Grid>
+                    <TextBlock Text="DATA" FontSize="9" FontWeight="SemiBold" HorizontalAlignment="Center" Foreground="#605e5c" Margin="0,2,0,0"/>
+                </StackPanel>
+                <Border Width="1" Background="#e1dfdd" VerticalAlignment="Stretch"/>
+                
+                <!-- SCHEMA GROUP -->
+                <StackPanel Orientation="Vertical" Margin="8,6">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="2">
+                        <Button Classes="toolbar" Command="{Binding CreateSchemaCommand}" ToolTip.Tip="Create New Schema">
+                            <mi:MaterialIcon Kind="FilePlusOutline" Width="22" Height="22" Foreground="#2b579a"/>
+                        </Button>
+                        <Button Classes="toolbar" Command="{Binding EditSchemaCommand}" ToolTip.Tip="Edit Current Schema">
+                            <mi:MaterialIcon Kind="FileEditOutline" Width="22" Height="22" Foreground="#2b579a"/>
+                        </Button>
+                    </StackPanel>
+                    <TextBlock Text="SCHEMA" FontSize="9" FontWeight="SemiBold" HorizontalAlignment="Center" Foreground="#605e5c" Margin="0,2,0,0"/>
+                </StackPanel>
+                <Border Width="1" Background="#e1dfdd" VerticalAlignment="Stretch"/>
+                
+                <!-- APP GROUP -->
+                <StackPanel Orientation="Vertical" Margin="8,6" VerticalAlignment="Center">
+                    <Button Classes="toolbar" Command="{Binding OpenSettingsCommand}" ToolTip.Tip="Settings" HorizontalAlignment="Center">
+                        <mi:MaterialIcon Kind="SettingsOutline" Width="22" Height="22" Foreground="#605e5c"/>
+                    </Button>
+                    <TextBlock Text="APP" FontSize="9" FontWeight="SemiBold" HorizontalAlignment="Center" Foreground="#605e5c" Margin="0,2,0,0"/>
+                </StackPanel>
+            </StackPanel>
         </Border>
 
-        <!-- Main Content -->
-        <SplitView DisplayMode="Inline"
-                   IsPaneOpen="{Binding IsSignalsPaneOpen}"
-                   OpenPaneLength="280">
-            <SplitView.Pane>
-                <!-- Left Panel (Sidebar) -->
-                <Grid RowDefinitions="Auto, *" Margin="15,15,0,15">
-                    <Grid Grid.Row="0" ColumnDefinitions="*, Auto" Margin="0,0,10,10">
-                        <TextBlock Grid.Column="0" Text="SIGNALS" Classes="header" VerticalAlignment="Center" Margin="0"/>
-                        <Button Grid.Column="1"
-                                Command="{Binding ToggleSignalsPaneCommand}"
-                                Background="Transparent"
-                                BorderThickness="0"
-                                Padding="4"
-                                ToolTip.Tip="Close Panel">
-                            <mi:MaterialIcon Kind="Close" Width="14" Height="14"/>
-                        </Button>
-                    </Grid>
-                    
-                    <ListBox Grid.Row="1" 
-                             ItemsSource="{Binding AvailableSignals}"
-                             Background="Transparent"
-                             BorderThickness="0"
-                             Padding="0,0,10,0">
-                        <ListBox.Styles>
-                            <Style Selector="ListBoxItem">
-                                <Setter Property="Padding" Value="0,2"/>
-                                <Setter Property="Background" Value="Transparent"/>
-                            </Style>
-                            <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter">
-                                <Setter Property="Background" Value="Transparent"/>
-                            </Style>
-                            <Style Selector="ListBoxItem:selected /template/ ContentPresenter">
-                                <Setter Property="Background" Value="Transparent"/>
-                            </Style>
-                        </ListBox.Styles>
-                        <ListBox.ItemTemplate>
-                            <DataTemplate>
-                                <CheckBox Content="{Binding Name}"
-                                          IsChecked="{Binding IsSelected}"
-                                          FontSize="13"
-                                          Margin="0"/>
-                            </DataTemplate>
-                        </ListBox.ItemTemplate>
-                    </ListBox>
-                </Grid>
-            </SplitView.Pane>
+        <!-- 3. Status Bar (Docked Bottom) -->
+        <Border DockPanel.Dock="Bottom" 
+                Background="#f3f2f1" 
+                BorderBrush="#e1dfdd" 
+                BorderThickness="0,1,0,0" 
+                Height="28" 
+                Padding="10,0">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="8">
+                <mi:MaterialIcon Kind="InformationOutline" Width="14" Height="14" Foreground="#2b579a"/>
+                <TextBlock Text="{Binding StatusText}" FontSize="12" Foreground="#323130" VerticalAlignment="Center"/>
+            </StackPanel>
+        </Border>
 
-            <SplitView.Content>
-                <!-- Plot Area -->
-                <Border Padding="10">
-                    <scott:AvaPlot Name="MainPlot"/>
+        <!-- 4. Main Content Area -->
+        <Grid ColumnDefinitions="Auto, *">
+            <!-- Vertical Tab Strip -->
+            <Border Grid.Column="0" Width="24" Background="#f3f2f1" BorderBrush="#e1dfdd" BorderThickness="0,0,1,0" IsVisible="{Binding !IsSignalsPaneOpen}">
+                <Button Command="{Binding ToggleSignalsPaneCommand}" 
+                        Background="Transparent" BorderThickness="0" Padding="0" 
+                        VerticalAlignment="Top" Margin="0,20,0,0"
+                        HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                        Width="24" Height="100">
+                    <LayoutTransformControl>
+                        <LayoutTransformControl.LayoutTransform>
+                            <RotateTransform Angle="-90"/>
+                        </LayoutTransformControl.LayoutTransform>
+                        <TextBlock Text="SIGNALS" FontSize="11" FontWeight="Bold" Foreground="#2b579a"/>
+                    </LayoutTransformControl>
+                </Button>
+            </Border>
+
+            <!-- Workspace Grid -->
+            <Grid Grid.Column="1">
+                <Grid.ColumnDefinitions>
+                    <!-- Two-way bind to handle resizing while allowing logic-based collapse -->
+                    <ColumnDefinition Width="{Binding SignalsPaneColumnWidth, Mode=TwoWay}" MinWidth="0" MaxWidth="600"/>
+                    <ColumnDefinition Width="Auto"/> <!-- Splitter -->
+                    <ColumnDefinition Width="*"/>    <!-- Plot -->
+                </Grid.ColumnDefinitions>
+
+                <!-- Open Signals Sidebar -->
+                <Border Grid.Column="0" 
+                        HorizontalAlignment="Stretch"
+                        Background="White" BorderBrush="#e1dfdd" BorderThickness="0,0,1,0" 
+                        IsVisible="{Binding IsSignalsPaneOpen}">
+                    <Grid RowDefinitions="Auto, *">
+                        <Border Grid.Row="0" Background="#f3f2f1" Height="32" Padding="10,0">
+                            <Grid ColumnDefinitions="*, Auto">
+                                <TextBlock Grid.Column="0" Text="SIGNALS" VerticalAlignment="Center" FontSize="11" FontWeight="Bold" Foreground="#2b579a"/>
+                                <Button Grid.Column="1" Command="{Binding ToggleSignalsPaneCommand}" Background="Transparent" BorderThickness="0" Padding="4" ToolTip.Tip="Collapse">
+                                    <mi:MaterialIcon Kind="ChevronLeft" Width="14" Height="14" Foreground="#2b579a"/>
+                                </Button>
+                            </Grid>
+                        </Border>
+                        <views:SignalsView Grid.Row="1" />
+                    </Grid>
                 </Border>
-            </SplitView.Content>
-        </SplitView>
+
+                <!-- GridSplitter -->
+                <GridSplitter Grid.Column="1" Width="4" Background="#e1dfdd" IsVisible="{Binding IsSignalsPaneOpen}"/>
+
+                <!-- Plot Area -->
+                <Border Grid.Column="2" Padding="15">
+                    <views:PlotView />
+                </Border>
+            </Grid>
+        </Grid>
     </DockPanel>
 </Window>

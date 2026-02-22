@@ -10,6 +10,7 @@ using SignalBench.Views;
 using System.Collections.ObjectModel;
 using System.Dynamic;
 using System.Reactive;
+using Avalonia.Controls;
 
 namespace SignalBench.ViewModels;
 
@@ -45,7 +46,37 @@ public class MainWindowViewModel : ViewModelBase
     public bool IsSignalsPaneOpen
     {
         get => _isSignalsPaneOpen;
-        set => this.RaiseAndSetIfChanged(ref _isSignalsPaneOpen, value);
+        set {
+            this.RaiseAndSetIfChanged(ref _isSignalsPaneOpen, value);
+            this.RaisePropertyChanged(nameof(SignalsPaneColumnWidth));
+        }
+    }
+
+    private GridLength _signalsPaneColumnWidth = new GridLength(200);
+    public GridLength SignalsPaneColumnWidth
+    {
+        get => IsSignalsPaneOpen ? _signalsPaneColumnWidth : new GridLength(0);
+        set {
+            if (IsSignalsPaneOpen && value.IsAbsolute)
+            {
+                if (value.Value < 150)
+                {
+                    IsSignalsPaneOpen = false;
+                }
+                else
+                {
+                    _signalsPaneColumnWidth = value;
+                }
+            }
+            this.RaisePropertyChanged(nameof(SignalsPaneColumnWidth));
+        }
+    }
+
+    private bool _isToolbarVisible = true;
+    public bool IsToolbarVisible
+    {
+        get => _isToolbarVisible;
+        set => this.RaiseAndSetIfChanged(ref _isToolbarVisible, value);
     }
 
     public ObservableCollection<SignalItemViewModel> AvailableSignals { get; } = [];
@@ -64,10 +95,11 @@ public class MainWindowViewModel : ViewModelBase
     public ReactiveCommand<string, Unit> OpenRecentFileCommand { get; }
     public ReactiveCommand<Unit, Unit> SaveSessionCommand { get; }
     public ReactiveCommand<Unit, Unit> OpenSessionCommand { get; }
+    public ReactiveCommand<Unit, Unit> CloseAllCommand { get; }
     public ReactiveCommand<Unit, Unit> ExportCsvCommand { get; }
     public ReactiveCommand<Unit, Unit> ToggleSignalsPaneCommand { get; }
+    public ReactiveCommand<Unit, Unit> ToggleToolbarCommand { get; }
     public ReactiveCommand<Unit, Unit> CreateSchemaCommand { get; }
-    public ReactiveCommand<Unit, Unit> LoadSchemaCommand { get; }
     public ReactiveCommand<Unit, Unit> EditSchemaCommand { get; }
     public ReactiveCommand<Unit, Unit> OpenSettingsCommand { get; }
     public ReactiveCommand<Unit, Unit> OpenAboutCommand { get; }
@@ -86,11 +118,16 @@ public class MainWindowViewModel : ViewModelBase
         OpenRecentFileCommand = ReactiveCommand.CreateFromTask<string>(path => LoadTelemetryFileAsync(path));
         SaveSessionCommand = ReactiveCommand.CreateFromTask(SaveSessionAsync);
         OpenSessionCommand = ReactiveCommand.CreateFromTask(OpenSessionAsync);
+        CloseAllCommand = ReactiveCommand.Create(CloseAll);
         ExportCsvCommand = ReactiveCommand.Create(ExportCsv);
         ToggleSignalsPaneCommand = ReactiveCommand.Create(() => { IsSignalsPaneOpen = !IsSignalsPaneOpen; });
+        ToggleToolbarCommand = ReactiveCommand.Create(() => { IsToolbarVisible = !IsToolbarVisible; });
+        
         CreateSchemaCommand = ReactiveCommand.CreateFromTask(CreateSchemaAsync);
-        LoadSchemaCommand = ReactiveCommand.CreateFromTask(LoadSchemaAsync);
-        EditSchemaCommand = ReactiveCommand.CreateFromTask(EditSchemaAsync);
+        
+        var canEditSchema = this.WhenAnyValue(x => x.SelectedSchema, (PacketSchema? s) => s != null);
+        EditSchemaCommand = ReactiveCommand.CreateFromTask(EditSchemaAsync, canEditSchema);
+        
         OpenSettingsCommand = ReactiveCommand.CreateFromTask(OpenSettingsAsync);
         OpenAboutCommand = ReactiveCommand.CreateFromTask(OpenAboutAsync);
         ExitCommand = ReactiveCommand.Create(() =>
@@ -147,6 +184,17 @@ public class MainWindowViewModel : ViewModelBase
         RefreshRecentFiles();
     }
 
+    private void CloseAll()
+    {
+        _dataStore.Dispose();
+        AvailableSignals.Clear();
+        SelectedSchema = null;
+        _currentTelemetryPath = null;
+        _currentSchemaPath = null;
+        StatusText = "Ready";
+        RequestPlotUpdate?.Invoke([], []);
+    }
+
     private async Task ShowError(string title, string message, Exception? ex = null)
     {
         if (ex != null)
@@ -184,39 +232,6 @@ public class MainWindowViewModel : ViewModelBase
         catch (Exception ex)
         {
             await ShowError("Settings Error", "Failed to open settings.", ex);
-        }
-    }
-
-    private async Task LoadSchemaAsync()
-    {
-        try
-        {
-            var topLevel = (App.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)?.MainWindow;
-            if (topLevel == null) return;
-
-            var files = await topLevel.StorageProvider.OpenFilePickerAsync(new Avalonia.Platform.Storage.FilePickerOpenOptions
-            {
-                Title = "Open Schema File",
-                AllowMultiple = false,
-                SuggestedStartLocation = !string.IsNullOrEmpty(_settingsService.Current.DefaultSchemaPath)
-                    ? await topLevel.StorageProvider.TryGetFolderFromPathAsync(new Uri(_settingsService.Current.DefaultSchemaPath))
-                    : null,
-                FileTypeFilter = [
-                    new Avalonia.Platform.Storage.FilePickerFileType("YAML Schema") { Patterns = ["*.yaml", "*.yml"] }
-                ]
-            });
-
-            if (files.Count > 0)
-            {
-                var yaml = await File.ReadAllTextAsync(files[0].Path.LocalPath);
-                SelectedSchema = new SchemaLoader().Load(yaml);
-                _currentSchemaPath = files[0].Path.LocalPath;
-                StatusText = $"Loaded schema: {SelectedSchema.Name}";
-            }
-        }
-        catch (Exception ex)
-        {
-            await ShowError("Schema Error", "Failed to load schema file.", ex);
         }
     }
 

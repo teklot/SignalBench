@@ -90,6 +90,7 @@ public class SchemaEditorViewModel : ViewModelBase
     public ReactiveCommand<FieldEditorViewModel, Unit> RemoveFieldCommand { get; }
     public ReactiveCommand<Unit, SchemaEditorResult?> SaveCommand { get; }
     public ReactiveCommand<Unit, Unit> SaveToFileCommand { get; }
+    public ReactiveCommand<Unit, Unit> OpenFromFileCommand { get; }
     public ReactiveCommand<Unit, SchemaEditorResult?> CancelCommand { get; }
 
     public FieldType[] AvailableTypes { get; } = (FieldType[])Enum.GetValues(typeof(FieldType));
@@ -99,15 +100,13 @@ public class SchemaEditorViewModel : ViewModelBase
     {
         if (existingSchema != null)
         {
-            Name = existingSchema.Name;
-            Endianness = existingSchema.Endianness;
-            foreach (var f in existingSchema.Fields)
-                Fields.Add(new FieldEditorViewModel(f));
+            LoadFromSchema(existingSchema);
         }
 
         AddFieldCommand = ReactiveCommand.Create(AddField);
         RemoveFieldCommand = ReactiveCommand.Create<FieldEditorViewModel>(f => Fields.Remove(f));
         SaveToFileCommand = ReactiveCommand.CreateFromTask(SaveToFileAsync);
+        OpenFromFileCommand = ReactiveCommand.CreateFromTask(OpenFromFileAsync);
         
         SaveCommand = ReactiveCommand.Create<SchemaEditorResult?>(() => {
             return new SchemaEditorResult 
@@ -120,6 +119,15 @@ public class SchemaEditorViewModel : ViewModelBase
         CancelCommand = ReactiveCommand.Create(() => (SchemaEditorResult?)null);
     }
 
+    private void LoadFromSchema(PacketSchema schema)
+    {
+        Name = schema.Name;
+        Endianness = schema.Endianness;
+        Fields.Clear();
+        foreach (var f in schema.Fields)
+            Fields.Add(new FieldEditorViewModel(f));
+    }
+
     private PacketSchema BuildSchema()
     {
         return new PacketSchema
@@ -128,6 +136,27 @@ public class SchemaEditorViewModel : ViewModelBase
             Endianness = Endianness,
             Fields = Fields.Select(f => f.ToDefinition()).ToList()
         };
+    }
+
+    private async Task OpenFromFileAsync()
+    {
+        var topLevel = (App.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)?.MainWindow;
+        if (topLevel == null) return;
+
+        var files = await topLevel.StorageProvider.OpenFilePickerAsync(new Avalonia.Platform.Storage.FilePickerOpenOptions
+        {
+            Title = "Open Schema File",
+            AllowMultiple = false,
+            FileTypeFilter = [new Avalonia.Platform.Storage.FilePickerFileType("YAML Schema") { Patterns = ["*.yaml", "*.yml"] }]
+        });
+
+        if (files.Count > 0)
+        {
+            var yaml = await File.ReadAllTextAsync(files[0].Path.LocalPath);
+            var schema = new SchemaLoader().Load(yaml);
+            LoadFromSchema(schema);
+            LastSavedPath = files[0].Path.LocalPath;
+        }
     }
 
     private async Task SaveToFileAsync()

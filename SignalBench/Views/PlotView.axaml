@@ -1,0 +1,10 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:scott="clr-namespace:ScottPlot.Avalonia;assembly=ScottPlot.Avalonia"
+             xmlns:vm="using:SignalBench.ViewModels"
+             x:Class="SignalBench.Views.PlotView"
+             x:DataType="vm:MainWindowViewModel">
+    <Border Padding="10">
+        <scott:AvaPlot Name="MainPlot"/>
+    </Border>
+</UserControl>

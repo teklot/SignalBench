@@ -52,7 +52,8 @@ public class BinaryImportViewModel : ViewModelBase
         CancelCommand = ReactiveCommand.Create(() => (PacketSchema?)null);
         BrowseSchemaCommand = ReactiveCommand.CreateFromTask(BrowseSchemaAsync);
         CreateSchemaCommand = ReactiveCommand.CreateFromTask(CreateSchemaAsync);
-        EditSchemaCommand = ReactiveCommand.CreateFromTask(EditSchemaAsync);
+        var canEditSchema = this.WhenAnyValue(x => x.SelectedSchema, (PacketSchema? s) => s != null);
+        EditSchemaCommand = ReactiveCommand.CreateFromTask(EditSchemaAsync, canEditSchema);
     }
 
     private async Task ShowError(string title, string message, Exception? ex = null)
