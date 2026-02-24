@@ -28,8 +28,16 @@ public class DerivedSignalViewModel : ViewModelBase
         set => this.RaiseAndSetIfChanged(ref _validationMessage, value);
     }
 
+    private bool _isEditMode;
+    public bool IsEditMode
+    {
+        get => _isEditMode;
+        set => this.RaiseAndSetIfChanged(ref _isEditMode, value);
+    }
+
     public ObservableCollection<string> AvailableFields { get; } = [];
 
+    public ReactiveCommand<Unit, DerivedSignalResult?> DeleteCommand { get; }
     public ReactiveCommand<Unit, DerivedSignalResult?> AddCommand { get; }
     public ReactiveCommand<Unit, DerivedSignalResult?> CancelCommand { get; }
 
@@ -47,6 +55,11 @@ public class DerivedSignalViewModel : ViewModelBase
             x => x.Name,
             x => x.Formula,
             (name, formula) => !string.IsNullOrWhiteSpace(name) && !string.IsNullOrWhiteSpace(formula));
+
+        DeleteCommand = ReactiveCommand.Create(() =>
+        {
+            return new DerivedSignalResult { Name = Name, Formula = Formula, IsDeleted = true };
+        });
 
         AddCommand = ReactiveCommand.Create<DerivedSignalResult?>(() =>
         {
@@ -66,4 +79,5 @@ public class DerivedSignalResult
 {
     public string Name { get; set; } = "";
     public string Formula { get; set; } = "";
+    public bool IsDeleted { get; set; }
 }

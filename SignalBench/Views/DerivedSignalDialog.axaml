@@ -1,12 +1,13 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:SignalBench.ViewModels"
+        xmlns:converters="using:SignalBench.ViewModels"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d" d:DesignWidth="500" d:DesignHeight="350"
         x:Class="SignalBench.Views.DerivedSignalDialog"
         x:DataType="vm:DerivedSignalViewModel"
-        Title="Create Derived Signal"
+        Title="{Binding IsEditMode, Converter={x:Static converters:BoolToStringConverter.Instance}, ConverterParameter='Edit Derived Signal|Create Derived Signal'}"
         WindowStartupLocation="CenterOwner"
         Width="500" Height="300">
 
@@ -47,19 +48,27 @@
                 Padding="20,15"
                 BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
                 BorderThickness="0,1,0,0">
-            <StackPanel Orientation="Horizontal"
-                        HorizontalAlignment="Right"
-                        Spacing="12">
-                <Button Content="Cancel"
-                        Command="{Binding CancelCommand}"
-                        Width="100"
-                        HorizontalContentAlignment="Center" />
-                <Button Content="Add"
-                        Command="{Binding AddCommand}"
+            <Grid ColumnDefinitions="Auto, *, Auto">
+                <Button Grid.Column="0" Content="Delete"
+                        Command="{Binding DeleteCommand}"
                         Width="100"
                         HorizontalContentAlignment="Center"
-                        Classes="accent" />
-            </StackPanel>
+                        Foreground="White"
+                        Background="#d83b01"
+                        IsVisible="{Binding IsEditMode}"/>
+                
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="12">
+                    <Button Content="Cancel"
+                            Command="{Binding CancelCommand}"
+                            Width="100"
+                            HorizontalContentAlignment="Center" />
+                    <Button Content="{Binding IsEditMode, Converter={x:Static converters:BoolToStringConverter.Instance}, ConverterParameter='Save|Add'}"
+                            Command="{Binding AddCommand}"
+                            Width="100"
+                            HorizontalContentAlignment="Center"
+                            Classes="accent" />
+                </StackPanel>
+            </Grid>
         </Border>
     </Grid>
 </Window>

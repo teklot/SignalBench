@@ -188,6 +188,48 @@ public class SqliteDataStore : IDataStore
         transaction.Commit();
     }
 
+    public void DeleteSignal(string name)
+    {
+        if (_connection == null) return;
+        
+        using var command = _connection.CreateCommand();
+        var safeName = $"\"{name.Replace("\"", "\"\"")}\"";
+        
+        command.CommandText = $"SELECT COUNT(*) FROM pragma_table_info('{_tableName}') WHERE name = '{name}'";
+        var exists = Convert.ToInt64(command.ExecuteScalar()) > 0;
+        
+        if (!exists) return;
+
+        var tempTable = $"{_tableName}_temp";
+        
+        command.CommandText = $@"
+            PRAGMA table_info({_tableName});
+        ";
+        var columns = new List<string>();
+        using (var reader = command.ExecuteReader())
+        {
+            while (reader.Read())
+            {
+                var colName = reader.GetString(1);
+                if (colName != name)
+                {
+                    columns.Add(colName);
+                }
+            }
+        }
+
+        if (columns.Count == 0) return;
+
+        var columnList = string.Join(", ", columns.Select(c => $"\"{c}\""));
+        
+        command.CommandText = $@"
+            CREATE TEMP TABLE {tempTable} AS SELECT {columnList} FROM {_tableName};
+            DROP TABLE {_tableName};
+            ALTER TABLE {tempTable} RENAME TO {_tableName};
+        ";
+        command.ExecuteNonQuery();
+    }
+
     public void Dispose()
     {
         _connection?.Dispose();

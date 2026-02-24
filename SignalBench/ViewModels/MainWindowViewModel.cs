@@ -40,6 +40,8 @@ public class MainWindowViewModel : ViewModelBase
         set => this.RaiseAndSetIfChanged(ref _selectedSchema, value);
     }
 
+    public bool HasData => !string.IsNullOrEmpty(_currentTelemetryPath) || AvailableSignals.Count > 0;
+
     private bool _isSignalsPaneOpen = true;
     public bool IsSignalsPaneOpen
     {
@@ -78,6 +80,7 @@ public class MainWindowViewModel : ViewModelBase
     }
 
     public ObservableCollection<SignalItemViewModel> AvailableSignals { get; } = [];
+    public ObservableCollection<SignalItemViewModel> RegularSignals { get; } = [];
     public ObservableCollection<dynamic> DecodedRecords { get; } = [];
     public ObservableCollection<RecentFileViewModel> RecentFiles { get; } = [];
     public ObservableCollection<DerivedSignalDefinition> DerivedSignals { get; } = [];
@@ -102,6 +105,8 @@ public class MainWindowViewModel : ViewModelBase
     public ReactiveCommand<Unit, Unit> CreateSchemaCommand { get; }
     public ReactiveCommand<Unit, Unit> EditSchemaCommand { get; }
     public ReactiveCommand<Unit, Unit> CreateDerivedSignalCommand { get; }
+    public ReactiveCommand<string, Unit> EditDerivedSignalCommand { get; }
+    public ReactiveCommand<string, Unit> RemoveDerivedSignalCommand { get; }
     public ReactiveCommand<Unit, Unit> OpenSettingsCommand { get; }
     public ReactiveCommand<Unit, Unit> OpenAboutCommand { get; }
     public ReactiveCommand<Unit, Unit> ExitCommand { get; }
@@ -124,10 +129,13 @@ public class MainWindowViewModel : ViewModelBase
 
         OpenFileCommand = ReactiveCommand.CreateFromTask(OpenFileAsync);
         OpenRecentFileCommand = ReactiveCommand.CreateFromTask<string>(path => LoadTelemetryFileAsync(path));
-        SaveSessionCommand = ReactiveCommand.CreateFromTask(SaveSessionAsync);
+        
+        var canExecuteSession = this.WhenAnyValue(x => x.HasData);
+        SaveSessionCommand = ReactiveCommand.CreateFromTask(SaveSessionAsync, canExecuteSession);
         OpenSessionCommand = ReactiveCommand.CreateFromTask(OpenSessionAsync);
-        CloseAllCommand = ReactiveCommand.Create(CloseAll);
-        ExportCsvCommand = ReactiveCommand.Create(ExportCsv);
+        CloseAllCommand = ReactiveCommand.Create(CloseAll, canExecuteSession);
+        
+        ExportCsvCommand = ReactiveCommand.Create(ExportCsv, canExecuteSession);
         ToggleSignalsPaneCommand = ReactiveCommand.Create(() => { IsSignalsPaneOpen = !IsSignalsPaneOpen; });
         ToggleToolbarCommand = ReactiveCommand.Create(() => { IsToolbarVisible = !IsToolbarVisible; });
         
@@ -138,6 +146,9 @@ public class MainWindowViewModel : ViewModelBase
         
         var canCreateDerived = this.WhenAnyValue(x => x.AvailableSignals.Count, count => count > 0);
         CreateDerivedSignalCommand = ReactiveCommand.CreateFromTask(CreateDerivedSignalAsync, canCreateDerived);
+        
+        EditDerivedSignalCommand = ReactiveCommand.CreateFromTask<string>(EditDerivedSignalAsync);
+        RemoveDerivedSignalCommand = ReactiveCommand.CreateFromTask<string>(RemoveDerivedSignalAsync);
         
         OpenSettingsCommand = ReactiveCommand.CreateFromTask(OpenSettingsAsync);
         OpenAboutCommand = ReactiveCommand.CreateFromTask(OpenAboutAsync);
@@ -151,6 +162,7 @@ public class MainWindowViewModel : ViewModelBase
 
         AvailableSignals.CollectionChanged += (s, e) =>
         {
+            this.RaisePropertyChanged(nameof(HasData));
             if (e.OldItems != null)
             {
                 foreach (SignalItemViewModel item in e.OldItems)
@@ -199,12 +211,14 @@ public class MainWindowViewModel : ViewModelBase
     {
         _dataStore.Dispose();
         AvailableSignals.Clear();
+        RegularSignals.Clear();
         DerivedSignals.Clear();
         SelectedSchema = null;
         _currentTelemetryPath = null;
         _currentSchemaPath = null;
         StatusText = "Ready";
         RequestPlotUpdate?.Invoke([], []);
+        this.RaisePropertyChanged(nameof(HasData));
     }
 
     private async Task ShowError(string title, string message, Exception? ex = null)
@@ -324,7 +338,7 @@ public class MainWindowViewModel : ViewModelBase
                 var signalData = ComputeDerivedSignal(derivedSignal);
                 _dataStore.InsertDerivedSignal(result.Name, signalData);
 
-                AvailableSignals.Add(new SignalItemViewModel { Name = result.Name, IsSelected = true });
+                AvailableSignals.Add(new SignalItemViewModel { Name = result.Name, IsSelected = true, IsDerived = true });
                 UpdatePlot();
                 StatusText = $"Created derived signal: {result.Name}";
             }
@@ -332,6 +346,91 @@ public class MainWindowViewModel : ViewModelBase
         catch (Exception ex)
         {
             await ShowError("Derived Signal Error", "Failed to create derived signal.", ex);
+        }
+    }
+
+    private async Task EditDerivedSignalAsync(string signalName)
+    {
+        var existingSignal = DerivedSignals.FirstOrDefault(d => d.Name == signalName);
+        if (existingSignal == null) return;
+        
+        try
+        {
+            var topLevel = (App.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)?.MainWindow;
+            if (topLevel == null) return;
+
+            var availableFields = AvailableSignals.Where(s => !s.IsDerived || s.Name == signalName).Select(s => s.Name).ToList();
+            var dialog = new SignalBench.Views.DerivedSignalDialog
+            {
+                DataContext = new DerivedSignalViewModel(availableFields, existingSignal) { IsEditMode = true }
+            };
+
+            var result = await dialog.ShowDialog<DerivedSignalResult?>(topLevel);
+            if (result != null && result.IsDeleted)
+            {
+                DerivedSignals.Remove(existingSignal);
+                
+                var signalItem = AvailableSignals.FirstOrDefault(s => s.Name == signalName);
+                if (signalItem != null)
+                {
+                    AvailableSignals.Remove(signalItem);
+                }
+
+                _dataStore.DeleteSignal(signalName);
+                UpdatePlot();
+                StatusText = $"Removed derived signal: {signalName}";
+            }
+            else if (result != null)
+            {
+                var oldName = existingSignal.Name;
+                existingSignal.Name = result.Name;
+                existingSignal.Formula = result.Formula;
+
+                if (oldName != result.Name)
+                {
+                    var signalItem = AvailableSignals.FirstOrDefault(s => s.Name == oldName);
+                    if (signalItem != null)
+                    {
+                        signalItem.Name = result.Name;
+                    }
+                }
+
+                var signalData = ComputeDerivedSignal(existingSignal);
+                _dataStore.DeleteSignal(oldName);
+                _dataStore.InsertDerivedSignal(result.Name, signalData);
+
+                UpdatePlot();
+                StatusText = $"Updated derived signal: {result.Name}";
+            }
+        }
+        catch (Exception ex)
+        {
+            await ShowError("Derived Signal Error", "Failed to edit derived signal.", ex);
+        }
+    }
+
+    private async Task RemoveDerivedSignalAsync(string signalName)
+    {
+        var signal = DerivedSignals.FirstOrDefault(d => d.Name == signalName);
+        if (signal == null) return;
+        
+        try
+        {
+            DerivedSignals.Remove(signal);
+            
+            var signalItem = AvailableSignals.FirstOrDefault(s => s.Name == signalName);
+            if (signalItem != null)
+            {
+                AvailableSignals.Remove(signalItem);
+            }
+
+            _dataStore.DeleteSignal(signalName);
+            UpdatePlot();
+            StatusText = $"Removed derived signal: {signalName}";
+        }
+        catch (Exception ex)
+        {
+            await ShowError("Derived Signal Error", "Failed to remove derived signal.", ex);
         }
     }
 
@@ -466,11 +565,15 @@ public class MainWindowViewModel : ViewModelBase
                         Avalonia.Threading.Dispatcher.UIThread.Post(() =>
                         {
                             AvailableSignals.Clear();
+                            RegularSignals.Clear();
+                            DerivedSignals.Clear();
                             foreach (var field in fields)
                             {
                                 if (field.Equals("timestamp", StringComparison.OrdinalIgnoreCase)) continue;
-                                bool shouldSelect = AvailableSignals.Count < 3;
-                                AvailableSignals.Add(new SignalItemViewModel { Name = field, IsSelected = shouldSelect });
+                                bool shouldSelect = RegularSignals.Count < 3;
+                                var signalItem = new SignalItemViewModel { Name = field, IsSelected = shouldSelect };
+                                AvailableSignals.Add(signalItem);
+                                RegularSignals.Add(signalItem);
                             }
                             SelectedSchema = schema;
                             AddToRecentFiles(path);
@@ -525,11 +628,15 @@ public class MainWindowViewModel : ViewModelBase
                     Avalonia.Threading.Dispatcher.UIThread.Post(() =>
                     {
                         AvailableSignals.Clear();
+                        RegularSignals.Clear();
+                        DerivedSignals.Clear();
                         foreach (var field in fields)
                         {
                             if (field.Equals("timestamp", StringComparison.OrdinalIgnoreCase)) continue;
-                            bool shouldSelect = AvailableSignals.Count < 3;
-                            AvailableSignals.Add(new SignalItemViewModel { Name = field, IsSelected = shouldSelect });
+                            bool shouldSelect = RegularSignals.Count < 3;
+                            var signalItem = new SignalItemViewModel { Name = field, IsSelected = shouldSelect };
+                            AvailableSignals.Add(signalItem);
+                            RegularSignals.Add(signalItem);
                         }
                         SelectedSchema = schema;
                         AddToRecentFiles(path);
@@ -639,6 +746,16 @@ public class MainWindowViewModel : ViewModelBase
                         {
                             signal.IsSelected = session.ActivePlotSignals.Contains(signal.Name);
                         }
+
+                        // Restore derived signals
+                        foreach (var derivedSignal in session.DerivedSignals)
+                        {
+                            DerivedSignals.Add(derivedSignal);
+                            var signalData = ComputeDerivedSignal(derivedSignal);
+                            _dataStore.InsertDerivedSignal(derivedSignal.Name, signalData);
+                            AvailableSignals.Add(new SignalItemViewModel { Name = derivedSignal.Name, IsSelected = session.ActivePlotSignals.Contains(derivedSignal.Name), IsDerived = true });
+                        }
+
                         UpdatePlot();
                     }, Avalonia.Threading.DispatcherPriority.Loaded);
 

@@ -17,4 +17,11 @@ public class SignalItemViewModel : ViewModelBase
         get => _isSelected;
         set => this.RaiseAndSetIfChanged(ref _isSelected, value);
     }
+
+    private bool _isDerived;
+    public bool IsDerived
+    {
+        get => _isDerived;
+        set => this.RaiseAndSetIfChanged(ref _isDerived, value);
+    }
 }
