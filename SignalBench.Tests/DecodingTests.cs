@@ -1,5 +1,6 @@
 using FluentAssertions;
 using SignalBench.Core.Decoding;
+using SignalBench.Core.DerivedSignals;
 using SignalBench.Core.Models.Schema;
 using SignalBench.Core.Services;
 
@@ -10,37 +11,322 @@ public class DecodingTests
     [Fact]
     public void Should_Decode_Binary_Packet_Using_Schema()
     {
-        // Arrange
         var yaml = @"
-packet:
-  name: EPS_Telemetry
-  sync_word: 0xAA55
-  endianness: little
-  fields:
-    - name: timestamp
-      type: uint32
-    - name: battery_voltage
-      type: float32
-    - name: temperature_1
-      type: int16
-";
+            packet:
+              name: EPS_Telemetry
+              sync_word: 0xAA55
+              endianness: little
+              fields:
+                - name: timestamp
+                  type: uint32
+                - name: battery_voltage
+                  type: float32
+                - name: temperature_1
+                  type: int16
+            ";
         var loader = new SchemaLoader();
         var schema = loader.Load(yaml);
         var decoder = new BinaryDecoder();
 
-        // 10 bytes: 4 (uint32) + 4 (float32) + 2 (int16)
         byte[] data = [
-            0x01, 0x00, 0x00, 0x00, // 1
-            0x00, 0x00, 0x80, 0x3F, // 1.0f
-            0x05, 0x00              // 5
+            0x01, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x80, 0x3F,
+            0x05, 0x00
         ];
 
-        // Act
         var packet = decoder.Decode(data, schema);
 
-        // Assert
         packet.Fields["timestamp"].Should().Be((uint)1);
         packet.Fields["battery_voltage"].Should().Be(1.0f);
         packet.Fields["temperature_1"].Should().Be((short)5);
+    }
+
+    [Fact]
+    public void Should_Decode_Big_Endian_Packet()
+    {
+        var yaml = @"
+            packet:
+              name: BigEndianPacket
+              endianness: big
+              fields:
+                - name: value16
+                  type: uint16
+                - name: value32
+                  type: uint32
+            ";
+        var loader = new SchemaLoader();
+        var schema = loader.Load(yaml);
+        var decoder = new BinaryDecoder();
+
+        byte[] data = [0x01, 0x02, 0x03, 0x04, 0x05, 0x06];
+
+        var packet = decoder.Decode(data, schema);
+
+        packet.Fields["value16"].Should().Be((ushort)0x0102);
+        packet.Fields["value32"].Should().Be((uint)0x03040506);
+    }
+
+    [Fact]
+    public void Should_Decode_UInt64_Only()
+    {
+        var yaml = @"
+            packet:
+              name: UInt64Only
+              endianness: little
+              fields:
+                - name: value
+                  type: uint64
+            ";
+        var loader = new SchemaLoader();
+        var schema = loader.Load(yaml);
+        var decoder = new BinaryDecoder();
+
+        byte[] data = [0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08];
+
+        var packet = decoder.Decode(data, schema);
+
+        ((ulong)packet.Fields["value"]).Should().Be(0x0807060504030201);
+    }
+
+    [Fact]
+    public void Should_Decode_UInt64_With_Next_Field()
+    {
+        var yaml = @"
+            packet:
+              name: UInt64WithNext
+              endianness: little
+              fields:
+                - name: value64
+                  type: uint64
+                - name: value8
+                  type: uint8
+            ";
+        var loader = new SchemaLoader();
+        var schema = loader.Load(yaml);
+        var decoder = new BinaryDecoder();
+
+        byte[] data = [0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0xFF];
+
+        var packet = decoder.Decode(data, schema);
+
+        ((ulong)packet.Fields["value64"]).Should().Be(0x0807060504030201);
+        ((uint)packet.Fields["value8"]).Should().Be(0xFF);
+    }
+
+    [Fact]
+    public void Should_Decode_Field_Before_UInt64()
+    {
+        var yaml = @"
+            packet:
+              name: FieldBeforeUInt64
+              endianness: little
+              fields:
+                - name: value8
+                  type: uint8
+                - name: value64
+                  type: uint64
+            ";
+        var loader = new SchemaLoader();
+        var schema = loader.Load(yaml);
+        var decoder = new BinaryDecoder();
+
+        byte[] data = [0xFF, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08];
+
+        var packet = decoder.Decode(data, schema);
+
+        ((uint)packet.Fields["value8"]).Should().Be(0xFF);
+        ((ulong)packet.Fields["value64"]).Should().Be(0x0807060504030201);
+    }
+
+    [Fact]
+    public void Should_Decode_Three_Fields_Then_UInt64()
+    {
+        var yaml = @"
+            packet:
+              name: ThreeThenUInt64
+              endianness: little
+              fields:
+                - name: value8
+                  type: uint8
+                - name: value16
+                  type: uint16
+                - name: value32
+                  type: uint32
+                - name: value64
+                  type: uint64
+            ";
+        var loader = new SchemaLoader();
+        var schema = loader.Load(yaml);
+        var decoder = new BinaryDecoder();
+
+        byte[] data = [0xFF, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10];
+
+        var packet = decoder.Decode(data, schema);
+
+        ((uint)packet.Fields["value8"]).Should().Be(0xFF);
+        ((uint)packet.Fields["value16"]).Should().Be(0x0201);
+        ((uint)packet.Fields["value32"]).Should().Be(0x06050403);
+        ((ulong)packet.Fields["value64"]).Should().Be(0x0E0D0C0B0A090807);
+    }
+
+    [Fact]
+    public void Should_Decode_Float_Types()
+    {
+        var yaml = @"
+            packet:
+              name: Floats
+              endianness: little
+              fields:
+                - name: f32
+                  type: float32
+                - name: f64
+                  type: float64
+            ";
+        var loader = new SchemaLoader();
+        var schema = loader.Load(yaml);
+        var decoder = new BinaryDecoder();
+
+        byte[] data = new byte[12];
+        BitConverter.GetBytes(3.14f).CopyTo(data, 0);
+        BitConverter.GetBytes(2.718281828).CopyTo(data, 4);
+
+        var packet = decoder.Decode(data, schema);
+
+        ((float)packet.Fields["f32"]).Should().BeApproximately(3.14f, 0.001f);
+        ((double)packet.Fields["f64"]).Should().BeApproximately(2.718281828, 0.000001);
+    }
+
+    [Fact]
+    public void Should_Extract_Bitfields()
+    {
+        var yaml = @"
+            packet:
+              name: Bitfields
+              endianness: little
+              fields:
+                - name: low_nibble
+                  type: uint8
+                  bit_offset: 0
+                  bit_length: 4
+                - name: high_nibble
+                  type: uint8
+                  bit_offset: 4
+                  bit_length: 4
+            ";
+        var loader = new SchemaLoader();
+        var schema = loader.Load(yaml);
+        var decoder = new BinaryDecoder();
+
+        byte[] data = [0xAB];
+
+        var packet = decoder.Decode(data, schema);
+
+        packet.Fields["low_nibble"].Should().Be((uint)0xB);
+        packet.Fields["high_nibble"].Should().Be((uint)0xA);
+    }
+
+    [Fact]
+    public void Should_Handle_Schema_Without_Sync_Word()
+    {
+        var yaml = @"
+            packet:
+              name: NoSync
+              endianness: little
+              fields:
+                - name: value
+                  type: uint32
+            ";
+        var loader = new SchemaLoader();
+        var schema = loader.Load(yaml);
+
+        schema.SyncWord.Should().BeNull();
+        schema.Endianness.Should().Be(Endianness.Little);
+    }
+
+    [Fact]
+    public void Should_Load_And_Save_Schema()
+    {
+        var originalYaml = @"
+            packet:
+              name: TestSchema
+              endianness: big
+              fields:
+                - name: field1
+                  type: uint16
+                - name: field2
+                  type: float32
+            ";
+        var loader = new SchemaLoader();
+        var schema = loader.Load(originalYaml);
+
+        schema.Name.Should().Be("TestSchema");
+        schema.Endianness.Should().Be(Endianness.Big);
+        schema.Fields.Count.Should().Be(2);
+        schema.Fields[0].Name.Should().Be("field1");
+        schema.Fields[0].Type.Should().Be(FieldType.Uint16);
+    }
+}
+
+public class FormulaEngineTests
+{
+    [Fact]
+    public void Should_Evaluate_Simple_Formula()
+    {
+        var engine = new FormulaEngine();
+        var parameters = new Dictionary<string, object>
+        {
+            ["a"] = 10.0,
+            ["b"] = 5.0
+        };
+
+        var result = engine.Evaluate("a + b", parameters);
+
+        result.Should().Be(15.0);
+    }
+
+    [Fact]
+    public void Should_Evaluate_Multiplication()
+    {
+        var engine = new FormulaEngine();
+        var parameters = new Dictionary<string, object>
+        {
+            ["voltage"] = 12.0,
+            ["current"] = 2.5
+        };
+
+        var result = engine.Evaluate("voltage * current", parameters);
+
+        result.Should().Be(30.0);
+    }
+
+    [Fact]
+    public void Should_Evaluate_Complex_Formula()
+    {
+        var engine = new FormulaEngine();
+        var parameters = new Dictionary<string, object>
+        {
+            ["a"] = 10.0,
+            ["b"] = 5.0,
+            ["c"] = 2.0
+        };
+
+        var result = engine.Evaluate("(a + b) * c", parameters);
+
+        result.Should().Be(30.0);
+    }
+
+    [Fact]
+    public void Should_Evaluate_Division()
+    {
+        var engine = new FormulaEngine();
+        var parameters = new Dictionary<string, object>
+        {
+            ["x"] = 100.0,
+            ["y"] = 4.0
+        };
+
+        var result = engine.Evaluate("x / y", parameters);
+
+        result.Should().Be(25.0);
     }
 }

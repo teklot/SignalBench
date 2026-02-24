@@ -40,14 +40,16 @@ public class SchemaLoader
                 field.BitLength = GetTypeBitCount(field.Type);
             }
 
-            if (field.BitOffset == 0 && field != file.Packet.Fields[0])
+            if (field.BitOffset == 0)
             {
-                field.BitOffset = currentBitOffset;
-            }
-            else if (field.BitOffset != 0)
-            {
-                // If BitOffset is specified, update currentBitOffset for subsequent fields
-                currentBitOffset = field.BitOffset;
+                if (field == file.Packet.Fields[0])
+                {
+                    field.BitOffset = 0;
+                }
+                else
+                {
+                    field.BitOffset = currentBitOffset;
+                }
             }
 
             currentBitOffset = field.BitOffset + field.BitLength;

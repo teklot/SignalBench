@@ -38,7 +38,7 @@
                                         Command="{Binding BrowseSchemaCommand}"
                                         Margin="5,0,0,0"
                                         ToolTip.Tip="Open Schema File">
-                                    <mi:MaterialIcon Kind="FileChartOutline" Width="16" Height="16"/>
+                                    <mi:MaterialIcon Kind="FileDocumentOutline" Width="16" Height="16"/>
                                 </Button>
                                 <Button Grid.Column="2"
                                         Command="{Binding CreateSchemaCommand}"
@@ -50,7 +50,7 @@
                                         Command="{Binding EditSchemaCommand}"
                                         Margin="5,0,0,0"
                                         ToolTip.Tip="Edit Selected Schema">
-                                    <mi:MaterialIcon Kind="FileEditOutline" Width="16" Height="16"/>
+                                    <mi:MaterialIcon Kind="FileDocumentEditOutline" Width="16" Height="16"/>
                                 </Button>
                             </Grid>
                         </StackPanel>

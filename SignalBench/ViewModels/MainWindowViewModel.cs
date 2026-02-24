@@ -1,16 +1,14 @@
+using Avalonia.Controls;
 using Microsoft.Extensions.Logging;
 using ReactiveUI;
 using SignalBench.Core;
 using SignalBench.Core.Data;
-using SignalBench.Core.Decoding;
 using SignalBench.Core.Models.Schema;
 using SignalBench.Core.Services;
 using SignalBench.Core.Session;
 using SignalBench.Views;
 using System.Collections.ObjectModel;
-using System.Dynamic;
 using System.Reactive;
-using Avalonia.Controls;
 
 namespace SignalBench.ViewModels;
 
@@ -82,12 +80,14 @@ public class MainWindowViewModel : ViewModelBase
     public ObservableCollection<SignalItemViewModel> AvailableSignals { get; } = [];
     public ObservableCollection<dynamic> DecodedRecords { get; } = [];
     public ObservableCollection<RecentFileViewModel> RecentFiles { get; } = [];
+    public ObservableCollection<DerivedSignalDefinition> DerivedSignals { get; } = [];
 
     private readonly IDataStore _dataStore;
     private readonly ILogger<MainWindowViewModel> _logger;
     private readonly ILoggerFactory _loggerFactory;
     private readonly ISettingsService _settingsService;
     private readonly SessionManager _sessionManager = new();
+    private readonly Core.DerivedSignals.FormulaEngine _formulaEngine = new();
 
     public Action<List<DateTime>, Dictionary<string, List<double>>>? RequestPlotUpdate { get; set; }
 
@@ -101,9 +101,14 @@ public class MainWindowViewModel : ViewModelBase
     public ReactiveCommand<Unit, Unit> ToggleToolbarCommand { get; }
     public ReactiveCommand<Unit, Unit> CreateSchemaCommand { get; }
     public ReactiveCommand<Unit, Unit> EditSchemaCommand { get; }
+    public ReactiveCommand<Unit, Unit> CreateDerivedSignalCommand { get; }
     public ReactiveCommand<Unit, Unit> OpenSettingsCommand { get; }
     public ReactiveCommand<Unit, Unit> OpenAboutCommand { get; }
     public ReactiveCommand<Unit, Unit> ExitCommand { get; }
+
+    public MainWindowViewModel() : this(null!, null!, null!, null!)
+    {
+    }
 
     public MainWindowViewModel(IDataStore dataStore, ILogger<MainWindowViewModel> logger, ILoggerFactory loggerFactory, ISettingsService settingsService)
     {
@@ -112,7 +117,10 @@ public class MainWindowViewModel : ViewModelBase
         _loggerFactory = loggerFactory;
         _settingsService = settingsService;
 
-        RefreshRecentFiles();
+        if (!Design.IsDesignMode)
+        {
+            RefreshRecentFiles();
+        }
 
         OpenFileCommand = ReactiveCommand.CreateFromTask(OpenFileAsync);
         OpenRecentFileCommand = ReactiveCommand.CreateFromTask<string>(path => LoadTelemetryFileAsync(path));
@@ -127,6 +135,9 @@ public class MainWindowViewModel : ViewModelBase
         
         var canEditSchema = this.WhenAnyValue(x => x.SelectedSchema, (PacketSchema? s) => s != null);
         EditSchemaCommand = ReactiveCommand.CreateFromTask(EditSchemaAsync, canEditSchema);
+        
+        var canCreateDerived = this.WhenAnyValue(x => x.AvailableSignals.Count, count => count > 0);
+        CreateDerivedSignalCommand = ReactiveCommand.CreateFromTask(CreateDerivedSignalAsync, canCreateDerived);
         
         OpenSettingsCommand = ReactiveCommand.CreateFromTask(OpenSettingsAsync);
         OpenAboutCommand = ReactiveCommand.CreateFromTask(OpenAboutAsync);
@@ -188,6 +199,7 @@ public class MainWindowViewModel : ViewModelBase
     {
         _dataStore.Dispose();
         AvailableSignals.Clear();
+        DerivedSignals.Clear();
         SelectedSchema = null;
         _currentTelemetryPath = null;
         _currentSchemaPath = null;
@@ -283,6 +295,78 @@ public class MainWindowViewModel : ViewModelBase
         {
             await ShowError("Editor Error", "Failed to open schema editor.", ex);
         }
+    }
+
+    private async Task CreateDerivedSignalAsync()
+    {
+        try
+        {
+            var topLevel = (App.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)?.MainWindow;
+            if (topLevel == null) return;
+
+            var availableFields = AvailableSignals.Select(s => s.Name).ToList();
+            var dialog = new SignalBench.Views.DerivedSignalDialog
+            {
+                DataContext = new DerivedSignalViewModel(availableFields)
+            };
+
+            var result = await dialog.ShowDialog<DerivedSignalResult?>(topLevel);
+            if (result != null)
+            {
+                var derivedSignal = new DerivedSignalDefinition
+                {
+                    Name = result.Name,
+                    Formula = result.Formula
+                };
+
+                DerivedSignals.Add(derivedSignal);
+
+                var signalData = ComputeDerivedSignal(derivedSignal);
+                _dataStore.InsertDerivedSignal(result.Name, signalData);
+
+                AvailableSignals.Add(new SignalItemViewModel { Name = result.Name, IsSelected = true });
+                UpdatePlot();
+                StatusText = $"Created derived signal: {result.Name}";
+            }
+        }
+        catch (Exception ex)
+        {
+            await ShowError("Derived Signal Error", "Failed to create derived signal.", ex);
+        }
+    }
+
+    private List<double> ComputeDerivedSignal(DerivedSignalDefinition derived)
+    {
+        var result = new List<double>();
+        var timestamps = _dataStore.GetTimestamps();
+        var signalCount = timestamps.Count;
+
+        var availableSignals = AvailableSignals.Where(s => DerivedSignals.All(d => d.Name != s.Name)).ToList();
+
+        for (int i = 0; i < signalCount; i++)
+        {
+            var parameters = new Dictionary<string, object>();
+            foreach (var signal in availableSignals)
+            {
+                var data = _dataStore.GetSignalData(signal.Name);
+                if (i < data.Count)
+                {
+                    parameters[signal.Name] = data[i];
+                }
+            }
+
+            try
+            {
+                var value = _formulaEngine.Evaluate(derived.Formula, parameters);
+                result.Add(value);
+            }
+            catch
+            {
+                result.Add(double.NaN);
+            }
+        }
+
+        return result;
     }
 
     private void SignalItem_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -512,7 +596,8 @@ public class MainWindowViewModel : ViewModelBase
                 {
                     TelemetryFilePath = _currentTelemetryPath ?? string.Empty,
                     SchemaPath = _currentSchemaPath ?? string.Empty,
-                    ActivePlotSignals = AvailableSignals.Where(s => s.IsSelected).Select(s => s.Name).ToList()
+                    ActivePlotSignals = AvailableSignals.Where(s => s.IsSelected).Select(s => s.Name).ToList(),
+                    DerivedSignals = DerivedSignals.ToList()
                 };
                 _sessionManager.SaveSession(file.Path.LocalPath, session);
                 StatusText = $"Session saved to {file.Name}";

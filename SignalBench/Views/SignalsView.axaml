@@ -15,11 +15,14 @@
             </Style>
         </ListBox.Styles>
         <ListBox.ItemTemplate>
-            <DataTemplate>
-                <CheckBox Content="{Binding Name}"
-                          IsChecked="{Binding IsSelected}"
-                          FontSize="13"
-                          Margin="0"/>
+            <DataTemplate x:DataType="vm:SignalItemViewModel">
+                <StackPanel Orientation="Horizontal">
+                    <CheckBox IsChecked="{Binding IsSelected}"
+                              Margin="0,0,5,0"/>
+                    <TextBlock Text="{Binding Name}"
+                               FontSize="13"
+                               VerticalAlignment="Center"/>
+                </StackPanel>
             </DataTemplate>
         </ListBox.ItemTemplate>
     </ListBox>

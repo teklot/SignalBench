@@ -1,0 +1,65 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:SignalBench.ViewModels"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="500" d:DesignHeight="350"
+        x:Class="SignalBench.Views.DerivedSignalDialog"
+        x:DataType="vm:DerivedSignalViewModel"
+        Title="Create Derived Signal"
+        WindowStartupLocation="CenterOwner"
+        Width="500" Height="300">
+
+    <Grid RowDefinitions="*, Auto">
+        <Border Grid.Row="0" Padding="20">
+            <StackPanel Spacing="15">
+                <TextBlock Text="DERIVED SIGNAL"
+                           FontWeight="Bold"
+                           FontSize="11"
+                           Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" />
+
+                <StackPanel Spacing="5">
+                    <TextBlock Text="Signal Name:" FontSize="13" />
+                    <TextBox Text="{Binding Name}"
+                             Watermark="e.g., power_consumption"
+                             HorizontalAlignment="Stretch" />
+                </StackPanel>
+
+                <StackPanel Spacing="5">
+                    <TextBlock Text="Formula:" FontSize="13" />
+                    <TextBox Text="{Binding Formula}"
+                             Watermark="e.g., battery_voltage * battery_current"
+                             HorizontalAlignment="Stretch" />
+                    <TextBlock Text="Available fields: battery_voltage, temperature_1, etc."
+                               FontSize="11"
+                               Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" />
+                </StackPanel>
+
+                <TextBlock Text="{Binding ValidationMessage}"
+                           Foreground="Red"
+                           FontSize="12"
+                           IsVisible="{Binding ValidationMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+            </StackPanel>
+        </Border>
+
+        <Border Grid.Row="1"
+                Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}"
+                Padding="20,15"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
+                BorderThickness="0,1,0,0">
+            <StackPanel Orientation="Horizontal"
+                        HorizontalAlignment="Right"
+                        Spacing="12">
+                <Button Content="Cancel"
+                        Command="{Binding CancelCommand}"
+                        Width="100"
+                        HorizontalContentAlignment="Center" />
+                <Button Content="Add"
+                        Command="{Binding AddCommand}"
+                        Width="100"
+                        HorizontalContentAlignment="Center"
+                        Classes="accent" />
+            </StackPanel>
+        </Border>
+    </Grid>
+</Window>

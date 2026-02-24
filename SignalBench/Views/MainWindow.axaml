@@ -61,28 +61,25 @@
             <MenuItem Header="_File">
                 <MenuItem Header="_Open Telemetry..." Command="{Binding OpenFileCommand}">
                     <MenuItem.Icon>
-                        <mi:MaterialIcon Kind="FileChartOutline" Width="20" Height="20"/>
+                        <mi:MaterialIcon Kind="TableLarge" Width="20" Height="20"/>
                     </MenuItem.Icon>
                 </MenuItem>
                 <MenuItem Header="Recent Telemetry" ItemsSource="{Binding RecentFiles}">
                     <MenuItem.ItemTemplate>
-                        <DataTemplate>
-                            <MenuItem Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).OpenRecentFileCommand}"
-                                      CommandParameter="{Binding Path}">
-                                <MenuItem.Header>
-                                    <StackPanel Orientation="Horizontal" Spacing="8">
-                                        <TextBlock Text="{Binding Index, StringFormat='\{0\}.'}" FontWeight="Bold" Foreground="#2b579a"/>
-                                        <TextBlock Text="{Binding Path}"/>
-                                    </StackPanel>
-                                </MenuItem.Header>
-                            </MenuItem>
+                        <DataTemplate x:DataType="vm:RecentFileViewModel">
+                            <Button Content="{Binding DisplayName}"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).OpenRecentFileCommand}"
+                                    CommandParameter="{Binding Path}"
+                                    Padding="0"/>
                         </DataTemplate>
                     </MenuItem.ItemTemplate>
                 </MenuItem>
                 <Separator/>
                 <MenuItem Header="Open _Session..." Command="{Binding OpenSessionCommand}">
                     <MenuItem.Icon>
-                        <mi:MaterialIcon Kind="FileSearchOutline" Width="20" Height="20"/>
+                        <mi:MaterialIcon Kind="FolderOpenOutline" Width="20" Height="20"/>
                     </MenuItem.Icon>
                 </MenuItem>
                 <MenuItem Header="_Save Session..." Command="{Binding SaveSessionCommand}">
@@ -93,7 +90,7 @@
                 <Separator/>
                 <MenuItem Header="Close _All" Command="{Binding CloseAllCommand}">
                     <MenuItem.Icon>
-                        <mi:MaterialIcon Kind="CloseBoxMultipleOutline" Width="20" Height="20"/>
+                        <mi:MaterialIcon Kind="WindowClose" Width="20" Height="20"/>
                     </MenuItem.Icon>
                 </MenuItem>
                 <Separator/>
@@ -129,7 +126,13 @@
                 </MenuItem>
                 <MenuItem Header="_Edit Current Schema..." Command="{Binding EditSchemaCommand}">
                     <MenuItem.Icon>
-                        <mi:MaterialIcon Kind="FileEditOutline" Width="20" Height="20"/>
+                        <mi:MaterialIcon Kind="FileDocumentEditOutline" Width="20" Height="20"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+                <Separator/>
+                <MenuItem Header="_Create Derived Signal..." Command="{Binding CreateDerivedSignalCommand}">
+                    <MenuItem.Icon>
+                        <mi:MaterialIcon Kind="FunctionVariant" Width="20" Height="20"/>
                     </MenuItem.Icon>
                 </MenuItem>
                 <Separator/>
@@ -156,13 +159,13 @@
                 <StackPanel Orientation="Vertical" Margin="8,6">
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="2">
                         <Button Classes="toolbar" Command="{Binding OpenSessionCommand}" ToolTip.Tip="Open Session">
-                            <mi:MaterialIcon Kind="FileSearchOutline" Width="22" Height="22" Foreground="#2b579a"/>
+                            <mi:MaterialIcon Kind="FolderOpenOutline" Width="22" Height="22" Foreground="#2b579a"/>
                         </Button>
                         <Button Classes="toolbar" Command="{Binding SaveSessionCommand}" ToolTip.Tip="Save Session">
                             <mi:MaterialIcon Kind="ContentSaveOutline" Width="22" Height="22" Foreground="#2b579a"/>
                         </Button>
                         <Button Classes="toolbar" Command="{Binding CloseAllCommand}" ToolTip.Tip="Close All / Reset Workspace">
-                            <mi:MaterialIcon Kind="CloseBoxMultipleOutline" Width="22" Height="22" Foreground="#d83b01"/>
+                            <mi:MaterialIcon Kind="WindowClose" Width="22" Height="22" Foreground="#d83b01"/>
                         </Button>
                     </StackPanel>
                     <TextBlock Text="SESSION" FontSize="9" FontWeight="SemiBold" HorizontalAlignment="Center" Foreground="#605e5c" Margin="0,2,0,0"/>
@@ -173,7 +176,7 @@
                 <StackPanel Orientation="Vertical" Margin="8,6">
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="2">
                         <Button Classes="toolbar" Command="{Binding OpenFileCommand}" ToolTip.Tip="Open Telemetry File">
-                            <mi:MaterialIcon Kind="FileChartOutline" Width="22" Height="22" Foreground="#2b579a"/>
+                            <mi:MaterialIcon Kind="TableLarge" Width="22" Height="22" Foreground="#2b579a"/>
                         </Button>
                         <Button Classes="toolbar" Command="{Binding ExportCsvCommand}" ToolTip.Tip="Export CSV">
                             <mi:MaterialIcon Kind="FileExportOutline" Width="22" Height="22" Foreground="#2b579a"/>
@@ -190,7 +193,10 @@
                             <mi:MaterialIcon Kind="FilePlusOutline" Width="22" Height="22" Foreground="#2b579a"/>
                         </Button>
                         <Button Classes="toolbar" Command="{Binding EditSchemaCommand}" ToolTip.Tip="Edit Current Schema">
-                            <mi:MaterialIcon Kind="FileEditOutline" Width="22" Height="22" Foreground="#2b579a"/>
+                            <mi:MaterialIcon Kind="FileDocumentEditOutline" Width="22" Height="22" Foreground="#2b579a"/>
+                        </Button>
+                        <Button Classes="toolbar" Command="{Binding CreateDerivedSignalCommand}" ToolTip.Tip="Create Derived Signal">
+                            <mi:MaterialIcon Kind="FunctionVariant" Width="22" Height="22" Foreground="#2b579a"/>
                         </Button>
                     </StackPanel>
                     <TextBlock Text="SCHEMA" FontSize="9" FontWeight="SemiBold" HorizontalAlignment="Center" Foreground="#605e5c" Margin="0,2,0,0"/>

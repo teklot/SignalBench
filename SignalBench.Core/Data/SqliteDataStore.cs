@@ -154,6 +154,40 @@ public class SqliteDataStore : IDataStore
         return data;
     }
 
+    public void InsertDerivedSignal(string name, List<double> data)
+    {
+        if (_connection == null) throw new InvalidOperationException("DataStore not initialized.");
+        
+        using var command = _connection.CreateCommand();
+        command.CommandText = $"ALTER TABLE {_tableName} ADD COLUMN \"{name}\" REAL";
+        try { command.ExecuteNonQuery(); } catch { }
+
+        using var transaction = _connection.BeginTransaction();
+        using var updateCmd = _connection.CreateCommand();
+        updateCmd.Transaction = transaction;
+        updateCmd.CommandText = $"SELECT id FROM {_tableName} ORDER BY id";
+        
+        var ids = new List<long>();
+        using (var reader = updateCmd.ExecuteReader())
+        {
+            while (reader.Read()) ids.Add(reader.GetInt64(0));
+        }
+
+        updateCmd.Parameters.Clear();
+        updateCmd.CommandText = $"UPDATE {_tableName} SET \"{name}\" = @val WHERE id = @id";
+        var valParam = updateCmd.Parameters.Add("@val", Microsoft.Data.Sqlite.SqliteType.Real);
+        var idParam = updateCmd.Parameters.Add("@id", Microsoft.Data.Sqlite.SqliteType.Integer);
+
+        for (int i = 0; i < data.Count && i < ids.Count; i++)
+        {
+            valParam.Value = double.IsNaN(data[i]) ? DBNull.Value : data[i];
+            idParam.Value = ids[i];
+            updateCmd.ExecuteNonQuery();
+        }
+
+        transaction.Commit();
+    }
+
     public void Dispose()
     {
         _connection?.Dispose();

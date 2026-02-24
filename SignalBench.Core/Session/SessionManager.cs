@@ -11,11 +11,9 @@ public class SessionManager
     public SessionManager()
     {
         _serializer = new SerializerBuilder()
-            .WithNamingConvention(CamelCaseNamingConvention.Instance)
             .Build();
 
         _deserializer = new DeserializerBuilder()
-            .WithNamingConvention(CamelCaseNamingConvention.Instance)
             .Build();
     }
 

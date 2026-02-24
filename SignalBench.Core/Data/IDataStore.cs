@@ -7,6 +7,7 @@ public interface IDataStore : IDisposable
 {
     void InitializeSchema(PacketSchema schema);
     void InsertPackets(IEnumerable<DecodedPacket> packets);
+    void InsertDerivedSignal(string name, List<double> data);
     List<DateTime> GetTimestamps();
     List<double> GetSignalData(string fieldName);
     void Reset(string dbPath);
