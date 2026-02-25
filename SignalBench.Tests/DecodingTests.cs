@@ -329,4 +329,61 @@ public class FormulaEngineTests
 
         result.Should().Be(25.0);
     }
+
+    [Fact]
+    public void Should_Evaluate_Sqrt_Function()
+    {
+        var engine = new FormulaEngine();
+        var parameters = new Dictionary<string, object>
+        {
+            ["battery_voltage"] = 16.0
+        };
+
+        var result = engine.Evaluate("sqrt(battery_voltage)", parameters);
+
+        result.Should().Be(4.0);
+    }
+
+    [Fact]
+    public void Should_Evaluate_Sqrt_Function_Case_Insensitive()
+    {
+        var engine = new FormulaEngine();
+        var parameters = new Dictionary<string, object>
+        {
+            ["battery_voltage"] = 16.0
+        };
+
+        var result1 = engine.Evaluate("sqrt(battery_voltage)", parameters);
+        var result2 = engine.Evaluate("Sqrt(battery_voltage)", parameters);
+        var result3 = engine.Evaluate("SQRT(battery_voltage)", parameters);
+
+        result1.Should().Be(4.0);
+        result2.Should().Be(4.0);
+        result3.Should().Be(4.0);
+    }
+
+    [Fact]
+    public void Should_Evaluate_Other_Math_Functions_Case_Insensitive()
+    {
+        var engine = new FormulaEngine();
+        var parameters = new Dictionary<string, object>
+        {
+            ["x"] = -5.0,
+            ["y"] = 2.0
+        };
+
+        var abs1 = engine.Evaluate("abs(x)", parameters);
+        var abs2 = engine.Evaluate("Abs(x)", parameters);
+        var pow1 = engine.Evaluate("pow(y, 3)", parameters);
+        var pow2 = engine.Evaluate("Pow(y, 3)", parameters);
+        var ln1 = engine.Evaluate("ln(2.718281828)", parameters);
+        var ln2 = engine.Evaluate("Ln(2.718281828)", parameters);
+
+        abs1.Should().Be(5.0);
+        abs2.Should().Be(5.0);
+        pow1.Should().Be(8.0);
+        pow2.Should().Be(8.0);
+        ln1.Should().BeApproximately(1.0, 0.001);
+        ln2.Should().BeApproximately(1.0, 0.001);
+    }
 }
