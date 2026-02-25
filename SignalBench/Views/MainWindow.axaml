@@ -220,10 +220,18 @@
                 BorderThickness="0,1,0,0" 
                 Height="28" 
                 Padding="10,0">
-            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="8">
-                <mi:MaterialIcon Kind="InformationOutline" Width="14" Height="14" Foreground="#2b579a"/>
-                <TextBlock Text="{Binding StatusText}" FontSize="12" Foreground="#323130" VerticalAlignment="Center"/>
-            </StackPanel>
+            <Grid ColumnDefinitions="*, Auto, Auto">
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Spacing="8">
+                    <mi:MaterialIcon Kind="InformationOutline" Width="14" Height="14" Foreground="#2b579a"/>
+                    <TextBlock Text="{Binding StatusText}" FontSize="12" Foreground="#323130" VerticalAlignment="Center"/>
+                </StackPanel>
+                
+                <!-- Progress bar shown during loading -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Spacing="8" IsVisible="{Binding IsLoading}">
+                    <ProgressBar Value="{Binding LoadProgress}" Width="100" Height="10"/>
+                    <TextBlock Text="{Binding LoadElapsed}" FontSize="11" Foreground="#605e5c" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Grid>
         </Border>
 
         <!-- 4. Main Content Area -->

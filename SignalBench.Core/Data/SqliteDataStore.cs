@@ -66,72 +66,96 @@ public class SqliteDataStore : IDataStore
     public void InsertPackets(IEnumerable<DecodedPacket> packets)
     {
         if (_connection == null) throw new InvalidOperationException("DataStore not initialized.");
+        
+        var packetList = packets.ToList();
+        if (packetList.Count == 0) return;
+
+        // Get all unique field names from all packets
+        var allFieldNames = packetList
+            .SelectMany(p => p.Fields.Keys)
+            .Distinct()
+            .Where(k => !k.Equals("timestamp", StringComparison.OrdinalIgnoreCase))
+            .OrderBy(k => k)
+            .ToList();
+
         using var transaction = _connection.BeginTransaction();
         using var command = _connection.CreateCommand();
         command.Transaction = transaction;
 
-        foreach (var packet in packets)
+        // Prepare INSERT statement template
+        var fieldNames = string.Join(", ", allFieldNames.Select(k => $"\"{k}\""));
+        var fieldParams = string.Join(", ", allFieldNames.Select(k => $"@{k.Replace(" ", "_")}"));
+        
+        var sql = $"INSERT INTO {_tableName} (timestamp";
+        if (!string.IsNullOrEmpty(fieldNames))
+            sql += $", {fieldNames}";
+        sql += ") VALUES (@ts";
+        if (!string.IsNullOrEmpty(fieldParams))
+            sql += $", {fieldParams}";
+        sql += ")";
+
+        foreach (var packet in packetList)
         {
-            // Filter out 'timestamp' from the fields dictionary for the dynamic part of the query
-            var otherFields = packet.Fields
-                .Where(kv => !kv.Key.Equals("timestamp", StringComparison.OrdinalIgnoreCase))
-                .ToDictionary(kv => kv.Key, kv => kv.Value);
-
-            var fieldNames = string.Join(", ", otherFields.Keys.Select(k => $"\"{k}\""));
-            var fieldParameters = string.Join(", ", otherFields.Keys.Select(k => $"@{k.Replace(" ", "_")}"));
-
-            var sql = $"INSERT INTO {_tableName} (timestamp";
-            if (!string.IsNullOrEmpty(fieldNames))
-                sql += $", {fieldNames}";
-            sql += $") VALUES (@ts";
-            if (!string.IsNullOrEmpty(fieldParameters))
-                sql += $", {fieldParameters}";
-            sql += ")";
-
             command.CommandText = sql;
             command.Parameters.Clear();
 
             DateTime finalTs = packet.Timestamp;
-            // If timestamp is default (0001-01-01) and there's a 'timestamp' field, try to parse it
             if (finalTs == default && packet.Fields.TryGetValue("timestamp", out var val))
             {
-                if (val is DateTime dt)
-                    finalTs = dt;
-                else if (val is double d)
-                    finalTs = DateTime.UnixEpoch.AddSeconds(d);
-                else if (val is float f)
-                    finalTs = DateTime.UnixEpoch.AddSeconds(f);
-                else if (val is long l)
-                    finalTs = DateTime.UnixEpoch.AddSeconds(l);
-                else if (val is ulong ul)
-                    finalTs = DateTime.UnixEpoch.AddSeconds(ul);
-                else if (val is int i)
-                    finalTs = DateTime.UnixEpoch.AddSeconds(i);
-                else if (val is uint ui)
-                    finalTs = DateTime.UnixEpoch.AddSeconds(ui);
-                else if (val is string s && DateTime.TryParse(s, out var dt2))
-                    finalTs = dt2;
+                finalTs = ParseTimestamp(val);
             }
-
             if (finalTs == default) finalTs = DateTime.Now;
 
             command.Parameters.AddWithValue("@ts", finalTs);
 
-            foreach (var kv in otherFields)
+            foreach (var fieldName in allFieldNames)
             {
-                command.Parameters.AddWithValue($"@{kv.Key.Replace(" ", "_")}", kv.Value ?? DBNull.Value);
+                if (packet.Fields.TryGetValue(fieldName, out var fieldVal))
+                {
+                    command.Parameters.AddWithValue($"@{fieldName.Replace(" ", "_")}", fieldVal ?? DBNull.Value);
+                }
+                else
+                {
+                    command.Parameters.AddWithValue($"@{fieldName.Replace(" ", "_")}", DBNull.Value);
+                }
             }
             command.ExecuteNonQuery();
         }
+
         transaction.Commit();
     }
 
-    public List<DateTime> GetTimestamps()
+    private static DateTime ParseTimestamp(object? val)
+    {
+        if (val == null) return default;
+        
+        if (val is DateTime dt) return dt;
+        if (val is double d) return DateTime.UnixEpoch.AddSeconds(d);
+        if (val is float f) return DateTime.UnixEpoch.AddSeconds(f);
+        if (val is long l) return DateTime.UnixEpoch.AddSeconds(l);
+        if (val is ulong ul) return DateTime.UnixEpoch.AddSeconds(ul);
+        if (val is int i) return DateTime.UnixEpoch.AddSeconds(i);
+        if (val is uint ui) return DateTime.UnixEpoch.AddSeconds(ui);
+        if (val is string s && DateTime.TryParse(s, out var dt2)) return dt2;
+        
+        return default;
+    }
+
+    public List<DateTime> GetTimestamps(int? maxPoints = null)
     {
         if (_connection == null) return [];
         var data = new List<DateTime>();
         using var command = _connection.CreateCommand();
         command.CommandText = $"SELECT timestamp FROM {_tableName} ORDER BY id";
+        
+        if (maxPoints.HasValue)
+        {
+            command.CommandText = $"SELECT timestamp FROM {_tableName} WHERE id % @step = 0 ORDER BY id";
+            var totalRows = GetTotalRowCount();
+            var step = Math.Max(1, totalRows / maxPoints.Value);
+            command.Parameters.AddWithValue("@step", step);
+        }
+        
         using var reader = command.ExecuteReader();
         while (reader.Read())
         {
@@ -140,12 +164,40 @@ public class SqliteDataStore : IDataStore
         return data;
     }
 
-    public List<double> GetSignalData(string fieldName)
+    public int GetRowCount()
+    {
+        if (_connection == null) return 0;
+        using var command = _connection.CreateCommand();
+        command.CommandText = $"SELECT COUNT(*) FROM {_tableName}";
+        return Convert.ToInt32(command.ExecuteScalar());
+    }
+
+    private int GetTotalRowCount()
+    {
+        if (_connection == null) return 0;
+        using var command = _connection.CreateCommand();
+        command.CommandText = $"SELECT COUNT(*) FROM {_tableName}";
+        return Convert.ToInt32(command.ExecuteScalar());
+    }
+
+    public List<double> GetSignalData(string fieldName, int? maxPoints = null)
     {
         if (_connection == null) return [];
         var data = new List<double>();
         using var command = _connection.CreateCommand();
-        command.CommandText = $"SELECT \"{fieldName}\" FROM {_tableName} ORDER BY id";
+        
+        if (maxPoints.HasValue)
+        {
+            var totalRows = GetTotalRowCount();
+            var step = Math.Max(1, totalRows / maxPoints.Value);
+            command.CommandText = $"SELECT \"{fieldName}\" FROM {_tableName} WHERE id % @step = 0 ORDER BY id";
+            command.Parameters.AddWithValue("@step", step);
+        }
+        else
+        {
+            command.CommandText = $"SELECT \"{fieldName}\" FROM {_tableName} ORDER BY id";
+        }
+        
         using var reader = command.ExecuteReader();
         while (reader.Read())
         {

@@ -35,17 +35,22 @@ public partial class PlotView : UserControl
             return;
         }
 
-        double[] x = [.. timestamps.Select(t => t.ToOADate())];
-
         foreach (var kv in data)
         {
-            if (kv.Value.Count != x.Length) continue;
+            if (kv.Value.Count == 0) continue;
+            
             double[] y = [.. kv.Value];
-            var scatter = mainPlot.Plot.Add.Scatter(x, y);
-            scatter.LegendText = kv.Key;
+            var signal = mainPlot.Plot.Add.Signal(y);
+            signal.LegendText = kv.Key;
         }
 
-        mainPlot.Plot.Axes.Bottom.TickGenerator = new ScottPlot.TickGenerators.DateTimeAutomatic();
+        if (timestamps.Count > 0)
+        {
+            mainPlot.Plot.Axes.Bottom.Min = timestamps[0].ToOADate();
+            mainPlot.Plot.Axes.Bottom.Max = timestamps[^1].ToOADate();
+            mainPlot.Plot.Axes.Bottom.TickGenerator = new ScottPlot.TickGenerators.DateTimeAutomatic();
+        }
+
         mainPlot.Plot.Axes.AutoScale();
         mainPlot.Refresh();
     }

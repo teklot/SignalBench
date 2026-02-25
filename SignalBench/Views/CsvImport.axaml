@@ -31,11 +31,8 @@
                                    FontSize="13" />
                         <ComboBox Grid.Column="1"
                                   HorizontalAlignment="Stretch"
+                                  ItemsSource="{Binding Delimiters}"
                                   SelectedItem="{Binding Delimiter}">
-                            <x:String>,</x:String>
-                            <x:String>;</x:String>
-                            <x:String>|</x:String>
-                            <x:String>Tab</x:String>
                         </ComboBox>
 
                         <TextBlock Grid.Column="2"

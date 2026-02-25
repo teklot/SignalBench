@@ -144,7 +144,6 @@ public class BinaryImportViewModel : ViewModelBase
             {
                 Title = "Select Schema File",
                 AllowMultiple = false,
-                SuggestedStartLocation = await topLevel.StorageProvider.TryGetFolderFromPathAsync(new Uri(Program.AppDirectory)),
                 FileTypeFilter = [
                     new Avalonia.Platform.Storage.FilePickerFileType("YAML Schema") { Patterns = ["*.yaml", "*.yml"] }
                 ]

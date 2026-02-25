@@ -9,7 +9,7 @@
         x:DataType="vm:SettingsViewModel"
         Title="Settings"
         WindowStartupLocation="CenterOwner"
-        Width="550" Height="480"
+        Width="550" Height="520"
         CanResize="False">
 
     <Grid RowDefinitions="*, Auto">
@@ -47,7 +47,7 @@
                     <StackPanel Spacing="15">
                         <TextBlock Text="APPLICATION" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
                         
-                        <Grid ColumnDefinitions="*, Auto" RowDefinitions="Auto, Auto">
+                        <Grid ColumnDefinitions="*, Auto" RowDefinitions="Auto, Auto, Auto">
                             <StackPanel Grid.Row="0" Spacing="2" VerticalAlignment="Center">
                                 <TextBlock Text="Theme:" FontSize="13"/>
                                 <TextBlock Text="Restart may be required for full effect" FontSize="11" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
@@ -57,10 +57,18 @@
                                       SelectedItem="{Binding Theme}"/>
 
                             <StackPanel Grid.Row="1" Spacing="2" Margin="0,20,0,0" VerticalAlignment="Center">
+                                <TextBlock Text="Data Storage:" FontSize="13"/>
+                                <TextBlock Text="Use SQLite for very large files" FontSize="11" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                            </StackPanel>
+                            <ComboBox Grid.Row="1" Grid.Column="1" Width="150" Margin="0,20,0,0"
+                                      ItemsSource="{Binding StorageModes}" 
+                                      SelectedItem="{Binding StorageMode}"/>
+
+                            <StackPanel Grid.Row="2" Spacing="2" Margin="0,20,0,0" VerticalAlignment="Center">
                                 <TextBlock Text="Auto-load Last Session:" FontSize="13"/>
                                 <TextBlock Text="Open last used session on startup" FontSize="11" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
                             </StackPanel>
-                            <ToggleSwitch Grid.Row="1" Grid.Column="1" IsChecked="{Binding AutoLoadLastSession}" Margin="0,20,0,0" OnContent="" OffContent=""/>
+                            <ToggleSwitch Grid.Row="2" Grid.Column="1" IsChecked="{Binding AutoLoadLastSession}" Margin="0,20,0,0" OnContent="" OffContent=""/>
                         </Grid>
                     </StackPanel>
                 </StackPanel>

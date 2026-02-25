@@ -29,6 +29,13 @@ public class SettingsViewModel : ViewModelBase
         set => this.RaiseAndSetIfChanged(ref _theme, value);
     }
 
+    private string _storageMode;
+    public string StorageMode
+    {
+        get => _storageMode;
+        set => this.RaiseAndSetIfChanged(ref _storageMode, value);
+    }
+
     private bool _autoLoadLastSession;
     public bool AutoLoadLastSession
     {
@@ -37,6 +44,7 @@ public class SettingsViewModel : ViewModelBase
     }
 
     public string[] Themes { get; } = ["System", "Light", "Dark"];
+    public string[] StorageModes { get; } = ["InMemory", "Sqlite"];
 
     public ReactiveCommand<Unit, Unit> SaveCommand { get; }
     public ReactiveCommand<Unit, Unit> CancelCommand { get; }
@@ -50,6 +58,7 @@ public class SettingsViewModel : ViewModelBase
         _defaultTelemetryPath = current.DefaultTelemetryPath;
         _defaultSchemaPath = current.DefaultSchemaPath;
         _theme = current.Theme;
+        _storageMode = current.StorageMode;
         _autoLoadLastSession = current.AutoLoadLastSession;
 
         SaveCommand = ReactiveCommand.Create(Save);
@@ -63,6 +72,7 @@ public class SettingsViewModel : ViewModelBase
         current.DefaultTelemetryPath = DefaultTelemetryPath;
         current.DefaultSchemaPath = DefaultSchemaPath;
         current.Theme = Theme;
+        current.StorageMode = StorageMode;
         current.AutoLoadLastSession = AutoLoadLastSession;
         _settingsService.Save();
     }

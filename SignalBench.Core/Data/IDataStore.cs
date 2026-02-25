@@ -9,7 +9,8 @@ public interface IDataStore : IDisposable
     void InsertPackets(IEnumerable<DecodedPacket> packets);
     void InsertDerivedSignal(string name, List<double> data);
     void DeleteSignal(string name);
-    List<DateTime> GetTimestamps();
-    List<double> GetSignalData(string fieldName);
+    List<DateTime> GetTimestamps(int? maxPoints = null);
+    List<double> GetSignalData(string fieldName, int? maxPoints = null);
+    int GetRowCount();
     void Reset(string dbPath);
 }

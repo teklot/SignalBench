@@ -1,6 +1,3 @@
-using System.Globalization;
-using CsvHelper;
-using CsvHelper.Configuration;
 using SignalBench.Core.Decoding;
 
 namespace SignalBench.Core.Ingestion;
@@ -8,37 +5,42 @@ namespace SignalBench.Core.Ingestion;
 public class CsvTelemetrySource : ITelemetrySource
 {
     private readonly string _filePath;
-    private readonly CsvConfiguration _config;
+    private readonly string _delimiter;
     private readonly string? _timestampColumn;
+    private string[]? _headers;
 
     public CsvTelemetrySource(string filePath, string delimiter = ",", string? timestampColumn = null)
     {
         _filePath = filePath;
+        _delimiter = delimiter;
         _timestampColumn = timestampColumn;
-        _config = new CsvConfiguration(CultureInfo.InvariantCulture)
-        {
-            Delimiter = delimiter,
-            HasHeaderRecord = true,
-        };
     }
 
-    public long TotalRecords => 0; // Would require counting rows, maybe lazy load
+    public long TotalRecords => 0;
 
     public IEnumerable<DecodedPacket> ReadPackets()
     {
         using var reader = new StreamReader(_filePath);
-        using var csv = new CsvReader(reader, _config);
-
-        csv.Read();
-        csv.ReadHeader();
-        string[] headers = csv.HeaderRecord!;
-
-        while (csv.Read())
+        
+        // Read header line
+        var headerLine = reader.ReadLine();
+        if (string.IsNullOrEmpty(headerLine)) yield break;
+        
+        _headers = headerLine.Split(_delimiter);
+        
+        string? line;
+        while ((line = reader.ReadLine()) != null)
         {
+            if (string.IsNullOrWhiteSpace(line)) continue;
+            
             var packet = new DecodedPacket();
-            foreach (var header in headers)
+            var values = SplitLine(line);
+            
+            for (int i = 0; i < _headers.Length && i < values.Length; i++)
             {
-                string rawVal = csv.GetField(header) ?? "";
+                var header = _headers[i];
+                var rawVal = values[i];
+                
                 if (double.TryParse(rawVal, out double val))
                 {
                     packet.Fields[header] = val;
@@ -56,13 +58,46 @@ public class CsvTelemetrySource : ITelemetrySource
                         packet.Timestamp = DateTime.UnixEpoch.AddSeconds(unix);
                 }
             }
+            
             yield return packet;
         }
     }
 
+    private static string[] SplitLine(string line)
+    {
+        var result = new List<string>();
+        var current = new System.Text.StringBuilder();
+        
+        for (int i = 0; i < line.Length; i++)
+        {
+            char c = line[i];
+            if (c == ',')
+            {
+                result.Add(current.ToString());
+                current.Clear();
+            }
+            else if (c == '"')
+            {
+                // Handle quoted strings
+                i++;
+                while (i < line.Length && line[i] != '"')
+                {
+                    current.Append(line[i]);
+                    i++;
+                }
+            }
+            else
+            {
+                current.Append(c);
+            }
+        }
+        result.Add(current.ToString());
+        
+        return result.ToArray();
+    }
+
     public void Seek(long position)
     {
-        // Seeking in CSV is hard without an index
         throw new NotImplementedException();
     }
 }

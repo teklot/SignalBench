@@ -49,7 +49,12 @@ public partial class App : Application
         });
 
         services.AddSingleton<ISettingsService, SettingsService>();
-        services.AddSingleton<IDataStore, SqliteDataStore>();
+        services.AddSingleton<IDataStore>(sp => 
+        {
+            var settings = sp.GetRequiredService<ISettingsService>();
+            var mode = settings.Current.StorageMode == "Sqlite" ? StorageMode.Sqlite : StorageMode.InMemory;
+            return new HybridDataStore(mode);
+        });
         services.AddTransient<MainWindowViewModel>();
         services.AddTransient<SettingsViewModel>();
     }

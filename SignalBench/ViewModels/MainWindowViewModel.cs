@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using ReactiveUI;
 using SignalBench.Core;
 using SignalBench.Core.Data;
+using SignalBench.Core.Decoding;
 using SignalBench.Core.Models.Schema;
 using SignalBench.Core.Services;
 using SignalBench.Core.Session;
@@ -28,6 +29,27 @@ public class MainWindowViewModel : ViewModelBase
     {
         get => _statusText;
         set => this.RaiseAndSetIfChanged(ref _statusText, value);
+    }
+
+    private bool _isLoading;
+    public bool IsLoading
+    {
+        get => _isLoading;
+        set => this.RaiseAndSetIfChanged(ref _isLoading, value);
+    }
+
+    private double _loadProgress;
+    public double LoadProgress
+    {
+        get => _loadProgress;
+        set => this.RaiseAndSetIfChanged(ref _loadProgress, value);
+    }
+
+    private string _loadElapsed = "";
+    public string LoadElapsed
+    {
+        get => _loadElapsed;
+        set => this.RaiseAndSetIfChanged(ref _loadElapsed, value);
     }
 
     private string? _currentTelemetryPath;
@@ -478,12 +500,16 @@ public class MainWindowViewModel : ViewModelBase
     {
         try
         {
-            var timestamps = _dataStore.GetTimestamps();
+            var totalRows = _dataStore.GetRowCount();
+            var maxPlotPoints = 10000;
+            var shouldDownsample = totalRows > maxPlotPoints;
+            
+            var timestamps = _dataStore.GetTimestamps(shouldDownsample ? maxPlotPoints : null);
             var selectedSignals = AvailableSignals.Where(s => s.IsSelected).ToList();
             var plotData = new Dictionary<string, List<double>>();
             foreach (var signal in selectedSignals)
             {
-                plotData[signal.Name] = _dataStore.GetSignalData(signal.Name);
+                plotData[signal.Name] = _dataStore.GetSignalData(signal.Name, shouldDownsample ? maxPlotPoints : null);
             }
             RequestPlotUpdate?.Invoke(timestamps, plotData);
         }
@@ -505,7 +531,6 @@ public class MainWindowViewModel : ViewModelBase
             {
                 Title = "Open Telemetry File",
                 AllowMultiple = false,
-                SuggestedStartLocation = await topLevel.StorageProvider.TryGetFolderFromPathAsync(new Uri(Program.AppDirectory)),
                 FileTypeFilter = [
                     new Avalonia.Platform.Storage.FilePickerFileType("Telemetry Files") { Patterns = ["*.csv", "*.bin", "*.dat"] }
                 ]
@@ -540,15 +565,48 @@ public class MainWindowViewModel : ViewModelBase
             if (result == null) return;
 
             StatusText = $"Loading {path}...";
+            var startTime = DateTime.Now;
+            
             await Task.Run(async () =>
             {
                 try
                 {
+                    // Count lines for progress
+                    var lineCount = File.ReadLines(path).Count();
+                    
+                    Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                    {
+                        IsLoading = true;
+                        LoadProgress = 0;
+                        LoadElapsed = "00:00";
+                    });
+
                     var dbPath = Path.Combine(Path.GetTempPath(), "signalbench_temp.db");
                     _dataStore.Reset(dbPath);
 
                     var source = new SignalBench.Core.Ingestion.CsvTelemetrySource(path, result.Delimiter, result.TimestampColumn);
-                    var packets = source.ReadPackets().ToList();
+                    var packets = new List<DecodedPacket>();
+                    var processed = 0;
+                    var lastUpdate = DateTime.Now;
+
+                    foreach (var packet in source.ReadPackets())
+                    {
+                        packets.Add(packet);
+                        processed++;
+                        
+                        // Update progress every 100ms
+                        if ((DateTime.Now - lastUpdate).TotalMilliseconds > 100)
+                        {
+                            var elapsed = DateTime.Now - startTime;
+                            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                            {
+                                LoadProgress = (double)processed / lineCount * 100;
+                                LoadElapsed = elapsed.ToString(@"mm\:ss");
+                            });
+                            lastUpdate = DateTime.Now;
+                            await Task.Delay(1); // Allow UI refresh
+                        }
+                    }
 
                     if (packets.Count > 0)
                     {
@@ -576,12 +634,15 @@ public class MainWindowViewModel : ViewModelBase
                             SelectedSchema = schema;
                             AddToRecentFiles(path);
                             UpdatePlot();
-                            StatusText = $"Loaded {packets.Count} records from {Path.GetFileName(path)}";
+                            IsLoading = false;
+                            var elapsed = DateTime.Now - startTime;
+                            StatusText = $"Loaded {packets.Count:N0} records in {elapsed.TotalSeconds:F1}s";
                         });
                     }
                 }
                 catch (Exception ex)
                 {
+                    Avalonia.Threading.Dispatcher.UIThread.Post(() => IsLoading = false);
                     await ShowError("Load Error", $"Failed to load CSV telemetry from {Path.GetFileName(path)}.", ex);
                 }
             });
@@ -692,7 +753,6 @@ public class MainWindowViewModel : ViewModelBase
             {
                 Title = "Save Session",
                 DefaultExtension = "sbs",
-                SuggestedStartLocation = await topLevel.StorageProvider.TryGetFolderFromPathAsync(new Uri(Program.AppDirectory)),
                 FileTypeChoices = [new Avalonia.Platform.Storage.FilePickerFileType("SignalBench Session") { Patterns = ["*.sbs"] }]
             });
 
@@ -726,7 +786,6 @@ public class MainWindowViewModel : ViewModelBase
             {
                 Title = "Open Session",
                 AllowMultiple = false,
-                SuggestedStartLocation = await topLevel.StorageProvider.TryGetFolderFromPathAsync(new Uri(Program.AppDirectory)),
                 FileTypeFilter = [
                     new Avalonia.Platform.Storage.FilePickerFileType("SignalBench Session") { Patterns = ["*.sbs"] }
                 ]
@@ -786,7 +845,6 @@ public class MainWindowViewModel : ViewModelBase
             {
                 Title = "Export Decoded Data",
                 DefaultExtension = "csv",
-                SuggestedStartLocation = await topLevel.StorageProvider.TryGetFolderFromPathAsync(new Uri(Program.AppDirectory)),
                 FileTypeChoices = [new Avalonia.Platform.Storage.FilePickerFileType("CSV Files") { Patterns = ["*.csv"] }]
             });
 

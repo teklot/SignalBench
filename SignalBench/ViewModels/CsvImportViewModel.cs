@@ -20,8 +20,17 @@ public class CsvImportViewModel : ViewModelBase
 
     private string GetActualDelimiter()
     {
-        return Delimiter == "Tab" ? "\t" : Delimiter;
+        return Delimiter switch
+        {
+            "Comma (,)" => ",",
+            "Semicolon (;)" => ";",
+            "Pipe (|)" => "|",
+            "Tab" => "\t",
+            _ => ","
+        };
     }
+
+    public string[] Delimiters { get; } = ["Comma (,)", "Semicolon (;)", "Pipe (|)", "Tab"];
 
     private string? _timestampColumn;
     public string? TimestampColumn
@@ -41,6 +50,7 @@ public class CsvImportViewModel : ViewModelBase
     public CsvImportViewModel(string filePath)
     {
         _filePath = filePath;
+        _delimiter = "Comma (,)";
         ImportCommand = ReactiveCommand.Create(() => (CsvImportResult?)new CsvImportResult
         {
             Delimiter = GetActualDelimiter(),

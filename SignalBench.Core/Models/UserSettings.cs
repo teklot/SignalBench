@@ -9,4 +9,5 @@ public class UserSettings
     public string LastSessionPath { get; set; } = string.Empty;
     public List<string> RecentFiles { get; set; } = [];
     public int MaxRecentFiles { get; set; } = 10;
+    public string StorageMode { get; set; } = "InMemory"; // InMemory, Sqlite
 }
