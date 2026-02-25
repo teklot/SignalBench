@@ -147,6 +147,7 @@ public class SchemaEditorViewModel : ViewModelBase
         {
             Title = "Open Schema File",
             AllowMultiple = false,
+            SuggestedStartLocation = await topLevel.StorageProvider.TryGetFolderFromPathAsync(new Uri(Program.AppDirectory)),
             FileTypeFilter = [new Avalonia.Platform.Storage.FilePickerFileType("YAML Schema") { Patterns = ["*.yaml", "*.yml"] }]
         });
 
@@ -168,6 +169,7 @@ public class SchemaEditorViewModel : ViewModelBase
         {
             Title = "Save Schema File",
             DefaultExtension = "yaml",
+            SuggestedStartLocation = await topLevel.StorageProvider.TryGetFolderFromPathAsync(new Uri(Program.AppDirectory)),
             FileTypeChoices = [new Avalonia.Platform.Storage.FilePickerFileType("YAML Schema") { Patterns = ["*.yaml", "*.yml"] }]
         });
 

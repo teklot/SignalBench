@@ -56,7 +56,7 @@ public class DerivedSignalViewModel : ViewModelBase
             x => x.Formula,
             (name, formula) => !string.IsNullOrWhiteSpace(name) && !string.IsNullOrWhiteSpace(formula));
 
-        DeleteCommand = ReactiveCommand.Create(() =>
+        DeleteCommand = ReactiveCommand.Create<DerivedSignalResult?>(() =>
         {
             return new DerivedSignalResult { Name = Name, Formula = Formula, IsDeleted = true };
         });

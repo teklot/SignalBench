@@ -505,9 +505,7 @@ public class MainWindowViewModel : ViewModelBase
             {
                 Title = "Open Telemetry File",
                 AllowMultiple = false,
-                SuggestedStartLocation = !string.IsNullOrEmpty(_settingsService.Current.DefaultTelemetryPath)
-                    ? await topLevel.StorageProvider.TryGetFolderFromPathAsync(new Uri(_settingsService.Current.DefaultTelemetryPath))
-                    : null,
+                SuggestedStartLocation = await topLevel.StorageProvider.TryGetFolderFromPathAsync(new Uri(Program.AppDirectory)),
                 FileTypeFilter = [
                     new Avalonia.Platform.Storage.FilePickerFileType("Telemetry Files") { Patterns = ["*.csv", "*.bin", "*.dat"] }
                 ]
@@ -694,6 +692,7 @@ public class MainWindowViewModel : ViewModelBase
             {
                 Title = "Save Session",
                 DefaultExtension = "sbs",
+                SuggestedStartLocation = await topLevel.StorageProvider.TryGetFolderFromPathAsync(new Uri(Program.AppDirectory)),
                 FileTypeChoices = [new Avalonia.Platform.Storage.FilePickerFileType("SignalBench Session") { Patterns = ["*.sbs"] }]
             });
 
@@ -727,6 +726,7 @@ public class MainWindowViewModel : ViewModelBase
             {
                 Title = "Open Session",
                 AllowMultiple = false,
+                SuggestedStartLocation = await topLevel.StorageProvider.TryGetFolderFromPathAsync(new Uri(Program.AppDirectory)),
                 FileTypeFilter = [
                     new Avalonia.Platform.Storage.FilePickerFileType("SignalBench Session") { Patterns = ["*.sbs"] }
                 ]
@@ -786,6 +786,7 @@ public class MainWindowViewModel : ViewModelBase
             {
                 Title = "Export Decoded Data",
                 DefaultExtension = "csv",
+                SuggestedStartLocation = await topLevel.StorageProvider.TryGetFolderFromPathAsync(new Uri(Program.AppDirectory)),
                 FileTypeChoices = [new Avalonia.Platform.Storage.FilePickerFileType("CSV Files") { Patterns = ["*.csv"] }]
             });
 
