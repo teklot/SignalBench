@@ -1,6 +1,16 @@
 # SignalBench
 
-**SignalBench** is a high-performance, engineer-grade telemetry workbench designed for aerospace test and telemetry engineers. It allows for the decoding, visualization, and analysis of raw telemetry logs without the need for custom scripting.
+**A telemetry analysis workbench suitable for real test campaigns.**
+
+SignalBench is the cleanest binary telemetry decoding desktop tool a CubeSat engineer can install and use within 5 minutes. It is a high-performance, engineer-grade telemetry workbench designed for aerospace test and telemetry engineers that supports both CSV and binary telemetry formats. Decode, visualize, and analyze raw telemetry logs without the need for custom scripting.
+
+## 🚀 Features
+
+- **Multiple Format Support**: Load and decode CSV files or binary telemetry using YAML-defined packet schemas
+- **High Performance**: Handles large files with millions of records efficiently
+- **Visualization**: Interactive plots with zoom, pan, and signal selection
+- **Derived Signals**: Create custom calculated signals using math expressions (e.g., `sqrt(battery_voltage)`, `temperature_1 - temperature_2`)
+- **Session Management**: Save and restore workspace sessions
 
 ## 🚀 Getting Started (Quick Start)
 
@@ -32,13 +42,6 @@ Before loading binary data, the app needs to know the structure of the packets.
 ### 5. Export and Save
 *   **Export CSV**: Click this to save the currently decoded dataset to a CSV file.
 *   **Save Session**: Click this to save your current setup as a `.sbx` project file.
-
-## 📦 Samples Included
-
-Check the `Samples/` directory for ready-to-use examples:
-- `eps_telemetry_schema.yaml`: A sample EPS system schema.
-- `eps_telemetry_data.csv`: Sample data in CSV format.
-- `eps_telemetry_data.bin`: Sample data in raw binary format matching the schema.
 
 ## 📋 Requirements & Setup
 

@@ -733,13 +733,27 @@ public class MainWindowViewModel : ViewModelBase
 
     private async Task OpenAboutAsync()
     {
-        var box = MsBox.Avalonia.MessageBoxManager.GetMessageBoxStandard($"About {AppInfo.Name}", $"{AppInfo.Name}\nVersion: {AppInfo.Version}\n\n{AppInfo.Copyright}\n\nA tool for high-performance telemetry analysis.");
-
         var topLevel = (App.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)?.MainWindow;
-        if (topLevel != null)
+        if (topLevel == null) return;
+
+        var dialog = new SignalBench.Views.AboutWindow
         {
-            await box.ShowWindowDialogAsync(topLevel);
-        }
+            DataContext = this
+        };
+        
+        var versionText = dialog.FindControl<TextBlock>("VersionText");
+        if (versionText != null) versionText.Text = $"Version {AppInfo.Version}";
+        
+        var taglineText = dialog.FindControl<TextBlock>("TaglineText");
+        if (taglineText != null) taglineText.Text = AppInfo.Tagline;
+        
+        var descText = dialog.FindControl<TextBlock>("DescriptionText");
+        if (descText != null) descText.Text = AppInfo.Description;
+        
+        var copyText = dialog.FindControl<TextBlock>("CopyrightText");
+        if (copyText != null) copyText.Text = AppInfo.Copyright;
+
+        await dialog.ShowDialog(topLevel);
     }
 
     private async Task SaveSessionAsync()

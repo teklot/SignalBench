@@ -1,0 +1,53 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:mi="using:Material.Icons.Avalonia"
+        mc:Ignorable="d" d:DesignWidth="450" d:DesignHeight="380"
+        x:Class="SignalBench.Views.AboutWindow"
+        Title="About"
+        Width="480" Height="400"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False">
+    <Border Background="#fafafa" Padding="30">
+        <StackPanel Spacing="12" HorizontalAlignment="Center">
+            
+            <!-- App Name -->
+            <TextBlock Text="SignalBench" FontSize="28" FontWeight="Bold" HorizontalAlignment="Center" Foreground="#323130"/>
+            
+            <!-- Version -->
+            <TextBlock x:Name="VersionText" FontSize="15" HorizontalAlignment="Center" Foreground="#605e5c"/>
+            
+            <!-- Tagline -->
+            <TextBlock x:Name="TaglineText" 
+                       FontSize="14" 
+                       TextWrapping="Wrap" 
+                       TextAlignment="Center" 
+                       Foreground="#323130"
+                       Margin="0,8,0,0"/>
+            
+            <!-- Description -->
+            <TextBlock x:Name="DescriptionText" 
+                       FontSize="13" 
+                       TextWrapping="Wrap" 
+                       TextAlignment="Center" 
+                       Foreground="#605e5c"
+                       Margin="0,5,0,0"/>
+            
+            <!-- Copyright -->
+            <TextBlock x:Name="CopyrightText" 
+                       FontSize="12" 
+                       HorizontalAlignment="Center" 
+                       Foreground="#8a8886"
+                       Margin="0,15,0,0"/>
+            
+            <!-- Close Button -->
+            <Button Content="Close" 
+                    HorizontalAlignment="Center"
+                    HorizontalContentAlignment="Center"
+                    Width="120" 
+                    Margin="0,15,0,0"
+                    Click="CloseButton_Click"/>
+        </StackPanel>
+    </Border>
+</Window>
