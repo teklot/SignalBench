@@ -73,6 +73,12 @@ public class InMemoryDataStore : IDataStore
         return _timestamps.Where((t, i) => i % step == 0).ToList();
     }
 
+    public DateTime GetTimestamp(int index)
+    {
+        if (index < 0 || index >= _timestamps.Count) return default;
+        return _timestamps[index];
+    }
+
     public List<double> GetSignalData(string fieldName, int? maxPoints = null)
     {
         if (!_signals.TryGetValue(fieldName, out var data))

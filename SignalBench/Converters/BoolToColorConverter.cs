@@ -2,7 +2,7 @@ using Avalonia.Data.Converters;
 using Avalonia.Media;
 using System.Globalization;
 
-namespace SignalBench.ViewModels;
+namespace SignalBench.Converters;
 
 public class BoolToColorConverter : IValueConverter
 {

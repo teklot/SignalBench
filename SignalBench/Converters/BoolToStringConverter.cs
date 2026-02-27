@@ -1,7 +1,7 @@
 using Avalonia.Data.Converters;
 using System.Globalization;
 
-namespace SignalBench.ViewModels;
+namespace SignalBench.Converters;
 
 public class BoolToStringConverter : IValueConverter
 {

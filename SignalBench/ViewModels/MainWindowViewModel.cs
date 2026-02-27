@@ -10,6 +10,7 @@ using SignalBench.Core.Session;
 using SignalBench.Views;
 using System.Collections.ObjectModel;
 using System.Reactive;
+using System.Timers;
 
 namespace SignalBench.ViewModels;
 
@@ -107,6 +108,109 @@ public class MainWindowViewModel : ViewModelBase
     public ObservableCollection<RecentFileViewModel> RecentFiles { get; } = [];
     public ObservableCollection<DerivedSignalDefinition> DerivedSignals { get; } = [];
 
+    // Playback properties
+    private bool _isPlaying;
+    public bool IsPlaying
+    {
+        get => _isPlaying;
+        set => this.RaiseAndSetIfChanged(ref _isPlaying, value);
+    }
+
+    private double _playbackSpeed = 1.0;
+    public double PlaybackSpeed
+    {
+        get => _playbackSpeed;
+        set => this.RaiseAndSetIfChanged(ref _playbackSpeed, value);
+    }
+
+    public string[] PlaybackSpeeds { get; } = ["0.5x", "1x", "2x", "5x", "10x", "100x", "1000x"];
+
+    private int _currentPlaybackIndex;
+    public int CurrentPlaybackIndex
+    {
+        get => _currentPlaybackIndex;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _currentPlaybackIndex, value);
+            this.RaisePropertyChanged(nameof(CurrentPlaybackTime));
+            _playbackProgressValue = TotalRecords > 1 ? (double)value / (TotalRecords - 1) * 100 : 0;
+            this.RaisePropertyChanged(nameof(PlaybackProgress));
+        }
+    }
+
+    private int _totalRecords;
+    public int TotalRecords => _totalRecords;
+
+    public DateTime? CurrentPlaybackTime
+    {
+        get
+        {
+            if (_playbackTimestamps.Count > 0)
+            {
+                if (_currentPlaybackIndex < 0 || _currentPlaybackIndex >= _playbackTimestamps.Count) return null;
+                return _playbackTimestamps[_currentPlaybackIndex];
+            }
+            
+            if (TotalRecords == 0 || _currentPlaybackIndex < 0 || _currentPlaybackIndex >= TotalRecords) return null;
+            return _dataStore.GetTimestamp(_currentPlaybackIndex);
+        }
+    }
+
+    private double _playbackProgressValue = 0;
+    public double PlaybackProgress
+    {
+        get => _playbackProgressValue;
+        set
+        {
+            if (Math.Abs(_playbackProgressValue - value) < 0.1) return;
+            
+            _playbackProgressValue = value;
+            this.RaisePropertyChanged();
+            
+            if (TotalRecords > 0)
+            {
+                var newIndex = (int)(value / 100.0 * (TotalRecords - 1));
+                newIndex = Math.Clamp(newIndex, 0, Math.Max(0, TotalRecords - 1));
+                
+                _currentPlaybackIndex = newIndex;
+                
+                // Update virtual elapsed time for the new position
+                if (TotalRecords > 1 && _fullDuration > 0)
+                {
+                    _savedElapsedSeconds = (_fullDuration / (TotalRecords - 1)) * _currentPlaybackIndex;
+                }
+                else
+                {
+                    _savedElapsedSeconds = 0;
+                }
+
+                if (IsPlaying && _playbackStopwatch != null)
+                {
+                    _playbackStopwatch.Restart();
+                }
+
+                this.RaisePropertyChanged(nameof(CurrentPlaybackIndex));
+                this.RaisePropertyChanged(nameof(CurrentPlaybackTime));
+                
+                UpdateCursorPosition();
+            }
+        }
+    }
+
+    private DateTime? _cursorPosition;
+    public DateTime? CursorPosition
+    {
+        get => _cursorPosition;
+        set => this.RaiseAndSetIfChanged(ref _cursorPosition, value);
+    }
+
+    private System.Timers.Timer? _playbackTimer;
+    private readonly object _playbackLock = new();
+    private List<DateTime> _playbackTimestamps = [];
+    private Dictionary<string, List<double>> _playbackSignalData = [];
+    private double _savedElapsedSeconds = 0;
+    private double _fullDuration = 0;
+
     private readonly IDataStore _dataStore;
     private readonly ILogger<MainWindowViewModel> _logger;
     private readonly ILoggerFactory _loggerFactory;
@@ -114,7 +218,8 @@ public class MainWindowViewModel : ViewModelBase
     private readonly SessionManager _sessionManager = new();
     private readonly Core.DerivedSignals.FormulaEngine _formulaEngine = new();
 
-    public Action<List<DateTime>, Dictionary<string, List<double>>>? RequestPlotUpdate { get; set; }
+    public Action<List<DateTime>, Dictionary<string, List<double>>, DateTime?>? RequestPlotUpdate { get; set; }
+    public Action<DateTime?>? RequestCursorUpdate { get; set; }
 
     public ReactiveCommand<Unit, Unit> OpenFileCommand { get; }
     public ReactiveCommand<string, Unit> OpenRecentFileCommand { get; }
@@ -132,6 +237,14 @@ public class MainWindowViewModel : ViewModelBase
     public ReactiveCommand<Unit, Unit> OpenSettingsCommand { get; }
     public ReactiveCommand<Unit, Unit> OpenAboutCommand { get; }
     public ReactiveCommand<Unit, Unit> ExitCommand { get; }
+    public ReactiveCommand<Unit, Unit> PlayPauseCommand { get; }
+    public ReactiveCommand<string, Unit> SetSpeedCommand { get; }
+    public ReactiveCommand<double, Unit> SeekCommand { get; }
+    public ReactiveCommand<Unit, Unit> StepForwardCommand { get; }
+    public ReactiveCommand<Unit, Unit> StepBackwardCommand { get; }
+    public ReactiveCommand<Unit, Unit> FastForwardCommand { get; }
+    public ReactiveCommand<Unit, Unit> FastBackwardCommand { get; }
+    public ReactiveCommand<Unit, Unit> RestartCommand { get; }
 
     public MainWindowViewModel() : this(null!, null!, null!, null!)
     {
@@ -182,6 +295,16 @@ public class MainWindowViewModel : ViewModelBase
             }
         });
 
+        var canPlay = this.WhenAnyValue(x => x.HasData);
+        PlayPauseCommand = ReactiveCommand.Create(PlayPause, canPlay);
+        SetSpeedCommand = ReactiveCommand.Create<string>(SetSpeed);
+        SeekCommand = ReactiveCommand.Create<double>(Seek);
+        StepForwardCommand = ReactiveCommand.Create(StepForward, canPlay);
+        StepBackwardCommand = ReactiveCommand.Create(StepBackward, canPlay);
+        FastForwardCommand = ReactiveCommand.Create(FastForward, canPlay);
+        FastBackwardCommand = ReactiveCommand.Create(FastBackward, canPlay);
+        RestartCommand = ReactiveCommand.Create(Restart, canPlay);
+
         AvailableSignals.CollectionChanged += (s, e) =>
         {
             this.RaisePropertyChanged(nameof(HasData));
@@ -231,7 +354,25 @@ public class MainWindowViewModel : ViewModelBase
 
     private void CloseAll()
     {
-        _dataStore.Dispose();
+        // Stop playback if running
+        IsPlaying = false;
+        _playbackStopwatch = null;
+        _playbackTimer?.Stop();
+        _playbackTimer?.Dispose();
+        _playbackTimer = null;
+        
+        // Reset playback state
+        _playbackTimestamps = [];
+        _playbackSignalData = [];
+        _currentPlaybackIndex = 0;
+        _savedElapsedSeconds = 0;
+        _playbackProgressValue = 0;
+        _totalRecords = 0;
+        
+        // Clear data store (don't dispose - just reset)
+        try { _dataStore.Reset(Path.Combine(Path.GetTempPath(), "signalbench_temp.db")); } catch { }
+        
+        // Clear UI state
         AvailableSignals.Clear();
         RegularSignals.Clear();
         DerivedSignals.Clear();
@@ -239,8 +380,16 @@ public class MainWindowViewModel : ViewModelBase
         _currentTelemetryPath = null;
         _currentSchemaPath = null;
         StatusText = "Ready";
-        RequestPlotUpdate?.Invoke([], []);
+        
+        // Reset plot to pristine state
+        RequestPlotUpdate?.Invoke([], [], null);
+        
+        // Raise all property changes
         this.RaisePropertyChanged(nameof(HasData));
+        this.RaisePropertyChanged(nameof(TotalRecords));
+        this.RaisePropertyChanged(nameof(CurrentPlaybackIndex));
+        this.RaisePropertyChanged(nameof(CurrentPlaybackTime));
+        this.RaisePropertyChanged(nameof(PlaybackProgress));
     }
 
     private async Task ShowError(string title, string message, Exception? ex = null)
@@ -500,9 +649,11 @@ public class MainWindowViewModel : ViewModelBase
     {
         try
         {
-            var totalRows = _dataStore.GetRowCount();
+            _totalRecords = _dataStore.GetRowCount();
+            this.RaisePropertyChanged(nameof(TotalRecords));
+            
             var maxPlotPoints = 10000;
-            var shouldDownsample = totalRows > maxPlotPoints;
+            var shouldDownsample = _totalRecords > maxPlotPoints;
             
             var timestamps = _dataStore.GetTimestamps(shouldDownsample ? maxPlotPoints : null);
             var selectedSignals = AvailableSignals.Where(s => s.IsSelected).ToList();
@@ -511,13 +662,466 @@ public class MainWindowViewModel : ViewModelBase
             {
                 plotData[signal.Name] = _dataStore.GetSignalData(signal.Name, shouldDownsample ? maxPlotPoints : null);
             }
-            RequestPlotUpdate?.Invoke(timestamps, plotData);
+            RequestPlotUpdate?.Invoke(timestamps, plotData, null);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Plot Error");
             StatusText = $"Plot Error: {ex.Message}";
         }
+    }
+
+    private void PlayPause()
+    {
+        if (IsPlaying)
+        {
+            StopPlayback();
+        }
+        else
+        {
+            StartPlayback();
+        }
+    }
+
+    private void StartPlayback()
+    {
+        if (TotalRecords == 0) return;
+
+        lock (_playbackLock)
+        {
+            // Calculate elapsed time based on current position
+            if (TotalRecords > 1)
+            {
+                var firstTs = _dataStore.GetTimestamp(0);
+                var lastTs = _dataStore.GetTimestamp(TotalRecords - 1);
+                _fullDuration = (lastTs - firstTs).TotalSeconds;
+                if (_fullDuration < 0.1) _fullDuration = TotalRecords - 1;
+                
+                _savedElapsedSeconds = (_fullDuration / (TotalRecords - 1)) * _currentPlaybackIndex;
+            }
+            else
+            {
+                _fullDuration = 0;
+                _savedElapsedSeconds = 0;
+            }
+
+            if (_currentPlaybackIndex >= TotalRecords - 1)
+            {
+                _currentPlaybackIndex = 0;
+                _savedElapsedSeconds = 0;
+                _playbackProgressValue = 0;
+                this.RaisePropertyChanged(nameof(CurrentPlaybackIndex));
+                this.RaisePropertyChanged(nameof(CurrentPlaybackTime));
+                this.RaisePropertyChanged(nameof(PlaybackProgress));
+            }
+
+            // Cache data for playback only if not already cached (for resume)
+            if (_playbackTimestamps.Count == 0)
+            {
+                var maxPlaybackPoints = 10000; // Downsample for smooth playback
+                _playbackTimestamps = _dataStore.GetTimestamps(maxPlaybackPoints);
+                
+                _playbackSignalData = [];
+                foreach (var signal in AvailableSignals.Where(s => s.IsSelected))
+                {
+                    var data = _dataStore.GetSignalData(signal.Name, maxPlaybackPoints);
+                    if (data.Count == _playbackTimestamps.Count)
+                    {
+                        _playbackSignalData[signal.Name] = data;
+                    }
+                }
+            }
+
+            IsPlaying = true;
+            _playbackStopwatch = System.Diagnostics.Stopwatch.StartNew();
+            _playbackTimer?.Stop();
+            _playbackTimer?.Dispose();
+            
+            _playbackTimer = new System.Timers.Timer(100);
+            _playbackTimer.Elapsed += PlaybackTimer_Elapsed;
+            _playbackTimer.Start();
+        }
+
+        UpdatePlaybackView();
+    }
+
+    private void StopPlayback()
+    {
+        lock (_playbackLock)
+        {
+            IsPlaying = false;
+            if (_playbackStopwatch != null)
+            {
+                _savedElapsedSeconds += _playbackStopwatch.Elapsed.TotalSeconds * PlaybackSpeed;
+                _playbackStopwatch.Stop();
+            }
+            _playbackStopwatch = null;
+            _playbackTimer?.Stop();
+            _playbackTimer?.Dispose();
+            _playbackTimer = null;
+        }
+    }
+
+    private System.Diagnostics.Stopwatch? _playbackStopwatch;
+
+    private void PlaybackTimer_Elapsed(object? sender, ElapsedEventArgs e)
+    {
+        lock (_playbackLock)
+        {
+            if (!IsPlaying || _playbackStopwatch == null) 
+            {
+                StopPlayback();
+                return;
+            }
+
+            if (TotalRecords <= 1 || _fullDuration <= 0)
+            {
+                StopPlayback();
+                return;
+            }
+
+            var timestamps = _playbackTimestamps;
+            if (timestamps.Count == 0 || _currentPlaybackIndex >= TotalRecords - 1)
+            {
+                _currentPlaybackIndex = TotalRecords - 1;
+                _playbackTimestamps = [];
+                _playbackSignalData = [];
+                _savedElapsedSeconds = 0;
+                _fullDuration = 0;
+                StopPlayback();
+                _playbackProgressValue = 100;
+                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                {
+                    this.RaisePropertyChanged(nameof(CurrentPlaybackIndex));
+                    this.RaisePropertyChanged(nameof(CurrentPlaybackTime));
+                    this.RaisePropertyChanged(nameof(PlaybackProgress));
+                    UpdatePlaybackView();
+                });
+                return;
+            }
+
+            // targetSec is the "virtual" elapsed seconds (at 1x speed)
+            var elapsedSinceLastCommit = _playbackStopwatch.Elapsed.TotalSeconds;
+            var targetSec = _savedElapsedSeconds + (elapsedSinceLastCommit * PlaybackSpeed);
+            
+            var progress = Math.Min(targetSec / _fullDuration, 1.0);
+            var newFullIndex = (int)(progress * (TotalRecords - 1));
+            
+            newFullIndex = Math.Clamp(newFullIndex, 0, TotalRecords - 1);
+            
+            if (newFullIndex == _currentPlaybackIndex)
+            {
+                return;
+            }
+            
+            _currentPlaybackIndex = newFullIndex;
+            _playbackProgressValue = TotalRecords > 1 ? (double)newFullIndex / (TotalRecords - 1) * 100 : 0;
+            
+            // Sync _savedElapsedSeconds to the position we just "committed" via index update
+            _savedElapsedSeconds = (_fullDuration / (TotalRecords - 1)) * _currentPlaybackIndex;
+            _playbackStopwatch.Restart();
+
+            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+            {
+                this.RaisePropertyChanged(nameof(CurrentPlaybackIndex));
+                this.RaisePropertyChanged(nameof(CurrentPlaybackTime));
+                this.RaisePropertyChanged(nameof(PlaybackProgress));
+                
+                UpdateCursorPosition();
+            });
+            
+            if (_currentPlaybackIndex >= TotalRecords - 1)
+            {
+                StopPlayback();
+                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                {
+                    this.RaisePropertyChanged(nameof(CurrentPlaybackIndex));
+                    this.RaisePropertyChanged(nameof(CurrentPlaybackTime));
+                    this.RaisePropertyChanged(nameof(PlaybackProgress));
+                    UpdatePlaybackView();
+                });
+            }
+        }
+    }
+
+    private void UpdateCursorPosition()
+    {
+        if (TotalRecords == 0) return;
+
+        DateTime currentTime;
+        if (_playbackTimestamps.Count > 0)
+        {
+            int mappedIndex = (int)((double)_currentPlaybackIndex / TotalRecords * _playbackTimestamps.Count);
+            mappedIndex = Math.Clamp(mappedIndex, 0, _playbackTimestamps.Count - 1);
+            currentTime = _playbackTimestamps[mappedIndex];
+        }
+        else
+        {
+            currentTime = _dataStore.GetTimestamp(_currentPlaybackIndex);
+        }
+
+        CursorPosition = currentTime;
+        RequestCursorUpdate?.Invoke(currentTime);
+    }
+
+    private void UpdatePlaybackView()
+    {
+        try
+        {
+            // If no cached data, fetch directly from data store
+            if (_playbackTimestamps.Count == 0)
+            {
+                var maxPoints = 10000;
+                _playbackTimestamps = _dataStore.GetTimestamps(maxPoints);
+                _playbackSignalData = [];
+                foreach (var signal in AvailableSignals.Where(s => s.IsSelected))
+                {
+                    var data = _dataStore.GetSignalData(signal.Name, maxPoints);
+                    if (data.Count == _playbackTimestamps.Count)
+                    {
+                        _playbackSignalData[signal.Name] = data;
+                    }
+                }
+            }
+            
+            if (_playbackTimestamps.Count == 0) 
+            {
+                StopPlayback();
+                return;
+            }
+
+            int mappedIndex = (int)((double)_currentPlaybackIndex / TotalRecords * _playbackTimestamps.Count);
+            mappedIndex = Math.Clamp(mappedIndex, 0, _playbackTimestamps.Count - 1);
+
+            var currentTime = _playbackTimestamps[mappedIndex];
+            CursorPosition = currentTime;
+
+            // Show full dataset (not zoomed in) - just with cursor
+            // Use cached data
+            RequestPlotUpdate?.Invoke(_playbackTimestamps, _playbackSignalData, currentTime);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Playback Error");
+            StopPlayback();
+        }
+    }
+
+    private void SetSpeed(string speedStr)
+    {
+        var newSpeed = double.Parse(speedStr.Replace("x", ""));
+        
+        lock (_playbackLock)
+        {
+            if (IsPlaying && _playbackStopwatch != null)
+            {
+                // "Commit" the virtual elapsed seconds at the OLD speed before changing to the new one
+                _savedElapsedSeconds += _playbackStopwatch.Elapsed.TotalSeconds * PlaybackSpeed;
+                _playbackStopwatch.Restart();
+            }
+            
+            PlaybackSpeed = newSpeed;
+        }
+    }
+
+    private void Seek(double progress)
+    {
+        var newIndex = (int)(TotalRecords * progress / 100.0);
+        newIndex = Math.Clamp(newIndex, 0, Math.Max(0, TotalRecords - 1));
+        
+        lock (_playbackLock)
+        {
+            _currentPlaybackIndex = newIndex;
+            _playbackProgressValue = progress;
+
+            // Reset saved elapsed time to the new position's virtual 1x time
+            if (TotalRecords > 1 && _fullDuration > 0)
+            {
+                _savedElapsedSeconds = (_fullDuration / (TotalRecords - 1)) * _currentPlaybackIndex;
+            }
+            else
+            {
+                _savedElapsedSeconds = 0;
+            }
+
+            if (IsPlaying && _playbackStopwatch != null)
+            {
+                _playbackStopwatch.Restart();
+            }
+        }
+
+        this.RaisePropertyChanged(nameof(CurrentPlaybackIndex));
+        this.RaisePropertyChanged(nameof(CurrentPlaybackTime));
+        this.RaisePropertyChanged(nameof(PlaybackProgress));
+        
+        UpdateCursorPosition();
+    }
+
+    private void StepForward()
+    {
+        if (TotalRecords == 0) return;
+        
+        lock (_playbackLock)
+        {
+            _currentPlaybackIndex = Math.Min(_currentPlaybackIndex + 1, TotalRecords - 1);
+            _playbackProgressValue = TotalRecords > 1 ? (double)_currentPlaybackIndex / (TotalRecords - 1) * 100 : 0;
+            
+            // Update virtual elapsed time
+            if (TotalRecords > 1 && _fullDuration > 0)
+            {
+                _savedElapsedSeconds = (_fullDuration / (TotalRecords - 1)) * _currentPlaybackIndex;
+            }
+            else
+            {
+                _savedElapsedSeconds = 0;
+            }
+
+            if (IsPlaying && _playbackStopwatch != null)
+            {
+                _playbackStopwatch.Restart();
+            }
+        }
+
+        this.RaisePropertyChanged(nameof(CurrentPlaybackIndex));
+        this.RaisePropertyChanged(nameof(CurrentPlaybackTime));
+        this.RaisePropertyChanged(nameof(PlaybackProgress));
+        
+        UpdateCursorPosition();
+    }
+
+    private void StepBackward()
+    {
+        if (TotalRecords == 0) return;
+        
+        lock (_playbackLock)
+        {
+            _currentPlaybackIndex = Math.Max(_currentPlaybackIndex - 1, 0);
+            _playbackProgressValue = TotalRecords > 1 ? (double)_currentPlaybackIndex / (TotalRecords - 1) * 100 : 0;
+
+            // Update virtual elapsed time
+            if (TotalRecords > 1 && _fullDuration > 0)
+            {
+                _savedElapsedSeconds = (_fullDuration / (TotalRecords - 1)) * _currentPlaybackIndex;
+            }
+            else
+            {
+                _savedElapsedSeconds = 0;
+            }
+
+            if (IsPlaying && _playbackStopwatch != null)
+            {
+                _playbackStopwatch.Restart();
+            }
+        }
+
+        this.RaisePropertyChanged(nameof(CurrentPlaybackIndex));
+        this.RaisePropertyChanged(nameof(CurrentPlaybackTime));
+        this.RaisePropertyChanged(nameof(PlaybackProgress));
+        
+        UpdateCursorPosition();
+    }
+
+    private void FastForward()
+    {
+        if (TotalRecords == 0) return;
+        
+        lock (_playbackLock)
+        {
+            var step = Math.Max(1, TotalRecords / 100);
+            _currentPlaybackIndex = Math.Min(_currentPlaybackIndex + step, TotalRecords - 1);
+            _playbackProgressValue = TotalRecords > 1 ? (double)_currentPlaybackIndex / (TotalRecords - 1) * 100 : 0;
+            
+            // Update virtual elapsed time
+            if (TotalRecords > 1 && _fullDuration > 0)
+            {
+                _savedElapsedSeconds = (_fullDuration / (TotalRecords - 1)) * _currentPlaybackIndex;
+            }
+
+            if (IsPlaying && _playbackStopwatch != null)
+            {
+                _playbackStopwatch.Restart();
+            }
+        }
+
+        this.RaisePropertyChanged(nameof(CurrentPlaybackIndex));
+        this.RaisePropertyChanged(nameof(CurrentPlaybackTime));
+        this.RaisePropertyChanged(nameof(PlaybackProgress));
+        
+        UpdateCursorPosition();
+    }
+
+    private void FastBackward()
+    {
+        if (TotalRecords == 0) return;
+        
+        lock (_playbackLock)
+        {
+            var step = Math.Max(1, TotalRecords / 100);
+            _currentPlaybackIndex = Math.Max(_currentPlaybackIndex - step, 0);
+            _playbackProgressValue = TotalRecords > 1 ? (double)_currentPlaybackIndex / (TotalRecords - 1) * 100 : 0;
+
+            // Update virtual elapsed time
+            if (TotalRecords > 1 && _fullDuration > 0)
+            {
+                _savedElapsedSeconds = (_fullDuration / (TotalRecords - 1)) * _currentPlaybackIndex;
+            }
+            else
+            {
+                _savedElapsedSeconds = 0;
+            }
+
+            if (IsPlaying && _playbackStopwatch != null)
+            {
+                _playbackStopwatch.Restart();
+            }
+        }
+
+        this.RaisePropertyChanged(nameof(CurrentPlaybackIndex));
+        this.RaisePropertyChanged(nameof(CurrentPlaybackTime));
+        this.RaisePropertyChanged(nameof(PlaybackProgress));
+        
+        UpdateCursorPosition();
+    }
+
+    private void Restart()
+    {
+        if (TotalRecords == 0) return;
+        
+        _currentPlaybackIndex = 0;
+        _savedElapsedSeconds = 0;
+        
+        if (TotalRecords > 1)
+        {
+            var firstTs = _dataStore.GetTimestamp(0);
+            var lastTs = _dataStore.GetTimestamp(TotalRecords - 1);
+            _fullDuration = (lastTs - firstTs).TotalSeconds;
+            if (_fullDuration < 0.1) _fullDuration = TotalRecords - 1;
+        }
+        else
+        {
+            _fullDuration = 0;
+        }
+
+        _playbackProgressValue = 0;
+        
+        // Re-cache data
+        var maxPoints = 10000;
+        _playbackTimestamps = _dataStore.GetTimestamps(maxPoints);
+        _playbackSignalData = [];
+        foreach (var signal in AvailableSignals.Where(s => s.IsSelected))
+        {
+            var data = _dataStore.GetSignalData(signal.Name, maxPoints);
+            if (data.Count == _playbackTimestamps.Count)
+            {
+                _playbackSignalData[signal.Name] = data;
+            }
+        }
+        
+        this.RaisePropertyChanged(nameof(CurrentPlaybackIndex));
+        this.RaisePropertyChanged(nameof(CurrentPlaybackTime));
+        this.RaisePropertyChanged(nameof(PlaybackProgress));
+        
+        UpdatePlaybackView();
     }
 
     private async Task OpenFileAsync()

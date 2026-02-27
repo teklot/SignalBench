@@ -77,6 +77,13 @@ public class HybridDataStore : IDataStore
             : _inMemory.GetTimestamps(maxPoints);
     }
 
+    public DateTime GetTimestamp(int index)
+    {
+        return _storageMode == StorageMode.Sqlite
+            ? _sqlite?.GetTimestamp(index) ?? default
+            : _inMemory.GetTimestamp(index);
+    }
+
     public List<double> GetSignalData(string fieldName, int? maxPoints = null)
     {
         return _storageMode == StorageMode.Sqlite 

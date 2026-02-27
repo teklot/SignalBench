@@ -1,6 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:SignalBench.ViewModels"
+        xmlns:converters="using:SignalBench.Converters"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:scott="clr-namespace:ScottPlot.Avalonia;assembly=ScottPlot.Avalonia"
@@ -284,7 +285,54 @@
 
                 <!-- Plot Area -->
                 <Border Grid.Column="2" Padding="15">
-                    <views:PlotView />
+                    <Grid RowDefinitions="*, Auto">
+                        <views:PlotView Grid.Row="0" />
+                        
+                        <!-- Replay Controls - Bottom of Plot -->
+                        <Border Grid.Row="1" 
+                                Background="#f3f2f1" 
+                                CornerRadius="4" 
+                                Padding="8,3" 
+                                Margin="0,5,0,0"
+                                IsVisible="{Binding HasData}">
+                                                            <Grid ColumnDefinitions="Auto, Auto, Auto, Auto, Auto, Auto, *, Auto">                                <!-- Fast Backward (1%) -->
+                                <Button Grid.Column="0" Command="{Binding FastBackwardCommand}" ToolTip.Tip="Fast Backward (1%)" Background="Transparent" BorderThickness="0" Width="32" Height="32">
+                                    <mi:MaterialIcon Kind="SkipBackward" Width="18" Height="18" Foreground="#107c10"/>
+                                </Button>
+
+                                <!-- Step Back -->
+                                <Button Grid.Column="1" Command="{Binding StepBackwardCommand}" ToolTip.Tip="Step Back" Background="Transparent" BorderThickness="0" Width="32" Height="32">
+                                    <mi:MaterialIcon Kind="ChevronLeft" Width="18" Height="18" Foreground="#107c10"/>
+                                </Button>
+                                
+                                <!-- Play/Pause -->
+                                <Button Grid.Column="2" Command="{Binding PlayPauseCommand}" ToolTip.Tip="Play/Pause" Background="Transparent" BorderThickness="0" Width="32" Height="32">
+                                    <mi:MaterialIcon Kind="{Binding IsPlaying, Converter={x:Static converters:BoolToPlayIconConverter.Instance}}" Width="18" Height="18" Foreground="#107c10"/>
+                                </Button>
+                                
+                                <!-- Step Forward -->
+                                <Button Grid.Column="3" Command="{Binding StepForwardCommand}" ToolTip.Tip="Step Forward" Background="Transparent" BorderThickness="0" Width="32" Height="32">
+                                    <mi:MaterialIcon Kind="ChevronRight" Width="18" Height="18" Foreground="#107c10"/>
+                                </Button>
+
+                                <!-- Fast Forward (1%) -->
+                                <Button Grid.Column="4" Command="{Binding FastForwardCommand}" ToolTip.Tip="Fast Forward (1%)" Background="Transparent" BorderThickness="0" Width="32" Height="32" Margin="0,0,8,0">
+                                    <mi:MaterialIcon Kind="SkipForward" Width="18" Height="18" Foreground="#107c10"/>
+                                </Button>
+                                
+                                <!-- Restart -->
+                                <Button Grid.Column="5" Command="{Binding RestartCommand}" ToolTip.Tip="Restart" Background="Transparent" BorderThickness="0" Width="32" Height="32" Margin="0,0,15,0">
+                                    <mi:MaterialIcon Kind="Replay" Width="18" Height="18" Foreground="#107c10"/>
+                                </Button>
+                                
+                                <!-- Timeline Slider -->
+                                <Slider Grid.Column="6" Value="{Binding PlaybackProgress}" Minimum="0" Maximum="100" VerticalAlignment="Center" IsEnabled="{Binding !IsPlaying}"/>
+                                
+                                <!-- Speed -->
+                                <ComboBox Grid.Column="7" ItemsSource="{Binding PlaybackSpeeds}" SelectedItem="{Binding PlaybackSpeed, Converter={x:Static converters:DoubleToStringConverter.Instance}}" Width="90" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                            </Grid>
+                        </Border>
+                    </Grid>
                 </Border>
             </Grid>
         </Grid>

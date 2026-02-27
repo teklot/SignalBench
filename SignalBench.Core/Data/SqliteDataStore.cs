@@ -164,6 +164,16 @@ public class SqliteDataStore : IDataStore
         return data;
     }
 
+    public DateTime GetTimestamp(int index)
+    {
+        if (_connection == null) return default;
+        using var command = _connection.CreateCommand();
+        command.CommandText = $"SELECT timestamp FROM {_tableName} ORDER BY id LIMIT 1 OFFSET @index";
+        command.Parameters.AddWithValue("@index", index);
+        var result = command.ExecuteScalar();
+        return result != null ? (result is DateTime dt ? dt : ParseTimestamp(result)) : default;
+    }
+
     public int GetRowCount()
     {
         if (_connection == null) return 0;
