@@ -133,6 +133,7 @@ public class MainWindowViewModel : ViewModelBase
         {
             this.RaiseAndSetIfChanged(ref _currentPlaybackIndex, value);
             this.RaisePropertyChanged(nameof(CurrentPlaybackTime));
+            this.RaisePropertyChanged(nameof(FormattedPlaybackTime));
             _playbackProgressValue = TotalRecords > 1 ? (double)value / (TotalRecords - 1) * 100 : 0;
             this.RaisePropertyChanged(nameof(PlaybackProgress));
         }
@@ -145,14 +146,17 @@ public class MainWindowViewModel : ViewModelBase
     {
         get
         {
-            if (_playbackTimestamps.Count > 0)
-            {
-                if (_currentPlaybackIndex < 0 || _currentPlaybackIndex >= _playbackTimestamps.Count) return null;
-                return _playbackTimestamps[_currentPlaybackIndex];
-            }
-            
             if (TotalRecords == 0 || _currentPlaybackIndex < 0 || _currentPlaybackIndex >= TotalRecords) return null;
             return _dataStore.GetTimestamp(_currentPlaybackIndex);
+        }
+    }
+
+    public string FormattedPlaybackTime
+    {
+        get
+        {
+            var time = CurrentPlaybackTime;
+            return time?.ToString("yyyy-MM-dd\nHH:mm:ss.fff") ?? "0000-00-00\n00:00:00.000";
         }
     }
 
@@ -191,6 +195,7 @@ public class MainWindowViewModel : ViewModelBase
 
                 this.RaisePropertyChanged(nameof(CurrentPlaybackIndex));
                 this.RaisePropertyChanged(nameof(CurrentPlaybackTime));
+                this.RaisePropertyChanged(nameof(FormattedPlaybackTime));
                 
                 UpdateCursorPosition();
             }
@@ -389,6 +394,7 @@ public class MainWindowViewModel : ViewModelBase
         this.RaisePropertyChanged(nameof(TotalRecords));
         this.RaisePropertyChanged(nameof(CurrentPlaybackIndex));
         this.RaisePropertyChanged(nameof(CurrentPlaybackTime));
+        this.RaisePropertyChanged(nameof(FormattedPlaybackTime));
         this.RaisePropertyChanged(nameof(PlaybackProgress));
     }
 
@@ -712,6 +718,7 @@ public class MainWindowViewModel : ViewModelBase
                 _playbackProgressValue = 0;
                 this.RaisePropertyChanged(nameof(CurrentPlaybackIndex));
                 this.RaisePropertyChanged(nameof(CurrentPlaybackTime));
+                this.RaisePropertyChanged(nameof(FormattedPlaybackTime));
                 this.RaisePropertyChanged(nameof(PlaybackProgress));
             }
 
@@ -794,6 +801,7 @@ public class MainWindowViewModel : ViewModelBase
                 {
                     this.RaisePropertyChanged(nameof(CurrentPlaybackIndex));
                     this.RaisePropertyChanged(nameof(CurrentPlaybackTime));
+                    this.RaisePropertyChanged(nameof(FormattedPlaybackTime));
                     this.RaisePropertyChanged(nameof(PlaybackProgress));
                     UpdatePlaybackView();
                 });
@@ -825,6 +833,7 @@ public class MainWindowViewModel : ViewModelBase
             {
                 this.RaisePropertyChanged(nameof(CurrentPlaybackIndex));
                 this.RaisePropertyChanged(nameof(CurrentPlaybackTime));
+                this.RaisePropertyChanged(nameof(FormattedPlaybackTime));
                 this.RaisePropertyChanged(nameof(PlaybackProgress));
                 
                 UpdateCursorPosition();
@@ -837,6 +846,7 @@ public class MainWindowViewModel : ViewModelBase
                 {
                     this.RaisePropertyChanged(nameof(CurrentPlaybackIndex));
                     this.RaisePropertyChanged(nameof(CurrentPlaybackTime));
+                    this.RaisePropertyChanged(nameof(FormattedPlaybackTime));
                     this.RaisePropertyChanged(nameof(PlaybackProgress));
                     UpdatePlaybackView();
                 });
@@ -921,6 +931,8 @@ public class MainWindowViewModel : ViewModelBase
             }
             
             PlaybackSpeed = newSpeed;
+            this.RaisePropertyChanged(nameof(CurrentPlaybackTime));
+            this.RaisePropertyChanged(nameof(FormattedPlaybackTime));
         }
     }
 
@@ -952,6 +964,7 @@ public class MainWindowViewModel : ViewModelBase
 
         this.RaisePropertyChanged(nameof(CurrentPlaybackIndex));
         this.RaisePropertyChanged(nameof(CurrentPlaybackTime));
+        this.RaisePropertyChanged(nameof(FormattedPlaybackTime));
         this.RaisePropertyChanged(nameof(PlaybackProgress));
         
         UpdateCursorPosition();
@@ -984,6 +997,7 @@ public class MainWindowViewModel : ViewModelBase
 
         this.RaisePropertyChanged(nameof(CurrentPlaybackIndex));
         this.RaisePropertyChanged(nameof(CurrentPlaybackTime));
+        this.RaisePropertyChanged(nameof(FormattedPlaybackTime));
         this.RaisePropertyChanged(nameof(PlaybackProgress));
         
         UpdateCursorPosition();
@@ -1016,6 +1030,7 @@ public class MainWindowViewModel : ViewModelBase
 
         this.RaisePropertyChanged(nameof(CurrentPlaybackIndex));
         this.RaisePropertyChanged(nameof(CurrentPlaybackTime));
+        this.RaisePropertyChanged(nameof(FormattedPlaybackTime));
         this.RaisePropertyChanged(nameof(PlaybackProgress));
         
         UpdateCursorPosition();
@@ -1045,6 +1060,7 @@ public class MainWindowViewModel : ViewModelBase
 
         this.RaisePropertyChanged(nameof(CurrentPlaybackIndex));
         this.RaisePropertyChanged(nameof(CurrentPlaybackTime));
+        this.RaisePropertyChanged(nameof(FormattedPlaybackTime));
         this.RaisePropertyChanged(nameof(PlaybackProgress));
         
         UpdateCursorPosition();
@@ -1078,6 +1094,7 @@ public class MainWindowViewModel : ViewModelBase
 
         this.RaisePropertyChanged(nameof(CurrentPlaybackIndex));
         this.RaisePropertyChanged(nameof(CurrentPlaybackTime));
+        this.RaisePropertyChanged(nameof(FormattedPlaybackTime));
         this.RaisePropertyChanged(nameof(PlaybackProgress));
         
         UpdateCursorPosition();
@@ -1119,6 +1136,7 @@ public class MainWindowViewModel : ViewModelBase
         
         this.RaisePropertyChanged(nameof(CurrentPlaybackIndex));
         this.RaisePropertyChanged(nameof(CurrentPlaybackTime));
+        this.RaisePropertyChanged(nameof(FormattedPlaybackTime));
         this.RaisePropertyChanged(nameof(PlaybackProgress));
         
         UpdatePlaybackView();
@@ -1224,6 +1242,13 @@ public class MainWindowViewModel : ViewModelBase
 
                         Avalonia.Threading.Dispatcher.UIThread.Post(() =>
                         {
+                            // Reset playback state for new file
+                            _currentPlaybackIndex = 0;
+                            _playbackProgressValue = 0;
+                            _savedElapsedSeconds = 0;
+                            _playbackTimestamps = [];
+                            _playbackSignalData = [];
+
                             AvailableSignals.Clear();
                             RegularSignals.Clear();
                             DerivedSignals.Clear();
@@ -1239,6 +1264,12 @@ public class MainWindowViewModel : ViewModelBase
                             AddToRecentFiles(path);
                             UpdatePlot();
                             IsLoading = false;
+
+                            this.RaisePropertyChanged(nameof(CurrentPlaybackIndex));
+                            this.RaisePropertyChanged(nameof(CurrentPlaybackTime));
+                            this.RaisePropertyChanged(nameof(FormattedPlaybackTime));
+                            this.RaisePropertyChanged(nameof(PlaybackProgress));
+
                             var elapsed = DateTime.Now - startTime;
                             StatusText = $"Loaded {packets.Count:N0} records in {elapsed.TotalSeconds:F1}s";
                         });
@@ -1290,6 +1321,13 @@ public class MainWindowViewModel : ViewModelBase
 
                     Avalonia.Threading.Dispatcher.UIThread.Post(() =>
                     {
+                        // Reset playback state for new file
+                        _currentPlaybackIndex = 0;
+                        _playbackProgressValue = 0;
+                        _savedElapsedSeconds = 0;
+                        _playbackTimestamps = [];
+                        _playbackSignalData = [];
+
                         AvailableSignals.Clear();
                         RegularSignals.Clear();
                         DerivedSignals.Clear();
@@ -1304,6 +1342,12 @@ public class MainWindowViewModel : ViewModelBase
                         SelectedSchema = schema;
                         AddToRecentFiles(path);
                         UpdatePlot();
+
+                        this.RaisePropertyChanged(nameof(CurrentPlaybackIndex));
+                        this.RaisePropertyChanged(nameof(CurrentPlaybackTime));
+                        this.RaisePropertyChanged(nameof(FormattedPlaybackTime));
+                        this.RaisePropertyChanged(nameof(PlaybackProgress));
+
                         StatusText = $"Loaded {packets.Count} records from {Path.GetFileName(path)}";
                     });
                 }
