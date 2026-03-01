@@ -28,22 +28,24 @@ public partial class PlotView : UserControl
         }
     }
 
-    public void UpdatePlot(List<DateTime> timestamps, Dictionary<string, List<double>> data, DateTime? cursorPosition = null)
+    public void UpdatePlot(List<DateTime> timestamps, Dictionary<string, List<double>> data, DateTime? cursorPosition = null, double? fixedXMax = null, int? rollingWindowSize = null)
     {
         var mainPlot = this.FindControl<ScottPlot.Avalonia.AvaPlot>("MainPlot");
         if (mainPlot == null) return;
 
+        mainPlot.Plot.Clear();
+        _cursorLine = null;
+
         if (timestamps.Count == 0) 
         {
-            mainPlot.Plot.Clear();
+            mainPlot.Plot.Axes.Bottom.Min = 0;
+            mainPlot.Plot.Axes.Bottom.Max = 1;
+            mainPlot.Plot.Axes.Left.Min = -10;
+            mainPlot.Plot.Axes.Left.Max = 10;
             mainPlot.Plot.Axes.NumericTicksBottom();
-            mainPlot.Plot.Axes.SetLimitsY(-10, 10);
             mainPlot.Refresh();
             return;
         }
-
-        mainPlot.Plot.Clear();
-        _cursorLine = null;
 
         double minY = double.MaxValue;
         double maxY = double.MinValue;
@@ -68,14 +70,25 @@ public partial class PlotView : UserControl
 
         if (timestamps.Count > 0)
         {
+            // Simple filling from left: Axis fits current buffer exactly
             mainPlot.Plot.Axes.Bottom.Min = timestamps[0].ToOADate();
             mainPlot.Plot.Axes.Bottom.Max = timestamps[^1].ToOADate();
+            
+            // Add a tiny bit of space if only 1 point to prevent zero-width axis
+            if (Math.Abs(mainPlot.Plot.Axes.Bottom.Max - mainPlot.Plot.Axes.Bottom.Min) < 0.000001)
+            {
+                mainPlot.Plot.Axes.Bottom.Max = mainPlot.Plot.Axes.Bottom.Min + 0.00001;
+            }
+
             mainPlot.Plot.Axes.Bottom.TickGenerator = new ScottPlot.TickGenerators.DateTimeAutomatic();
         }
 
         if (minY != double.MaxValue && maxY != double.MinValue)
         {
-            var yPadding = (maxY - minY) * 0.1;
+            var range = maxY - minY;
+            if (range < 0.000001) range = 1.0; 
+            
+            var yPadding = range * 0.1;
             mainPlot.Plot.Axes.Left.Min = minY - yPadding;
             mainPlot.Plot.Axes.Left.Max = maxY + yPadding;
         }

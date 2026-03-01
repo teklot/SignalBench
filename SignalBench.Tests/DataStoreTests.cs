@@ -28,7 +28,7 @@ public class DataStoreTests
             packets.Add(new DecodedPacket
             {
                 Timestamp = startTime.AddSeconds(i),
-                Fields = new Dictionary<string, object?> { ["val"] = (float)i }
+                Fields = new Dictionary<string, object> { ["val"] = (float)i }
             });
         }
         store.InsertPackets(packets);
@@ -61,7 +61,7 @@ public class DataStoreTests
             packets.Add(new DecodedPacket
             {
                 Timestamp = startTime.AddSeconds(i),
-                Fields = new Dictionary<string, object?> { ["val"] = (float)i }
+                Fields = new Dictionary<string, object> { ["val"] = (float)i }
             });
         }
         store.InsertPackets(packets);

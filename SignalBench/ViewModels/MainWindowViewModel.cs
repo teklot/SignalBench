@@ -60,10 +60,31 @@ public class MainWindowViewModel : ViewModelBase
     public PacketSchema? SelectedSchema
     {
         get => _selectedSchema;
-        set => this.RaiseAndSetIfChanged(ref _selectedSchema, value);
+        set {
+            this.RaiseAndSetIfChanged(ref _selectedSchema, value);
+            this.RaisePropertyChanged(nameof(SerialInfo));
+        }
     }
 
     public bool HasData => !string.IsNullOrEmpty(_currentTelemetryPath) || AvailableSignals.Count > 0;
+
+    public bool IsPlaybackBarVisible => HasData && !IsStreaming;
+
+    public string SerialInfo
+    {
+        get
+        {
+            var s = _settingsService.Current;
+            if (string.IsNullOrEmpty(s.LastPort)) return "Serial not configured";
+            string sb = s.StopBits switch {
+                "One" => "1",
+                "Two" => "2",
+                "OnePointFive" => "1.5",
+                _ => "0"
+            };
+            return $"{s.LastPort}: {s.LastBaudRate} {s.DataBits}{s.Parity[0]}{sb}";
+        }
+    }
 
     private bool _isSignalsPaneOpen = true;
     public bool IsSignalsPaneOpen
@@ -107,6 +128,24 @@ public class MainWindowViewModel : ViewModelBase
     public ObservableCollection<dynamic> DecodedRecords { get; } = [];
     public ObservableCollection<RecentFileViewModel> RecentFiles { get; } = [];
     public ObservableCollection<DerivedSignalDefinition> DerivedSignals { get; } = [];
+
+    // Serial properties
+    private bool _isStreaming;
+    public bool IsStreaming
+    {
+        get => _isStreaming;
+        set {
+            this.RaiseAndSetIfChanged(ref _isStreaming, value);
+            this.RaisePropertyChanged(nameof(IsPlaybackBarVisible));
+        }
+    }
+
+    private bool _isRecording;
+    public bool IsRecording
+    {
+        get => _isRecording;
+        set => this.RaiseAndSetIfChanged(ref _isRecording, value);
+    }
 
     // Playback properties
     private bool _isPlaying;
@@ -217,13 +256,14 @@ public class MainWindowViewModel : ViewModelBase
     private double _fullDuration = 0;
 
     private readonly IDataStore _dataStore;
+    private SignalBench.Core.Ingestion.SerialTelemetrySource? _serialSource;
     private readonly ILogger<MainWindowViewModel> _logger;
     private readonly ILoggerFactory _loggerFactory;
     private readonly ISettingsService _settingsService;
     private readonly SessionManager _sessionManager = new();
     private readonly Core.DerivedSignals.FormulaEngine _formulaEngine = new();
 
-    public Action<List<DateTime>, Dictionary<string, List<double>>, DateTime?>? RequestPlotUpdate { get; set; }
+    public Action<List<DateTime>, Dictionary<string, List<double>>, DateTime?, double?, int?>? RequestPlotUpdate { get; set; }
     public Action<DateTime?>? RequestCursorUpdate { get; set; }
 
     public ReactiveCommand<Unit, Unit> OpenFileCommand { get; }
@@ -235,6 +275,7 @@ public class MainWindowViewModel : ViewModelBase
     public ReactiveCommand<Unit, Unit> ToggleSignalsPaneCommand { get; }
     public ReactiveCommand<Unit, Unit> ToggleToolbarCommand { get; }
     public ReactiveCommand<Unit, Unit> CreateSchemaCommand { get; }
+    public ReactiveCommand<Unit, Unit> OpenSchemaCommand { get; }
     public ReactiveCommand<Unit, Unit> EditSchemaCommand { get; }
     public ReactiveCommand<Unit, Unit> CreateDerivedSignalCommand { get; }
     public ReactiveCommand<string, Unit> EditDerivedSignalCommand { get; }
@@ -250,6 +291,10 @@ public class MainWindowViewModel : ViewModelBase
     public ReactiveCommand<Unit, Unit> FastForwardCommand { get; }
     public ReactiveCommand<Unit, Unit> FastBackwardCommand { get; }
     public ReactiveCommand<Unit, Unit> RestartCommand { get; }
+    public ReactiveCommand<Unit, Unit> ToggleStreamingCommand { get; }
+    public ReactiveCommand<Unit, Unit> ToggleRecordingCommand { get; }
+    public ReactiveCommand<Unit, Unit> RefreshPortsCommand { get; }
+    public ReactiveCommand<Unit, Unit> OpenSerialSettingsCommand { get; }
 
     public MainWindowViewModel() : this(null!, null!, null!, null!)
     {
@@ -273,13 +318,14 @@ public class MainWindowViewModel : ViewModelBase
         var canExecuteSession = this.WhenAnyValue(x => x.HasData);
         SaveSessionCommand = ReactiveCommand.CreateFromTask(SaveSessionAsync, canExecuteSession);
         OpenSessionCommand = ReactiveCommand.CreateFromTask(OpenSessionAsync);
-        CloseAllCommand = ReactiveCommand.Create(CloseAll, canExecuteSession);
+        CloseAllCommand = ReactiveCommand.CreateFromTask(CloseAllAsync, canExecuteSession);
         
         ExportCsvCommand = ReactiveCommand.Create(ExportCsv, canExecuteSession);
         ToggleSignalsPaneCommand = ReactiveCommand.Create(() => { IsSignalsPaneOpen = !IsSignalsPaneOpen; });
         ToggleToolbarCommand = ReactiveCommand.Create(() => { IsToolbarVisible = !IsToolbarVisible; });
         
         CreateSchemaCommand = ReactiveCommand.CreateFromTask(CreateSchemaAsync);
+        OpenSchemaCommand = ReactiveCommand.CreateFromTask(OpenSchemaAsync);
         
         var canEditSchema = this.WhenAnyValue(x => x.SelectedSchema, (PacketSchema? s) => s != null);
         EditSchemaCommand = ReactiveCommand.CreateFromTask(EditSchemaAsync, canEditSchema);
@@ -290,7 +336,7 @@ public class MainWindowViewModel : ViewModelBase
         EditDerivedSignalCommand = ReactiveCommand.CreateFromTask<string>(EditDerivedSignalAsync);
         RemoveDerivedSignalCommand = ReactiveCommand.CreateFromTask<string>(RemoveDerivedSignalAsync);
         
-        OpenSettingsCommand = ReactiveCommand.CreateFromTask(OpenSettingsAsync);
+        OpenSettingsCommand = ReactiveCommand.CreateFromTask(() => OpenSettingsAsync(0));
         OpenAboutCommand = ReactiveCommand.CreateFromTask(OpenAboutAsync);
         ExitCommand = ReactiveCommand.Create(() =>
         {
@@ -310,9 +356,22 @@ public class MainWindowViewModel : ViewModelBase
         FastBackwardCommand = ReactiveCommand.Create(FastBackward, canPlay);
         RestartCommand = ReactiveCommand.Create(Restart, canPlay);
 
+        var canToggleStreaming = this.WhenAnyValue(
+            x => x.IsStreaming, 
+            x => x.SelectedSchema, 
+            (isStreaming, schema) => isStreaming || schema != null);
+
+        ToggleStreamingCommand = ReactiveCommand.CreateFromTask(ToggleStreamingAsync, canToggleStreaming);
+        ToggleRecordingCommand = ReactiveCommand.CreateFromTask(ToggleRecording, this.WhenAnyValue(x => x.IsStreaming));
+        RefreshPortsCommand = ReactiveCommand.Create(RefreshPorts);
+        OpenSerialSettingsCommand = ReactiveCommand.CreateFromTask(() => OpenSettingsAsync(1));
+
+        RefreshPorts();
+
         AvailableSignals.CollectionChanged += (s, e) =>
         {
             this.RaisePropertyChanged(nameof(HasData));
+            this.RaisePropertyChanged(nameof(IsPlaybackBarVisible));
             if (e.OldItems != null)
             {
                 foreach (SignalItemViewModel item in e.OldItems)
@@ -357,8 +416,14 @@ public class MainWindowViewModel : ViewModelBase
         RefreshRecentFiles();
     }
 
-    private void CloseAll()
+    private async Task CloseAllAsync()
     {
+        // Stop streaming if active
+        if (IsStreaming)
+        {
+            await StopStreamingAsync();
+        }
+
         // Stop playback if running
         IsPlaying = false;
         _playbackStopwatch = null;
@@ -372,7 +437,7 @@ public class MainWindowViewModel : ViewModelBase
         _currentPlaybackIndex = 0;
         _savedElapsedSeconds = 0;
         _playbackProgressValue = 0;
-        _totalRecords = 0;
+        _totalRecords = 0; // Reset local count
         
         // Clear data store (don't dispose - just reset)
         try { _dataStore.Reset(Path.Combine(Path.GetTempPath(), "signalbench_temp.db")); } catch { }
@@ -384,18 +449,22 @@ public class MainWindowViewModel : ViewModelBase
         SelectedSchema = null;
         _currentTelemetryPath = null;
         _currentSchemaPath = null;
+        IsRecording = false;
         StatusText = "Ready";
         
         // Reset plot to pristine state
-        RequestPlotUpdate?.Invoke([], [], null);
+        RequestPlotUpdate?.Invoke([], [], null, null, null);
         
         // Raise all property changes
         this.RaisePropertyChanged(nameof(HasData));
+        this.RaisePropertyChanged(nameof(IsPlaybackBarVisible));
         this.RaisePropertyChanged(nameof(TotalRecords));
         this.RaisePropertyChanged(nameof(CurrentPlaybackIndex));
         this.RaisePropertyChanged(nameof(CurrentPlaybackTime));
         this.RaisePropertyChanged(nameof(FormattedPlaybackTime));
         this.RaisePropertyChanged(nameof(PlaybackProgress));
+        this.RaisePropertyChanged(nameof(IsStreaming));
+        this.RaisePropertyChanged(nameof(IsRecording));
     }
 
     private async Task ShowError(string title, string message, Exception? ex = null)
@@ -418,7 +487,7 @@ public class MainWindowViewModel : ViewModelBase
         }
     }
 
-    private async Task OpenSettingsAsync()
+    private async Task OpenSettingsAsync(int tabIndex = 0)
     {
         try
         {
@@ -427,10 +496,11 @@ public class MainWindowViewModel : ViewModelBase
 
             var dialog = new SignalBench.Views.SettingsWindow
             {
-                DataContext = new SettingsViewModel(_settingsService)
+                DataContext = new SettingsViewModel(_settingsService) { SelectedTabIndex = tabIndex }
             };
 
             await dialog.ShowDialog(topLevel);
+            this.RaisePropertyChanged(nameof(SerialInfo));
         }
         catch (Exception ex)
         {
@@ -465,6 +535,38 @@ public class MainWindowViewModel : ViewModelBase
         catch (Exception ex)
         {
             await ShowError("Editor Error", "Failed to open schema editor.", ex);
+        }
+    }
+
+    private async Task OpenSchemaAsync()
+    {
+        try
+        {
+            var topLevel = (App.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)?.MainWindow;
+            if (topLevel == null) return;
+
+            var files = await topLevel.StorageProvider.OpenFilePickerAsync(new Avalonia.Platform.Storage.FilePickerOpenOptions
+            {
+                Title = "Open Packet Schema",
+                AllowMultiple = false,
+                FileTypeFilter = [new Avalonia.Platform.Storage.FilePickerFileType("YAML Files") { Patterns = ["*.yaml", "*.yml"] }]
+            });
+
+            if (files.Count > 0)
+            {
+                var path = files[0].Path.LocalPath;
+                var loader = new SchemaLoader();
+                var yaml = await File.ReadAllTextAsync(path);
+                var schema = loader.Load(yaml);
+                
+                SelectedSchema = schema;
+                _currentSchemaPath = path;
+                StatusText = $"Schema loaded: {schema.Name}";
+            }
+        }
+        catch (Exception ex)
+        {
+            await ShowError("Schema Error", "Failed to open schema.", ex);
         }
     }
 
@@ -668,7 +770,7 @@ public class MainWindowViewModel : ViewModelBase
             {
                 plotData[signal.Name] = _dataStore.GetSignalData(signal.Name, shouldDownsample ? maxPlotPoints : null);
             }
-            RequestPlotUpdate?.Invoke(timestamps, plotData, null);
+            RequestPlotUpdate?.Invoke(timestamps, plotData, null, null, null);
         }
         catch (Exception ex)
         {
@@ -908,7 +1010,7 @@ public class MainWindowViewModel : ViewModelBase
 
             // Show full dataset (not zoomed in) - just with cursor
             // Use cached data
-            RequestPlotUpdate?.Invoke(_playbackTimestamps, _playbackSignalData, currentTime);
+            RequestPlotUpdate?.Invoke(_playbackTimestamps, _playbackSignalData, currentTime, null, null);
         }
         catch (Exception ex)
         {
@@ -934,6 +1036,185 @@ public class MainWindowViewModel : ViewModelBase
             this.RaisePropertyChanged(nameof(CurrentPlaybackTime));
             this.RaisePropertyChanged(nameof(FormattedPlaybackTime));
         }
+    }
+
+    private void RefreshPorts()
+    {
+        // Now handled in settings, but we keep this for initial discovery if needed 
+        // or just let settings handle it. 
+    }
+
+    private async Task ToggleStreamingAsync()
+    {
+        if (IsStreaming)
+        {
+            await StopStreamingAsync();
+        }
+        else
+        {
+            await StartStreamingAsync();
+        }
+    }
+
+    private async Task StartStreamingAsync()
+    {
+        var settings = _settingsService.Current;
+        if (string.IsNullOrEmpty(settings.LastPort) || SelectedSchema == null)
+        {
+            await ShowError("Configuration Error", "Please select a COM port in Serial Settings.");
+            return;
+        }
+
+        try
+        {
+            var schema = SelectedSchema; // Preserve schema before CloseAll
+            await CloseAllAsync(); // Reset before starting live stream
+            SelectedSchema = schema; // Restore schema
+
+            var parity = Enum.Parse<System.IO.Ports.Parity>(settings.Parity);
+            var stopBits = Enum.Parse<System.IO.Ports.StopBits>(settings.StopBits);
+
+            _serialSource = new SignalBench.Core.Ingestion.SerialTelemetrySource(
+                settings.LastPort, 
+                settings.LastBaudRate, 
+                SelectedSchema,
+                parity,
+                settings.DataBits,
+                stopBits);
+
+            _serialSource.PacketReceived += HandleLivePacket;
+            _serialSource.ErrorReceived += msg => {
+                Avalonia.Threading.Dispatcher.UIThread.Post(() => {
+                    StatusText = $"Serial Error: {msg}";
+                    IsStreaming = false;
+                });
+            };
+            
+            await Task.Run(() => _serialSource.Start());
+
+            IsStreaming = true;
+            StatusText = $"Streaming from {settings.LastPort}...";
+            
+            _totalRecords = 0; // Ensure local record count is reset
+            _dataStore.InitializeSchema(SelectedSchema);
+            RequestPlotUpdate?.Invoke([], [], null, null, null); // Clear plot completely
+            
+            AvailableSignals.Clear();
+            RegularSignals.Clear();
+            foreach (var field in SelectedSchema.Fields)
+            {
+                if (field.Name.Equals("timestamp", StringComparison.OrdinalIgnoreCase)) continue;
+                var item = new SignalItemViewModel { Name = field.Name, IsSelected = true };
+                AvailableSignals.Add(item);
+                RegularSignals.Add(item);
+            }
+        }
+        catch (Exception ex)
+        {
+            await ShowError("Connection Error", $"Failed to start streaming: {ex.Message}");
+        }
+    }
+
+    private async Task StopStreamingAsync()
+    {
+        IsStreaming = false;
+        if (_serialSource != null)
+        {
+            var source = _serialSource;
+            _serialSource = null;
+            await Task.Run(() => source.Stop());
+        }
+        StatusText = "Streaming stopped.";
+    }
+
+    private async Task ToggleRecording()
+    {
+        if (_serialSource == null) return;
+
+        if (IsRecording)
+        {
+            _serialSource.StopRecording();
+            IsRecording = false;
+            StatusText = "Recording stopped.";
+        }
+        else
+        {
+            var topLevel = (App.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)?.MainWindow;
+            if (topLevel == null) return;
+
+            var file = await topLevel.StorageProvider.SaveFilePickerAsync(new Avalonia.Platform.Storage.FilePickerSaveOptions
+            {
+                Title = "Save Raw Stream",
+                DefaultExtension = "bin",
+                FileTypeChoices = [new Avalonia.Platform.Storage.FilePickerFileType("Binary Files") { Patterns = ["*.bin", "*.dat"] }]
+            });
+
+            if (file != null)
+            {
+                _serialSource.StartRecording(file.Path.LocalPath);
+                IsRecording = true;
+                StatusText = $"Recording to {file.Name}...";
+            }
+        }
+    }
+
+    private DateTime _lastLivePlotUpdate = DateTime.MinValue;
+    private readonly object _liveDataLock = new();
+    private List<DecodedPacket> _livePacketBuffer = [];
+
+    private void HandleLivePacket(DecodedPacket packet)
+    {
+        lock (_liveDataLock)
+        {
+            _livePacketBuffer.Add(packet);
+        }
+
+        if ((DateTime.Now - _lastLivePlotUpdate).TotalMilliseconds > 100)
+        {
+            _lastLivePlotUpdate = DateTime.Now;
+            Avalonia.Threading.Dispatcher.UIThread.Post(UpdateLivePlot);
+        }
+    }
+
+    private void UpdateLivePlot()
+    {
+        if (!IsStreaming) return; // Drop pending updates if we stopped streaming
+
+        List<DecodedPacket> batch;
+        lock (_liveDataLock)
+        {
+            batch = _livePacketBuffer;
+            _livePacketBuffer = [];
+        }
+
+        if (batch.Count > 0)
+        {
+            bool wasEmpty = _totalRecords == 0;
+            _dataStore.InsertPackets(batch);
+            _totalRecords = _dataStore.GetRowCount();
+            this.RaisePropertyChanged(nameof(TotalRecords));
+            this.RaisePropertyChanged(nameof(CurrentPlaybackTime));
+            this.RaisePropertyChanged(nameof(FormattedPlaybackTime));
+            if (wasEmpty) this.RaisePropertyChanged(nameof(IsPlaybackBarVisible));
+        }
+
+        if (_totalRecords == 0) return;
+
+        // Keep rolling window
+        int rollingWindow = _settingsService.Current.RollingBufferSize;
+        int count = Math.Min(_totalRecords, rollingWindow);
+        int start = Math.Max(0, _totalRecords - count);
+
+        var timestamps = _dataStore.GetTimestamps(start, count);
+        var selectedSignals = AvailableSignals.Where(s => s.IsSelected).ToList();
+        var plotData = new Dictionary<string, List<double>>();
+        
+        foreach (var signal in selectedSignals)
+        {
+            plotData[signal.Name] = _dataStore.GetSignalData(signal.Name, start, count);
+        }
+
+        RequestPlotUpdate?.Invoke(timestamps, plotData, null, null, null);
     }
 
     private void Seek(double progress)
@@ -1171,6 +1452,11 @@ public class MainWindowViewModel : ViewModelBase
 
     private async Task LoadTelemetryFileAsync(string path, string? schemaPath = null)
     {
+        if (IsStreaming)
+        {
+            await StopStreamingAsync();
+        }
+
         _currentTelemetryPath = path;
         _currentSchemaPath = schemaPath;
 
@@ -1269,6 +1555,7 @@ public class MainWindowViewModel : ViewModelBase
                             this.RaisePropertyChanged(nameof(CurrentPlaybackTime));
                             this.RaisePropertyChanged(nameof(FormattedPlaybackTime));
                             this.RaisePropertyChanged(nameof(PlaybackProgress));
+                            this.RaisePropertyChanged(nameof(IsPlaybackBarVisible));
 
                             var elapsed = DateTime.Now - startTime;
                             StatusText = $"Loaded {packets.Count:N0} records in {elapsed.TotalSeconds:F1}s";
@@ -1347,6 +1634,7 @@ public class MainWindowViewModel : ViewModelBase
                         this.RaisePropertyChanged(nameof(CurrentPlaybackTime));
                         this.RaisePropertyChanged(nameof(FormattedPlaybackTime));
                         this.RaisePropertyChanged(nameof(PlaybackProgress));
+                        this.RaisePropertyChanged(nameof(IsPlaybackBarVisible));
 
                         StatusText = $"Loaded {packets.Count} records from {Path.GetFileName(path)}";
                     });

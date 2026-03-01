@@ -73,6 +73,13 @@ public class InMemoryDataStore : IDataStore
         return _timestamps.Where((t, i) => i % step == 0).ToList();
     }
 
+    public List<DateTime> GetTimestamps(int startIndex, int count)
+    {
+        int actualCount = Math.Min(count, _timestamps.Count - startIndex);
+        if (actualCount <= 0) return [];
+        return _timestamps.GetRange(startIndex, actualCount);
+    }
+
     public DateTime GetTimestamp(int index)
     {
         if (index < 0 || index >= _timestamps.Count) return default;
@@ -98,6 +105,26 @@ public class InMemoryDataStore : IDataStore
         _signals.Clear();
         _timestamps.Clear();
         _signalNames.Clear();
+    }
+
+    public void Clear()
+    {
+        _timestamps.Clear();
+        foreach (var key in _signals.Keys)
+        {
+            _signals[key].Clear();
+        }
+    }
+
+    public List<double> GetSignalData(string fieldName, int startIndex, int count)
+    {
+        if (!_signals.TryGetValue(fieldName, out var data))
+            return [];
+
+        int actualCount = Math.Min(count, data.Count - startIndex);
+        if (actualCount <= 0) return [];
+
+        return data.GetRange(startIndex, actualCount);
     }
 
     public void Dispose()

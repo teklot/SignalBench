@@ -44,6 +44,31 @@ public class SqliteDataStore : IDataStore
         _connection.Open();
     }
 
+    public void Clear()
+    {
+        if (_connection == null) return;
+        using var command = _connection.CreateCommand();
+        command.CommandText = $"DELETE FROM {_tableName}";
+        command.ExecuteNonQuery();
+    }
+
+    public List<double> GetSignalData(string fieldName, int startIndex, int count)
+    {
+        if (_connection == null) return [];
+        var data = new List<double>();
+        using var command = _connection.CreateCommand();
+        command.CommandText = $"SELECT \"{fieldName}\" FROM {_tableName} ORDER BY id LIMIT @count OFFSET @offset";
+        command.Parameters.AddWithValue("@count", count);
+        command.Parameters.AddWithValue("@offset", startIndex);
+        
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            data.Add(reader.IsDBNull(0) ? 0 : reader.GetDouble(0));
+        }
+        return data;
+    }
+
     public void InitializeSchema(PacketSchema schema)
     {
         if (_connection == null) throw new InvalidOperationException("DataStore not initialized.");
@@ -155,6 +180,23 @@ public class SqliteDataStore : IDataStore
             var step = Math.Max(1, totalRows / maxPoints.Value);
             command.Parameters.AddWithValue("@step", step);
         }
+        
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            data.Add(reader.GetDateTime(0));
+        }
+        return data;
+    }
+
+    public List<DateTime> GetTimestamps(int startIndex, int count)
+    {
+        if (_connection == null) return [];
+        var data = new List<DateTime>();
+        using var command = _connection.CreateCommand();
+        command.CommandText = $"SELECT timestamp FROM {_tableName} ORDER BY id LIMIT @count OFFSET @offset";
+        command.Parameters.AddWithValue("@count", count);
+        command.Parameters.AddWithValue("@offset", startIndex);
         
         using var reader = command.ExecuteReader();
         while (reader.Read())

@@ -77,6 +77,13 @@ public class HybridDataStore : IDataStore
             : _inMemory.GetTimestamps(maxPoints);
     }
 
+    public List<DateTime> GetTimestamps(int startIndex, int count)
+    {
+        return _storageMode == StorageMode.Sqlite
+            ? _sqlite?.GetTimestamps(startIndex, count) ?? []
+            : _inMemory.GetTimestamps(startIndex, count);
+    }
+
     public DateTime GetTimestamp(int index)
     {
         return _storageMode == StorageMode.Sqlite
@@ -108,6 +115,25 @@ public class HybridDataStore : IDataStore
         {
             _inMemory.Reset(dbPath);
         }
+    }
+
+    public void Clear()
+    {
+        if (_storageMode == StorageMode.Sqlite)
+        {
+            _sqlite?.Clear();
+        }
+        else
+        {
+            _inMemory.Clear();
+        }
+    }
+
+    public List<double> GetSignalData(string fieldName, int startIndex, int count)
+    {
+        return _storageMode == StorageMode.Sqlite
+            ? _sqlite?.GetSignalData(fieldName, startIndex, count) ?? []
+            : _inMemory.GetSignalData(fieldName, startIndex, count);
     }
 
     public void Dispose()

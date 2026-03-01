@@ -10,9 +10,17 @@ public class BoolToColorConverter : IValueConverter
 
     public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
-        if (value is bool isDerived && isDerived)
+        if (value is bool val)
         {
-            return new SolidColorBrush(Color.Parse("#107c10"));
+            if (parameter?.ToString() == "Streaming")
+            {
+                return val ? new SolidColorBrush(Color.Parse("#107c10")) : new SolidColorBrush(Color.Parse("#2b579a"));
+            }
+            if (parameter?.ToString() == "Recording")
+            {
+                return new SolidColorBrush(Color.Parse("#e81123"));
+            }
+            if (val) return new SolidColorBrush(Color.Parse("#107c10"));
         }
         return new SolidColorBrush(Colors.Black);
     }

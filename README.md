@@ -2,54 +2,52 @@
 
 **A telemetry analysis workbench suitable for real test campaigns.**
 
-SignalBench is the cleanest binary telemetry decoding desktop tool a CubeSat engineer can install and use within 5 minutes. It is a high-performance, engineer-grade telemetry workbench designed for aerospace test and telemetry engineers that supports both CSV and binary telemetry formats. Decode, visualize, and analyze raw telemetry logs without the need for custom scripting.
+SignalBench is the cleanest binary telemetry decoding desktop tool a CubeSat engineer can install and use within 5 minutes. It is a high-performance, engineer-grade telemetry workbench designed for aerospace test and telemetry engineers that supports CSV, binary logs, and live serial streams. Decode, visualize, and analyze telemetry without the need for custom scripting.
 
 ## 🚀 Features
 
 - **Multiple Format Support**: Load and decode CSV files or binary telemetry using YAML-defined packet schemas
-- **High Performance**: Handles large files with millions of records efficiently
-- **Visualization**: Interactive plots with zoom, pan, and signal selection
-- **Derived Signals**: Create custom calculated signals using math expressions (e.g., `sqrt(battery_voltage)`, `temperature_1 - temperature_2`)
+- **Live Serial Streaming**: Connect to COM ports to decode and visualize data in real-time
+- **High Performance**: Handles large files (> 500K+ records) and high-frequency streams efficiently
+- **Visualization**: Interactive plots with "Oscilloscope" (Fill-then-Roll) effect for live data
+- **Derived Signals**: Create custom calculated signals using math expressions (e.g., `sqrt(battery_voltage)`)
+- **Data Logging**: Record raw serial streams directly to disk while visualizing
 - **Session Management**: Save and restore workspace sessions
 
 ## 🚀 Getting Started (Quick Start)
 
-To decode and visualize your telemetry data, follow these steps:
-
 ### 1. Load a Packet Schema
-Before loading binary data, the app needs to know the structure of the packets.
-*   Click **"Load Schema"** in the top toolbar.
-*   Select a `.yaml` schema file. (See `Samples/eps_telemetry_schema.yaml`)
-*   Select your loaded schema from the **"SCHEMA"** dropdown in the left panel.
+Before loading data or streaming, the app needs to know the structure of the packets.
+*   Click **"Open Schema"** in the **SCHEMA** group.
+*   Select a `.yaml` schema file.
 
-### 2. Open Telemetry Data
-*   Click **"Open Telemetry"** in the toolbar.
-*   **For CSV files**: The app automatically detects headers and loads the data into the preview table.
-*   **For Binary files**: The app uses your selected schema to scan and decode the file into structured records.
+### 2. Live Serial Streaming
+*   **Configure**: Click the **Gear icon** in the **SERIAL** group.
+    *   Select your **COM Port**, **Baud Rate**, and **Serial Parameters**.
+    *   Set the **Rolling Window Size** (e.g., 1000) to control the live plot width.
+*   **Start**: Click the **Play icon** in the **SERIAL** group.
+    *   The plot will fill from left-to-right and then "roll" forward as new data arrives.
+*   **Record**: Click the **Record icon** (Red Circle) while streaming to save raw binary data to a file.
 
-### 3. Visualize Signals
-*   Once data is loaded, look at the **"SIGNALS"** list in the left panel.
-*   **Check the box** next to any signal (e.g., `battery_voltage`) to plot it in the center area.
-*   **Interact with the plot**:
-    *   **Left-click + Drag**: Pan the view.
-    *   **Right-click + Drag**: Zoom in/out.
-    *   **Middle-click / Scroll**: Zoom.
-    *   **Double-click**: Reset the view to fit all data.
+### 3. Static Telemetry Data
+*   Click **"Open Telemetry"** in the **DATA** group.
+    *   **CSV**: Detects headers and loads data automatically.
+    *   **Binary**: Uses the selected schema to decode the file.
+*   *Note: Switching between serial streaming and static files will reset the workspace to ensure data integrity.*
 
-### 4. Data Preview
-*   The **"DATA PREVIEW"** panel at the bottom shows the first 100 decoded records in a spreadsheet format for quick verification.
-
-### 5. Export and Save
-*   **Export CSV**: Click this to save the currently decoded dataset to a CSV file.
-*   **Save Session**: Click this to save your current setup as a `.sbx` project file.
+### 4. Navigation & Playback
+*   Use the **Timeline Slider** and playback buttons (Play, Fast Forward/Backward, Step) to navigate captured data.
+*   A high-precision timestamp display shows the exact date and time (with milliseconds) of the current frame.
 
 ## 📋 Requirements & Setup
 
 - **Platform**: Windows, Linux, macOS (Cross-platform via Avalonia)
 - **Runtime**: .NET 9.0 SDK
+- **Hardware**: Serial port access (Physical or Virtual via `com0com`/`VSPE`)
 - **Dependencies**: 
-  - Avalonia UI (v11.3.12)
+  - Avalonia UI
   - ScottPlot (v5.1+)
+  - System.IO.Ports
   - YamlDotNet
   - Microsoft.Data.Sqlite
   - NCalcSync
@@ -57,8 +55,7 @@ Before loading binary data, the app needs to know the structure of the packets.
 ### Building from Source
 
 ```bash
-cd SignalBench
-dotnet build
+dotnet build SignalBench.sln
 ```
 
 ### Running Tests
@@ -67,12 +64,12 @@ dotnet build
 dotnet test
 ```
 
-## 🛠 Architecture
+## 🛠 Simulation & Testing
 
-SignalBench is built with a strictly decoupled architecture:
-- **SignalBench.Core**: UI-independent logic (decoding, schema, data persistence).
-- **SignalBench (UI)**: Desktop application built with Avalonia UI and ReactiveUI.
-- **SignalBench.Tests**: xUnit test suite.
+To test serial streaming without physical hardware:
+1.  Setup a virtual serial pair (e.g., `COM1` <-> `COM2`).
+2.  Run the included simulation script: `powershell -File simulate.ps1` (streams to `COM1`).
+3.  In SignalBench, load `sim_schema.yaml` and connect to `COM2`.
 
 ---
 
