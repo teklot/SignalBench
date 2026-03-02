@@ -55,7 +55,7 @@ public partial class App : Application
             var mode = settings.Current.StorageMode == "Sqlite" ? StorageMode.Sqlite : StorageMode.InMemory;
             return new HybridDataStore(mode);
         });
-        services.AddTransient<MainWindowViewModel>();
+        services.AddSingleton<MainWindowViewModel>();
         services.AddTransient<SettingsViewModel>();
     }
 

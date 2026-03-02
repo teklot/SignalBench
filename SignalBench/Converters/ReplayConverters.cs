@@ -50,6 +50,22 @@ public class BoolToRecordIconConverter : IValueConverter
     }
 }
 
+public class BoolToOpacityConverter : IValueConverter
+{
+    public static readonly BoolToOpacityConverter Instance = new();
+
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        if (value is bool b) return b ? 1.0 : 0.0;
+        return 0.0;
+    }
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        throw new NotImplementedException();
+    }
+}
+
 public class DoubleToStringConverter : IValueConverter
 {
     public static readonly DoubleToStringConverter Instance = new();

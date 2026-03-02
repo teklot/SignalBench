@@ -49,7 +49,7 @@
         </Style>
 
         <Style Selector="Menu">
-            <Setter Property="Background" Value="White"/>
+            <Setter Property="Background" Value="#dae5f0"/>
         </Style>
         <Style Selector="MenuItem">
             <Setter Property="Padding" Value="12,6"/>
@@ -197,7 +197,7 @@
                 </StackPanel>
                 <Border Width="1" Background="#e1dfdd" VerticalAlignment="Stretch"/>
                 
-                <!-- DATA GROUP -->
+                <!-- DATA FILE GROUP -->
                 <StackPanel Orientation="Vertical" Margin="8,6">
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="2">
                         <Button Classes="toolbar" Command="{Binding OpenFileCommand}" ToolTip.Tip="Open Telemetry File">
@@ -207,7 +207,7 @@
                             <mi:MaterialIcon Kind="FileExportOutline" Width="22" Height="22" Foreground="#2b579a"/>
                         </Button>
                     </StackPanel>
-                    <TextBlock Text="DATA" FontSize="9" FontWeight="SemiBold" HorizontalAlignment="Center" Foreground="#605e5c" Margin="0,2,0,0"/>
+                    <TextBlock Text="DATA FILE" FontSize="9" FontWeight="SemiBold" HorizontalAlignment="Center" Foreground="#605e5c" Margin="0,2,0,0"/>
                 </StackPanel>
                 <Border Width="1" Background="#e1dfdd" VerticalAlignment="Stretch"/>
 
@@ -231,11 +231,11 @@
                 <!-- SCHEMA GROUP -->
                 <StackPanel Orientation="Vertical" Margin="8,6">
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="2">
-                        <Button Classes="toolbar" Command="{Binding CreateSchemaCommand}" ToolTip.Tip="Create New Schema">
-                            <mi:MaterialIcon Kind="FilePlusOutline" Width="22" Height="22" Foreground="#2b579a"/>
-                        </Button>
                         <Button Classes="toolbar" Command="{Binding OpenSchemaCommand}" ToolTip.Tip="Open Existing Schema">
                             <mi:MaterialIcon Kind="FolderOpenOutline" Width="22" Height="22" Foreground="#2b579a"/>
+                        </Button>
+                        <Button Classes="toolbar" Command="{Binding CreateSchemaCommand}" ToolTip.Tip="Create New Schema">
+                            <mi:MaterialIcon Kind="FilePlusOutline" Width="22" Height="22" Foreground="#2b579a"/>
                         </Button>
                         <Button Classes="toolbar" Command="{Binding EditSchemaCommand}" ToolTip.Tip="Edit Current Schema">
                             <mi:MaterialIcon Kind="FileDocumentEditOutline" Width="22" Height="22" Foreground="#2b579a"/>
@@ -337,7 +337,48 @@
                 <!-- Plot Area -->
                 <Border Grid.Column="2" Padding="15">
                     <Grid RowDefinitions="*, Auto">
-                        <views:PlotView Grid.Row="0" />
+                        <Grid Grid.Row="0" RowDefinitions="Auto, *">
+                            <!-- Tab Strip with Add Button -->
+                            <StackPanel Grid.Row="0" Orientation="Horizontal">
+                                <TabStrip ItemsSource="{Binding Plots}" SelectedItem="{Binding SelectedPlot}" BorderThickness="0">
+                                    <TabStrip.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <WrapPanel Orientation="Horizontal"/>
+                                        </ItemsPanelTemplate>
+                                    </TabStrip.ItemsPanel>
+                                    <TabStrip.ItemTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                                <TextBlock Text="{Binding Name}" VerticalAlignment="Center" FontSize="12"/>
+                                                <Button Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).RemovePlotCommand}" 
+                                                        CommandParameter="{Binding}"
+                                                        Padding="2" Background="Transparent" BorderThickness="0"
+                                                        ToolTip.Tip="Close Plot">
+                                                    <mi:MaterialIcon Kind="Close" Width="14" Height="14" Foreground="#d83b01"/>
+                                                </Button>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </TabStrip.ItemTemplate>
+                                </TabStrip>
+                                
+                                <Button Command="{Binding AddEmptyPlotCommand}" 
+                                        ToolTip.Tip="New Plot"
+                                        Background="Transparent" BorderThickness="0" Padding="8,4"
+                                        VerticalAlignment="Center"
+                                        IsVisible="{Binding CanAddPlot}">
+                                    <mi:MaterialIcon Kind="Plus" Width="18" Height="18" Foreground="#2b579a"/>
+                                </Button>
+                            </StackPanel>
+
+                            <!-- Plot Content -->
+                            <ContentControl Grid.Row="1" Content="{Binding SelectedPlot}">
+                                <ContentControl.ContentTemplate>
+                                    <DataTemplate x:DataType="vm:PlotViewModel">
+                                        <views:PlotView />
+                                    </DataTemplate>
+                                </ContentControl.ContentTemplate>
+                            </ContentControl>
+                        </Grid>
                         
                         <!-- Replay Controls - Bottom of Plot -->
                         <Border Grid.Row="1" 

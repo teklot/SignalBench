@@ -21,10 +21,42 @@ public partial class PlotView : UserControl
 
     private void PlotView_DataContextChanged(object? sender, EventArgs e)
     {
-        if (DataContext is MainWindowViewModel vm)
+        // Detach from previous VM if it exists
+        // Note: We don't have a direct reference to the old VM here easily, 
+        // but we can ensure the NEW VM is set, and the VM itself should handle its own cleanup.
+        // Actually, a better way is to track the last VM we attached to.
+    }
+
+    private PlotViewModel? _attachedVm;
+    protected override void OnDataContextChanged(EventArgs e)
+    {
+        base.OnDataContextChanged(e);
+
+        if (_attachedVm != null)
         {
+            _attachedVm.RequestPlotUpdate = null;
+            _attachedVm.RequestCursorUpdate = null;
+        }
+
+        if (DataContext is PlotViewModel vm)
+        {
+            _attachedVm = vm;
             vm.RequestPlotUpdate = UpdatePlot;
             vm.RequestCursorUpdate = UpdateCursorOnly;
+            vm.RequestPlotClear = ClearPlot;
+            
+            // Trigger a refresh for the newly selected plot
+            // We use a small delay or post to ensure the view is fully ready
+            Avalonia.Threading.Dispatcher.UIThread.Post(() => {
+                if (DataContext == vm) // Still the same?
+                {
+                    // MainWindowViewModel can trigger this refresh
+                }
+            });
+        }
+        else
+        {
+            _attachedVm = null;
         }
     }
 
@@ -38,8 +70,8 @@ public partial class PlotView : UserControl
 
         if (timestamps.Count == 0) 
         {
-            mainPlot.Plot.Axes.Bottom.Min = 0;
-            mainPlot.Plot.Axes.Bottom.Max = 1;
+            mainPlot.Plot.Axes.Bottom.Min = -10;
+            mainPlot.Plot.Axes.Bottom.Max = 10;
             mainPlot.Plot.Axes.Left.Min = -10;
             mainPlot.Plot.Axes.Left.Max = 10;
             mainPlot.Plot.Axes.NumericTicksBottom();
@@ -118,12 +150,29 @@ public partial class PlotView : UserControl
         }
     }
 
-    public void UpdateCursorOnly(DateTime? cursorPosition)
+    public void UpdateCursorOnly(DateTime cursorPosition)
     {
         var mainPlot = this.FindControl<ScottPlot.Avalonia.AvaPlot>("MainPlot");
-        if (mainPlot == null || !cursorPosition.HasValue) return;
+        if (mainPlot == null) return;
 
-        AddOrUpdateCursor(mainPlot, cursorPosition.Value);
+        AddOrUpdateCursor(mainPlot, cursorPosition);
+        mainPlot.Refresh();
+    }
+
+    public void ClearPlot()
+    {
+        var mainPlot = this.FindControl<ScottPlot.Avalonia.AvaPlot>("MainPlot");
+        if (mainPlot == null) return;
+
+        mainPlot.Plot.Clear();
+        _cursorLine = null;
+        
+        mainPlot.Plot.Axes.Bottom.Min = -10;
+        mainPlot.Plot.Axes.Bottom.Max = 10;
+        mainPlot.Plot.Axes.Left.Min = -10;
+        mainPlot.Plot.Axes.Left.Max = 10;
+        mainPlot.Plot.Axes.NumericTicksBottom();
+        
         mainPlot.Refresh();
     }
 }

@@ -12,3 +12,10 @@ public enum FieldType
     Float32,
     Float64
 }
+
+public enum SchemaType
+{
+    Binary,
+    Streaming,
+    Csv
+}

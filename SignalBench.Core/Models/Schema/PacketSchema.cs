@@ -18,6 +18,7 @@ public enum Endianness
 public class PacketSchema
 {
     public string Name { get; set; } = string.Empty;
+    public SchemaType Type { get; set; } = SchemaType.Binary;
     public uint? SyncWord { get; set; }
     public Endianness Endianness { get; set; } = Endianness.Little;
     public List<FieldDefinition> Fields { get; set; } = [];

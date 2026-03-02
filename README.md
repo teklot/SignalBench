@@ -30,7 +30,7 @@ Before loading data or streaming, the app needs to know the structure of the pac
 *   **Record**: Click the **Record icon** (Red Circle) while streaming to save raw binary data to a file.
 
 ### 3. Static Telemetry Data
-*   Click **"Open Telemetry"** in the **DATA** group.
+*   Click **"Open Telemetry"** in the **DATA FILE** group.
     *   **CSV**: Detects headers and loads data automatically.
     *   **Binary**: Uses the selected schema to decode the file.
 *   *Note: Switching between serial streaming and static files will reset the workspace to ensure data integrity.*
