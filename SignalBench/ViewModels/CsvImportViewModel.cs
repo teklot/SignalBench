@@ -18,6 +18,17 @@ public class CsvImportViewModel : ViewModelBase
         }
     }
 
+    private bool _hasHeader = true;
+    public bool HasHeader
+    {
+        get => _hasHeader;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _hasHeader, value);
+            LoadPreview();
+        }
+    }
+
     private string GetActualDelimiter()
     {
         return Delimiter switch
@@ -40,6 +51,8 @@ public class CsvImportViewModel : ViewModelBase
     }
 
     public ObservableCollection<string> AvailableColumns { get; } = [];
+    public ObservableCollection<string> TimestampColumnOptions { get; } = [];
+
     public ObservableCollection<IDictionary<string, object>> PreviewRecords { get; } = [];
 
     private readonly string _filePath;
@@ -51,10 +64,12 @@ public class CsvImportViewModel : ViewModelBase
     {
         _filePath = filePath;
         _delimiter = "Comma (,)";
+        _hasHeader = true;
         ImportCommand = ReactiveCommand.Create(() => (CsvImportResult?)new CsvImportResult
         {
             Delimiter = GetActualDelimiter(),
-            TimestampColumn = TimestampColumn
+            TimestampColumn = TimestampColumn,
+            HasHeader = HasHeader
         });
         CancelCommand = ReactiveCommand.Create(() => (CsvImportResult?)null);
 
@@ -65,7 +80,7 @@ public class CsvImportViewModel : ViewModelBase
     {
         try
         {
-            var source = new CsvTelemetrySource(_filePath, GetActualDelimiter());
+            var source = new CsvTelemetrySource(_filePath, GetActualDelimiter(), hasHeader: HasHeader);
             var packets = source.ReadPackets().Take(10).ToList();
 
             var newRecords = new List<IDictionary<string, object>>();
@@ -106,4 +121,5 @@ public class CsvImportResult
 {
     public string Delimiter { get; set; } = ",";
     public string? TimestampColumn { get; set; }
+    public bool HasHeader { get; set; } = true;
 }

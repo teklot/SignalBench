@@ -6,7 +6,7 @@
         mc:Ignorable="d" d:DesignWidth="600" d:DesignHeight="500"
         x:Class="SignalBench.Views.CsvImport"
         x:DataType="vm:CsvImportViewModel"
-        Title="Import CSV"
+        Title="Import Delimited File (CSV, TSV, etc.)"
         WindowStartupLocation="CenterOwner"
         Width="700" Height="550">
 
@@ -19,32 +19,33 @@
                     BorderThickness="0,0,0,1"
                     Padding="20">
                 <StackPanel Spacing="15">
-                    <TextBlock Text="SETTINGS"
-                               FontWeight="Bold"
-                               FontSize="11"
-                               Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" />
 
-                    <Grid ColumnDefinitions="Auto, 150, Auto, 200">
-                        <TextBlock Text="Delimiter:"
-                                   VerticalAlignment="Center"
-                                   Margin="0,0,12,0"
-                                   FontSize="13" />
-                        <ComboBox Grid.Column="1"
-                                  HorizontalAlignment="Stretch"
-                                  ItemsSource="{Binding Delimiters}"
-                                  SelectedItem="{Binding Delimiter}">
-                        </ComboBox>
+                    <StackPanel Orientation="Horizontal" Spacing="30">
+                        <StackPanel Spacing="5">
+                            <TextBlock Text="DELIMITER"
+                                       FontWeight="Bold"
+                                       FontSize="11"
+                                       Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" />
+                            <ComboBox Width="150"
+                                      ItemsSource="{Binding Delimiters}"
+                                      SelectedItem="{Binding Delimiter}" />
+                        </StackPanel>
 
-                        <TextBlock Grid.Column="2"
-                                   Text="Timestamp Column:"
-                                   VerticalAlignment="Center"
-                                   Margin="30,0,12,0"
-                                   FontSize="13" />
-                        <ComboBox Grid.Column="3"
-                                  HorizontalAlignment="Stretch"
-                                  ItemsSource="{Binding AvailableColumns}"
-                                  SelectedItem="{Binding TimestampColumn}" />
-                    </Grid>
+                        <CheckBox Content="Has Header"
+                                  IsChecked="{Binding HasHeader}"
+                                  VerticalAlignment="Bottom"
+                                  Margin="0,0,0,2" />
+
+                        <StackPanel Spacing="5">
+                            <TextBlock Text="TIMESTAMP COLUMN"
+                                       FontWeight="Bold"
+                                       FontSize="11"
+                                       Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" />
+                            <ComboBox Width="200"
+                                      ItemsSource="{Binding AvailableColumns}"
+                                      SelectedItem="{Binding TimestampColumn}" />
+                        </StackPanel>
+                    </StackPanel>
                 </StackPanel>
             </Border>
 

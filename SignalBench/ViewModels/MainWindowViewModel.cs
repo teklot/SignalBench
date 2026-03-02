@@ -1066,9 +1066,13 @@ public class MainWindowViewModel : ViewModelBase
         try {
             var topLevel = (App.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)?.MainWindow;
             if (topLevel == null) return;
-            var files = await topLevel.StorageProvider.OpenFilePickerAsync(new Avalonia.Platform.Storage.FilePickerOpenOptions {
-                Title = "Open Telemetry File", AllowMultiple = false,
-                FileTypeFilter = [new Avalonia.Platform.Storage.FilePickerFileType("Telemetry Files") { Patterns = ["*.csv", "*.bin", "*.dat"] }]
+            var files = await topLevel.StorageProvider.OpenFilePickerAsync(
+                new Avalonia.Platform.Storage.FilePickerOpenOptions {
+                    Title = "Open Telemetry File", AllowMultiple = false,
+                    FileTypeFilter = [new Avalonia.Platform.Storage.FilePickerFileType("Telemetry Files") {
+                        Patterns = ["*.csv", "*.tsv", "*.txt", "*.bin", "*.dat"]
+                },
+                Avalonia.Platform.Storage.FilePickerFileTypes.All]
             });
             if (files.Count > 0) await LoadTelemetryFileAsync(files[0].Path.LocalPath);
         } catch (Exception ex) { await ShowError("File Error", "Could not select file.", ex); }
@@ -1099,7 +1103,7 @@ public class MainWindowViewModel : ViewModelBase
                     var lineCount = File.ReadLines(path).Count();
                     Avalonia.Threading.Dispatcher.UIThread.Post(() => { IsLoading = true; LoadProgress = 0; LoadElapsed = "00:00"; });
                     
-                    var source = new SignalBench.Core.Ingestion.CsvTelemetrySource(path, result.Delimiter, result.TimestampColumn);
+                    var source = new SignalBench.Core.Ingestion.CsvTelemetrySource(path, result.Delimiter, result.TimestampColumn, result.HasHeader);
                     var packets = new List<DecodedPacket>();
                     var processed = 0; var lastUpdate = DateTime.Now;
                     foreach (var packet in source.ReadPackets()) {
@@ -1112,6 +1116,7 @@ public class MainWindowViewModel : ViewModelBase
                     }
                     if (packets.Count > 0) {
                         var fields = new List<string>(packets[0].Fields.Keys);
+                        var timestampCol = result.TimestampColumn;
                         var schema = new PacketSchema { Name = "CSV Import", Type = SchemaType.Csv };
                         foreach (var field in fields) schema.Fields.Add(new FieldDefinition { Name = field });
                         
@@ -1121,11 +1126,12 @@ public class MainWindowViewModel : ViewModelBase
                         Avalonia.Threading.Dispatcher.UIThread.Post(() => {
                             targetPlot.TelemetryPath = path; targetPlot.Schema = schema;
                             
-                            // Always populate the targetPlot's signals
+                            // Always populate the targetPlot's signals (excluding timestamp column)
                             targetPlot.AvailableSignals.Clear();
                             targetPlot.RegularSignals.Clear();
                             foreach (var field in fields) {
                                 if (field.Equals("timestamp", StringComparison.OrdinalIgnoreCase)) continue;
+                                if (!string.IsNullOrEmpty(timestampCol) && field.Equals(timestampCol, StringComparison.OrdinalIgnoreCase)) continue;
                                 bool shouldSelect = targetPlot.RegularSignals.Count < 3;
                                 var signalItem = new SignalItemViewModel { Name = field, IsSelected = shouldSelect };
                                 targetPlot.AvailableSignals.Add(signalItem); targetPlot.RegularSignals.Add(signalItem);

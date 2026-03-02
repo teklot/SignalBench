@@ -23,9 +23,20 @@ public class InMemoryDataStore : IDataStore
 
     public void InsertPackets(IEnumerable<DecodedPacket> packets)
     {
+        int index = 0;
         foreach (var packet in packets)
         {
-            _timestamps.Add(packet.Timestamp == default ? DateTime.Now : packet.Timestamp);
+            DateTime ts;
+            if (packet.Timestamp == default)
+            {
+                ts = DateTime.Now.AddSeconds(index * 0.001);
+            }
+            else
+            {
+                ts = packet.Timestamp;
+            }
+            _timestamps.Add(ts);
+            index++;
             
             foreach (var name in _signalNames)
             {
