@@ -4,12 +4,19 @@ namespace SignalBench.Core.Decoding;
 
 public class StreamingPacketScanner
 {
+    public class ScanResult
+    {
+        public List<DecodedPacket> Packets { get; set; } = [];
+        public bool MisalignmentDetected { get; set; }
+    }
+
     private readonly PacketSchema _schema;
     private readonly BinaryDecoder _decoder;
     private readonly int _packetSize;
     private readonly List<byte> _internalBuffer = new();
     private readonly uint? _syncWord;
     private readonly int _syncWordSize = 2;
+    private int _consecutiveBadSyncs;
 
     public StreamingPacketScanner(PacketSchema schema)
     {
@@ -42,10 +49,10 @@ public class StreamingPacketScanner
         _ => 0
     };
 
-    public IEnumerable<DecodedPacket> PushData(byte[] data)
+    public ScanResult PushData(byte[] data)
     {
         _internalBuffer.AddRange(data);
-        var packets = new List<DecodedPacket>();
+        var result = new ScanResult();
 
         while (true)
         {
@@ -66,7 +73,17 @@ public class StreamingPacketScanner
                 // Discard everything before the sync word
                 if (syncIndex > 0)
                 {
+                    result.MisalignmentDetected = true;
+                    _consecutiveBadSyncs++;
+                    if (_consecutiveBadSyncs > 10)
+                    {
+                        ErrorReceived?.Invoke($"Multiple misalignment detected ({_consecutiveBadSyncs} times), forcing resync");
+                    }
                     _internalBuffer.RemoveRange(0, syncIndex);
+                }
+                else
+                {
+                    _consecutiveBadSyncs = 0;
                 }
 
                 // The BinaryDecoder.Decode expects the data stream to START at the first field.
@@ -85,7 +102,7 @@ public class StreamingPacketScanner
                 }
 
                 byte[] packetData = _internalBuffer.Skip(dataStartIndex).Take(_packetSize).ToArray();
-                packets.Add(_decoder.Decode(packetData, _schema));
+                result.Packets.Add(_decoder.Decode(packetData, _schema));
                 
                 // Remove the processed packet (including the sync word)
                 _internalBuffer.RemoveRange(0, requiredSize);
@@ -95,13 +112,15 @@ public class StreamingPacketScanner
                 if (_internalBuffer.Count < _packetSize) break;
 
                 byte[] packetData = _internalBuffer.Take(_packetSize).ToArray();
-                packets.Add(_decoder.Decode(packetData, _schema));
+                result.Packets.Add(_decoder.Decode(packetData, _schema));
                 _internalBuffer.RemoveRange(0, _packetSize);
             }
         }
 
-        return packets;
+        return result;
     }
+
+    public event Action<string>? ErrorReceived;
 
     private int FindSyncWord()
     {

@@ -17,12 +17,17 @@ public class SerialTelemetrySource : IDisposable
     private Thread? _readThread;
     private readonly StreamingPacketScanner _scanner;
     private FileStream? _rawLogStream;
+    private long _frameErrorCount;
+    private long _misalignmentCount;
 
     public event Action<DecodedPacket>? PacketReceived;
     public event Action<string>? ErrorReceived;
+    public event Action<long, long>? StatsUpdated;
 
     public bool IsRecording { get; private set; }
     public string? RecordingFilePath { get; private set; }
+    public long FrameErrorCount => _frameErrorCount;
+    public long MisalignmentCount => _misalignmentCount;
 
     public SerialTelemetrySource(string portName, int baudRate, PacketSchema schema, Parity parity = Parity.None, int dataBits = 8, StopBits stopBits = StopBits.One)
     {
@@ -45,6 +50,7 @@ public class SerialTelemetrySource : IDisposable
             _serialPort.Handshake = Handshake.None;
             _serialPort.ReadTimeout = 500;
             _serialPort.WriteTimeout = 500;
+            _serialPort.ErrorReceived += SerialPort_ErrorReceived;
             _serialPort.Open();
 
             _isRunning = true;
@@ -57,6 +63,38 @@ public class SerialTelemetrySource : IDisposable
             _serialPort = null;
             ErrorReceived?.Invoke($"Failed to open port {_portName}: {ex.Message}");
             throw;
+        }
+    }
+
+    private void SerialPort_ErrorReceived(object sender, SerialErrorReceivedEventArgs e)
+    {
+        // Handle various serial port errors
+        switch (e.EventType)
+        {
+            case SerialError.Frame:
+                // Framing error - the hardware detected a framing error
+                _frameErrorCount++;
+                ErrorReceived?.Invoke($"Framing error detected (count: {_frameErrorCount})");
+                StatsUpdated?.Invoke(_frameErrorCount, _misalignmentCount);
+                break;
+            case SerialError.Overrun:
+                // A buffer overrun occurred
+                ErrorReceived?.Invoke($"Buffer overrun detected");
+                break;
+            case SerialError.RXOver:
+                // Receive buffer overflow
+                ErrorReceived?.Invoke($"Receive buffer overflow");
+                break;
+            case SerialError.TXFull:
+                // Transmit buffer full
+                ErrorReceived?.Invoke($"Transmit buffer full");
+                break;
+            case SerialError.RXParity:
+                // Parity error detected by hardware
+                _frameErrorCount++;
+                ErrorReceived?.Invoke($"Parity error detected (count: {_frameErrorCount})");
+                StatsUpdated?.Invoke(_frameErrorCount, _misalignmentCount);
+                break;
         }
     }
 
@@ -115,6 +153,7 @@ public class SerialTelemetrySource : IDisposable
                 int bytesRead = _serialPort.Read(buffer, 0, buffer.Length);
                 if (bytesRead > 0)
                 {
+                    // Write raw data to recording file if recording is active
                     if (IsRecording && _rawLogStream != null)
                     {
                         _rawLogStream.Write(buffer, 0, bytesRead);
@@ -124,8 +163,18 @@ public class SerialTelemetrySource : IDisposable
                     var data = new byte[bytesRead];
                     Buffer.BlockCopy(buffer, 0, data, 0, bytesRead);
                     
-                    var packets = _scanner.PushData(data);
-                    foreach (var packet in packets)
+                    var result = _scanner.PushData(data);
+                    
+                    // Track misalignment when sync word search finds multiple non-synced positions
+                    if (result.MisalignmentDetected)
+                    {
+                        _misalignmentCount++;
+                        ErrorReceived?.Invoke($"Packet misalignment detected, resyncing (count: {_misalignmentCount})");
+                        StatsUpdated?.Invoke(_frameErrorCount, _misalignmentCount);
+                    }
+                    
+                    // Dispatch decoded packets to handlers
+                    foreach (var packet in result.Packets)
                     {
                         packet.Timestamp = DateTime.Now;
                         PacketReceived?.Invoke(packet);

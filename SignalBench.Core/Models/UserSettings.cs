@@ -17,5 +17,5 @@ public class UserSettings
     public string Parity { get; set; } = "None";
     public int DataBits { get; set; } = 8;
     public string StopBits { get; set; } = "One";
-    public int RollingBufferSize { get; set; } = 1000;
+    public int RollingBufferSize { get; set; } = 500;
 }
