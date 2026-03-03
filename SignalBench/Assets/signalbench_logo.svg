@@ -1,19 +1,28 @@
 <svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <!-- Background Square with Rounded Corners -->
-    <rect width="1024" height="1024" rx="160" fill="#1E1E1E"/>
+    <!-- Transparent Background (No rect) -->
     
-    <!-- Subtle Grid Background (Bench) -->
-    <path d="M200 200H824M200 400H824M200 600H824M200 824H824M200 200V824M400 200V824M600 200V824M824 200V824" 
-          stroke="#333333" stroke-width="4"/>
+    <!-- Subtle Grid (Expanded) -->
+    <path d="M100 100H924M100 300H924M100 512H924M100 724H924M100 924H924" stroke="#E0E0E0" stroke-width="4" opacity="0.3"/>
+    <path d="M100 100V924M300 100V924M512 100V924M724 100V924M924 100V924" stroke="#E0E0E0" stroke-width="4" opacity="0.3"/>
 
-    <!-- Main Signal Wave (The "S" shape integrated with a pulse) -->
-    <path d="M200 600C300 600 350 200 450 200C550 200 600 824 700 824C800 824 850 600 950 600" 
-          stroke="#00A2FF" stroke-width="60" stroke-linecap="round" stroke-linejoin="round"/>
+    <!-- 'S' as a flowing Analog Signal (Brand Blue) - Scaled Larger -->
+    <path d="M500 200 
+             C200 200 150 450 350 512 
+             C550 574 500 824 200 824" 
+          stroke="#2b579a" stroke-width="140" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
     
-    <!-- Secondary "Bench" Accent -->
-    <path d="M150 850H874" stroke="#00FFC2" stroke-width="40" stroke-linecap="round"/>
+    <!-- 'B' as a blocky Digital/Pulse Signal (Vibrant Cyan) - Scaled Larger -->
+    <path d="M620 200 V824 
+             H800 C950 824 950 512 800 512 
+             H620 M800 512 C950 512 950 200 800 200 H620" 
+          stroke="#00A2FF" stroke-width="140" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+
+    <!-- Data Points -->
+    <circle cx="500" cy="200" r="25" fill="white"/>
+    <circle cx="200" cy="824" r="25" fill="white"/>
+    <circle cx="800" cy="200" r="25" fill="white"/>
+    <circle cx="800" cy="824" r="25" fill="white"/>
     
-    <!-- Data "Bits" or Pulse Accents -->
-    <circle cx="450" cy="200" r="40" fill="#FFFFFF"/>
-    <circle cx="700" cy="824" r="40" fill="#FFFFFF"/>
+    <!-- Red Playhead/Cursor (Scaled) -->
+    <rect x="506" y="80" width="16" height="864" rx="8" fill="#FF3B30" opacity="0.9"/>
 </svg>

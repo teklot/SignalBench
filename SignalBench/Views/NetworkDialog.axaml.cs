@@ -1,12 +1,13 @@
 using Avalonia.ReactiveUI;
 using ReactiveUI;
 using SignalBench.ViewModels;
+using System;
 
 namespace SignalBench.Views;
 
-public partial class SettingsWindow : ReactiveWindow<SettingsViewModel>
+public partial class NetworkDialog : ReactiveWindow<NetworkDialogViewModel>
 {
-    public SettingsWindow()
+    public NetworkDialog()
     {
         InitializeComponent();
         

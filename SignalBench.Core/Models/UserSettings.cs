@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+
 namespace SignalBench.Core.Models;
 
 public class UserSettings
@@ -10,12 +12,5 @@ public class UserSettings
     public List<string> RecentFiles { get; set; } = [];
     public int MaxRecentFiles { get; set; } = 10;
     public string StorageMode { get; set; } = "InMemory"; // InMemory, Sqlite
-
-    // Serial Settings
-    public string LastPort { get; set; } = string.Empty;
-    public int LastBaudRate { get; set; } = 115200;
-    public string Parity { get; set; } = "None";
-    public int DataBits { get; set; } = 8;
-    public string StopBits { get; set; } = "One";
     public int RollingBufferSize { get; set; } = 500;
 }

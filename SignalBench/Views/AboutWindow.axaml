@@ -10,7 +10,13 @@
         WindowStartupLocation="CenterOwner"
         CanResize="False">
     <Border Background="#fafafa" Padding="30">
-        <StackPanel Spacing="12" HorizontalAlignment="Center">
+        <StackPanel Spacing="12" HorizontalAlignment="Center" Width="400">
+            <!-- Icon -->
+            <Image Width="128" Height="128" Margin="0,0,0,10">
+                <Image.Source>
+                    <SvgImage Source="avares://SignalBench/Assets/signalbench_logo.svg"/>
+                </Image.Source>
+            </Image>
             
             <!-- App Name -->
             <TextBlock Text="SignalBench" FontSize="28" FontWeight="Bold" HorizontalAlignment="Center" Foreground="#323130"/>

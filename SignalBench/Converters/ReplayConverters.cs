@@ -88,3 +88,42 @@ public class DoubleToStringConverter : IValueConverter
         return 1.0;
     }
 }
+
+public class BoolToStreamBadgeIconConverter : IValueConverter
+{
+    public static readonly BoolToStreamBadgeIconConverter Instance = new();
+
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        if (value is bool isStreaming)
+        {
+            return isStreaming ? "Stop" : "Play";
+        }
+        return "Play";
+    }
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        throw new NotImplementedException();
+    }
+}
+
+public class StreamingStateToIndicatorColorConverter : IMultiValueConverter
+{
+    public static readonly StreamingStateToIndicatorColorConverter Instance = new();
+
+    public object? Convert(IList<object?> values, Type targetType, object? parameter, CultureInfo culture)
+    {
+        if (values.Count < 2) return Avalonia.Media.Brushes.Transparent;
+        
+        bool isStreaming = values[0] is bool s && s;
+        bool isPaused = values[1] is bool p && p;
+
+        if (isStreaming && !isPaused)
+            return new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#107c10")); // Green
+        if (isPaused)
+            return new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#d83b01")); // Red
+        
+        return Avalonia.Media.Brushes.Transparent;
+    }
+}

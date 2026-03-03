@@ -1,5 +1,6 @@
 using ReactiveUI;
 using SignalBench.Core.Data;
+using SignalBench.Core.Models;
 using SignalBench.Core.Models.Schema;
 using SignalBench.Core.Session;
 using System;
@@ -45,6 +46,9 @@ public class PlotViewModel : ViewModelBase
         get => _isRecording;
         set => this.RaiseAndSetIfChanged(ref _isRecording, value);
     }
+
+    public SerialSettings SerialSettings { get; } = new();
+    public NetworkSettings NetworkSettings { get; } = new();
 
     private int _totalRecords;
     public int TotalRecords

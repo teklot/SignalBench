@@ -4,12 +4,18 @@ using ReactiveUI;
 using SignalBench.Core;
 using SignalBench.Core.Data;
 using SignalBench.Core.Decoding;
+using SignalBench.Core.Models;
 using SignalBench.Core.Models.Schema;
 using SignalBench.Core.Services;
 using SignalBench.Core.Session;
+using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.IO;
+using System.Linq;
 using System.Reactive;
 using System.Timers;
+using System.Threading.Tasks;
 
 namespace SignalBench.ViewModels;
 
@@ -88,15 +94,16 @@ public class MainWindowViewModel : ViewModelBase
     {
         get
         {
-            var s = _settingsService.Current;
-            if (string.IsNullOrEmpty(s.LastPort)) return "Serial not configured";
+            if (SelectedPlot == null) return "No plot selected";
+            var s = SelectedPlot.SerialSettings;
+            if (string.IsNullOrEmpty(s.Port)) return "Serial not configured";
             string sb = s.StopBits switch {
                 "One" => "1",
                 "Two" => "2",
                 "OnePointFive" => "1.5",
                 _ => "0"
             };
-            return $"{s.LastPort}: {s.LastBaudRate} {s.DataBits}{s.Parity[0]}{sb}";
+            return $"{s.Port}: {s.BaudRate} {s.DataBits}{s.Parity[0]}{sb}";
         }
     }
 
@@ -198,6 +205,34 @@ public class MainWindowViewModel : ViewModelBase
             this.RaisePropertyChanged(nameof(IsPlaybackBarVisible));
             this.RaisePropertyChanged(nameof(CanAddPlot));
         }
+    }
+
+    private bool _isSerialStreaming = false;
+    public bool IsSerialStreaming
+    {
+        get => _isSerialStreaming;
+        set { this.RaiseAndSetIfChanged(ref _isSerialStreaming, value); }
+    }
+
+    private bool _isNetworkStreaming = false;
+    public bool IsNetworkStreaming
+    {
+        get => _isNetworkStreaming;
+        set { this.RaiseAndSetIfChanged(ref _isNetworkStreaming, value); }
+    }
+
+    private bool _isSerialPaused = false;
+    public bool IsSerialPaused
+    {
+        get => _isSerialPaused;
+        set { this.RaiseAndSetIfChanged(ref _isSerialPaused, value); }
+    }
+
+    private bool _isNetworkPaused = false;
+    public bool IsNetworkPaused
+    {
+        get => _isNetworkPaused;
+        set { this.RaiseAndSetIfChanged(ref _isNetworkPaused, value); }
     }
 
     public bool IsRecording
@@ -321,6 +356,7 @@ public class MainWindowViewModel : ViewModelBase
     private readonly IDataStore _dummyDataStore = new InMemoryDataStore();
 
     private SignalBench.Core.Ingestion.SerialTelemetrySource? _serialSource;
+    private SignalBench.Core.Ingestion.NetworkTelemetrySource? _networkSource;
     private readonly ILogger<MainWindowViewModel> _logger;
     private readonly ILoggerFactory _loggerFactory;
     private readonly ISettingsService _settingsService;
@@ -343,7 +379,7 @@ public class MainWindowViewModel : ViewModelBase
     public ReactiveCommand<string, Unit> RemoveDerivedSignalCommand { get; }
     public ReactiveCommand<Unit, Unit> AddEmptyPlotCommand { get; }
     public ReactiveCommand<PlotViewModel, Unit> RemovePlotCommand { get; }
-    public ReactiveCommand<Unit, Unit> OpenSettingsCommand { get; }
+    public ReactiveCommand<Unit, bool> OpenSettingsCommand { get; }
     public ReactiveCommand<Unit, Unit> OpenAboutCommand { get; }
     public ReactiveCommand<Unit, Unit> ExitCommand { get; }
     public ReactiveCommand<Unit, Unit> PlayPauseCommand { get; }
@@ -355,9 +391,11 @@ public class MainWindowViewModel : ViewModelBase
     public ReactiveCommand<Unit, Unit> FastBackwardCommand { get; }
     public ReactiveCommand<Unit, Unit> RestartCommand { get; }
     public ReactiveCommand<Unit, Unit> ToggleStreamingCommand { get; }
+    public ReactiveCommand<Unit, Unit> ToggleUdpStreamingCommand { get; }
     public ReactiveCommand<Unit, Unit> ToggleRecordingCommand { get; }
     public ReactiveCommand<Unit, Unit> RefreshPortsCommand { get; }
-    public ReactiveCommand<Unit, Unit> OpenSerialSettingsCommand { get; }
+    public ReactiveCommand<Unit, bool> OpenSerialSettingsCommand { get; }
+    public ReactiveCommand<Unit, bool> OpenNetworkSettingsCommand { get; }
 
     public MainWindowViewModel() : this(null!, null!, null!, null!) { }
 
@@ -399,7 +437,7 @@ public class MainWindowViewModel : ViewModelBase
         AddEmptyPlotCommand = ReactiveCommand.Create(() => AddPlot());
         RemovePlotCommand = ReactiveCommand.Create<PlotViewModel>(RemovePlot);
 
-        OpenSettingsCommand = ReactiveCommand.CreateFromTask(() => OpenSettingsAsync(0));
+        OpenSettingsCommand = ReactiveCommand.CreateFromTask(OpenSettingsAsync);
         OpenAboutCommand = ReactiveCommand.CreateFromTask(OpenAboutAsync);
         ExitCommand = ReactiveCommand.Create(() => {
             if (App.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop)
@@ -416,14 +454,12 @@ public class MainWindowViewModel : ViewModelBase
         FastBackwardCommand = ReactiveCommand.Create(FastBackward, canPlay);
         RestartCommand = ReactiveCommand.Create(Restart, canPlay);
 
-        var canToggleStreaming = this.WhenAnyValue(
-            x => x.IsStreaming, 
-            x => x.SelectedSchema, 
-            (isStreaming, schema) => isStreaming || (schema != null && schema.Type == SchemaType.Streaming));
-        ToggleStreamingCommand = ReactiveCommand.CreateFromTask(ToggleStreamingAsync, canToggleStreaming);
+        ToggleStreamingCommand = ReactiveCommand.CreateFromTask(ToggleStreamingAsync);
+        ToggleUdpStreamingCommand = ReactiveCommand.CreateFromTask(ToggleUdpStreamingAsync);
         ToggleRecordingCommand = ReactiveCommand.CreateFromTask(ToggleRecording, this.WhenAnyValue(x => x.IsStreaming));
         RefreshPortsCommand = ReactiveCommand.Create(RefreshPorts);
-        OpenSerialSettingsCommand = ReactiveCommand.CreateFromTask(() => OpenSettingsAsync(1));
+        OpenSerialSettingsCommand = ReactiveCommand.CreateFromTask(OpenSerialSettingsAsync);
+        OpenNetworkSettingsCommand = ReactiveCommand.CreateFromTask(OpenNetworkSettingsAsync);
 
         RefreshPorts();
     }
@@ -570,15 +606,81 @@ public class MainWindowViewModel : ViewModelBase
         if (topLevel != null) await box.ShowWindowDialogAsync(topLevel);
     }
 
-    private async Task OpenSettingsAsync(int tabIndex = 0)
+    private async Task<bool> OpenSerialSettingsAsync()
+    {
+        try {
+            if (SelectedPlot == null) return false;
+            var topLevel = (App.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)?.MainWindow;
+            if (topLevel == null) return false;
+            
+            var dialogVm = new SerialDialogViewModel(SelectedPlot.SerialSettings);
+            var dialog = new SignalBench.Views.SerialDialog { DataContext = dialogVm };
+            var saved = await dialog.ShowDialog<bool>(topLevel);
+            
+            if (saved)
+            {
+                dialogVm.ApplyTo(SelectedPlot.SerialSettings);
+                if (!string.IsNullOrEmpty(SelectedPlot.SerialSettings.SchemaPath))
+                {
+                    var yaml = await File.ReadAllTextAsync(SelectedPlot.SerialSettings.SchemaPath);
+                    var schema = new SchemaLoader().Load(yaml);
+                    if (schema != null)
+                    {
+                        schema.Type = SchemaType.Streaming;
+                        SelectedPlot.Schema = schema;
+                        this.RaisePropertyChanged(nameof(SelectedSchema));
+                        StatusText = $"Schema loaded: {schema.Name}";
+                    }
+                }
+            }
+            
+            this.RaisePropertyChanged(nameof(SerialInfo));
+            return saved;
+        } catch (Exception ex) { await ShowError("Serial Settings Error", "Failed to open serial settings.", ex); return false; }
+    }
+
+    private async Task<bool> OpenNetworkSettingsAsync()
+    {
+        try {
+            if (SelectedPlot == null) return false;
+            var topLevel = (App.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)?.MainWindow;
+            if (topLevel == null) return false;
+            
+            var dialogVm = new NetworkDialogViewModel(SelectedPlot.NetworkSettings);
+            var dialog = new SignalBench.Views.NetworkDialog { DataContext = dialogVm };
+            var saved = await dialog.ShowDialog<bool>(topLevel);
+            
+            if (saved)
+            {
+                dialogVm.ApplyTo(SelectedPlot.NetworkSettings);
+                if (!string.IsNullOrEmpty(SelectedPlot.NetworkSettings.SchemaPath))
+                {
+                    var yaml = await File.ReadAllTextAsync(SelectedPlot.NetworkSettings.SchemaPath);
+                    var schema = new SchemaLoader().Load(yaml);
+                    if (schema != null)
+                    {
+                        schema.Type = SchemaType.Streaming;
+                        SelectedPlot.Schema = schema;
+                        this.RaisePropertyChanged(nameof(SelectedSchema));
+                        StatusText = $"Schema loaded: {schema.Name}";
+                    }
+                }
+            }
+            
+            return saved;
+        } catch (Exception ex) { await ShowError("Network Settings Error", "Failed to open network settings.", ex); return false; }
+    }
+
+    private async Task<bool> OpenSettingsAsync()
     {
         try {
             var topLevel = (App.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)?.MainWindow;
-            if (topLevel == null) return;
-            var dialog = new SignalBench.Views.SettingsWindow { DataContext = new SettingsViewModel(_settingsService) { SelectedTabIndex = tabIndex } };
-            await dialog.ShowDialog(topLevel);
-            this.RaisePropertyChanged(nameof(SerialInfo));
-        } catch (Exception ex) { await ShowError("Settings Error", "Failed to open settings.", ex); }
+            if (topLevel == null) return false;
+            var settingsVm = new SettingsViewModel(_settingsService);
+            var dialog = new SignalBench.Views.SettingsWindow { DataContext = settingsVm };
+            var saved = await dialog.ShowDialog<bool>(topLevel);
+            return saved;
+        } catch (Exception ex) { await ShowError("Settings Error", "Failed to open settings.", ex); return false; }
     }
 
     private void SignalItem_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -786,14 +888,183 @@ public class MainWindowViewModel : ViewModelBase
 
     private void RefreshPorts() { }
 
-    private async Task ToggleStreamingAsync() { if (IsStreaming) await StopStreamingAsync(); else await StartStreamingAsync(); }
+    private async Task ToggleStreamingAsync()
+    {
+        if (IsSerialStreaming)
+        {
+            if (IsSerialPaused)
+            {
+                await ResumeSerialAsync();
+            }
+            else
+            {
+                await PauseSerialAsync();
+            }
+        }
+        else
+        {
+            await ConfigureAndStartSerialAsync();
+        }
+    }
+
+    private async Task ToggleUdpStreamingAsync()
+    {
+        if (IsNetworkStreaming)
+        {
+            if (IsNetworkPaused)
+            {
+                await ResumeNetworkAsync();
+            }
+            else
+            {
+                await PauseNetworkAsync();
+            }
+        }
+        else
+        {
+            await ConfigureAndStartNetworkAsync();
+        }
+    }
+
+    private async Task ConfigureAndStartSerialAsync()
+    {
+        if (!await OpenSerialSettingsAsync()) return;
+        await StartStreamingAsync();
+    }
+
+    private async Task ConfigureAndStartNetworkAsync()
+    {
+        if (!await OpenNetworkSettingsAsync()) return;
+        await StartNetworkStreamingAsync();
+    }
+
+    private async Task PauseSerialAsync()
+    {
+        if (_serialSource != null)
+        {
+            await Task.Run(() => _serialSource.Stop());
+            IsSerialStreaming = false;
+            IsSerialPaused = true;
+            StatusText = "Serial stream paused.";
+        }
+    }
+
+    private async Task ResumeSerialAsync()
+    {
+        if (_serialSource != null && IsSerialPaused)
+        {
+            await Task.Run(() => _serialSource.Start());
+            IsSerialStreaming = true;
+            IsSerialPaused = false;
+            StatusText = "Serial stream resumed.";
+        }
+    }
+
+    private async Task PauseNetworkAsync()
+    {
+        if (_networkSource != null)
+        {
+            await Task.Run(() => _networkSource.Stop());
+            IsNetworkStreaming = false;
+            IsNetworkPaused = true;
+            StatusText = "Network stream paused.";
+        }
+    }
+
+    private async Task ResumeNetworkAsync()
+    {
+        if (_networkSource != null && IsNetworkPaused)
+        {
+            await Task.Run(() => _networkSource.Start());
+            IsNetworkStreaming = true;
+            IsNetworkPaused = false;
+            StatusText = "Network stream resumed.";
+        }
+    }
+
+    private async Task StartNetworkStreamingAsync()
+    {
+        if (SelectedPlot == null) return;
+        var settings = SelectedPlot.NetworkSettings;
+        var schema = SelectedPlot.Schema;
+        
+        if (string.IsNullOrEmpty(settings.IpAddress) || settings.Port <= 0 || schema == null)
+        {
+            await ShowError("Configuration Error", "Please configure Network settings."); return;
+        }
+
+        try
+        {
+            bool anyStreaming = Plots.Any(p => p.IsStreaming);
+            if (anyStreaming || _networkSource != null)
+            {
+                await StopStreamingAsync();
+            }
+
+            var protocol = settings.Protocol == "UDP" ? SignalBench.Core.Ingestion.NetworkProtocol.Udp : SignalBench.Core.Ingestion.NetworkProtocol.Tcp;
+            var plotName = protocol == SignalBench.Core.Ingestion.NetworkProtocol.Udp 
+                ? $"UDP:{settings.Port}" 
+                : $"TCP:{settings.IpAddress}:{settings.Port}";
+            
+            SelectedPlot.Name = plotName;
+            var targetPlot = SelectedPlot;
+            var targetStore = targetPlot.DataStore;
+            targetPlot.IsStreaming = true;
+            targetStore.InitializeSchema(schema);
+
+            _networkSource = new SignalBench.Core.Ingestion.NetworkTelemetrySource(settings.IpAddress, settings.Port, schema, protocol);
+            _networkSource.PacketReceived += HandleLivePacket;
+            _networkSource.ErrorReceived += msg =>
+            {
+                Avalonia.Threading.Dispatcher.UIThread.Post(() => { StatusText = $"Network Error: {msg}"; });
+            };
+
+            await Task.Run(() => _networkSource.Start());
+            IsNetworkStreaming = true;
+            this.RaisePropertyChanged(nameof(IsStreaming));
+            this.RaisePropertyChanged(nameof(IsPlaybackBarVisible));
+            this.RaisePropertyChanged(nameof(CanAddPlot));
+            StatusText = protocol == SignalBench.Core.Ingestion.NetworkProtocol.Udp
+                ? $"Listening on UDP port {settings.Port}..." 
+                : $"Connected to TCP {settings.IpAddress}:{settings.Port}...";
+
+            if (targetPlot.AvailableSignals.Count == 0)
+            {
+                foreach (var field in schema.Fields)
+                {
+                    if (field.Name.Equals("timestamp", StringComparison.OrdinalIgnoreCase)) continue;
+                    var item = new SignalItemViewModel { Name = field.Name, IsSelected = true };
+                    targetPlot.SelectedSignalNames.Add(field.Name);
+                    targetPlot.AvailableSignals.Add(item);
+                    targetPlot.RegularSignals.Add(item);
+                }
+            }
+
+            if (targetPlot == SelectedPlot)
+            {
+                AvailableSignals.Clear();
+                RegularSignals.Clear();
+                foreach (var s in targetPlot.AvailableSignals) AvailableSignals.Add(s);
+                foreach (var s in targetPlot.RegularSignals) RegularSignals.Add(s);
+
+                SyncSignalCheckboxes();
+                this.RaisePropertyChanged(nameof(HasData));
+            }
+        }
+        catch (Exception ex)
+        {
+            await ShowError("Connection Error", $"Failed to start network stream: {ex.Message}");
+        }
+    }
 
     private async Task StartStreamingAsync()
     {
-        var settings = _settingsService.Current;
-        var schema = SelectedSchema;
-        if (string.IsNullOrEmpty(settings.LastPort) || schema == null) {
-            await ShowError("Configuration Error", "Please select a COM port in Serial Settings."); return;
+        if (SelectedPlot == null) return;
+        var settings = SelectedPlot.SerialSettings;
+        var schema = SelectedPlot.Schema;
+
+        if (string.IsNullOrEmpty(settings.Port) || schema == null) {
+            await ShowError("Configuration Error", "Please configure Serial settings."); return;
         }
 
         try {
@@ -804,33 +1075,37 @@ public class MainWindowViewModel : ViewModelBase
                 await StopStreamingAsync();
             }
 
-            AddPlot($"{settings.LastPort}", null, schema);
+            SelectedPlot.Name = $"{settings.Port}";
             var targetPlot = SelectedPlot;
-            var targetStore = targetPlot!.DataStore;
+            var targetStore = targetPlot.DataStore;
             targetPlot.IsStreaming = true;
             targetStore.InitializeSchema(schema);
 
             var parity = Enum.Parse<System.IO.Ports.Parity>(settings.Parity);
             var stopBits = Enum.Parse<System.IO.Ports.StopBits>(settings.StopBits);
 
-            _serialSource = new SignalBench.Core.Ingestion.SerialTelemetrySource(settings.LastPort, settings.LastBaudRate, schema, parity, settings.DataBits, stopBits);
+            _serialSource = new SignalBench.Core.Ingestion.SerialTelemetrySource(settings.Port, settings.BaudRate, schema, parity, settings.DataBits, stopBits);
             _serialSource.PacketReceived += HandleLivePacket;
             _serialSource.ErrorReceived += msg => {
                 Avalonia.Threading.Dispatcher.UIThread.Post(() => { StatusText = $"Serial Error: {msg}"; IsStreaming = false; });
             };
             
             await Task.Run(() => _serialSource.Start());
+            IsSerialStreaming = true;
             this.RaisePropertyChanged(nameof(IsStreaming));
             this.RaisePropertyChanged(nameof(IsPlaybackBarVisible));
             this.RaisePropertyChanged(nameof(CanAddPlot));
-            StatusText = $"Streaming from {settings.LastPort}...";
+            StatusText = $"Streaming from {settings.Port}...";
             
-            foreach (var field in schema.Fields) {
-                if (field.Name.Equals("timestamp", StringComparison.OrdinalIgnoreCase)) continue;
-                var item = new SignalItemViewModel { Name = field.Name, IsSelected = true };
-                targetPlot.SelectedSignalNames.Add(field.Name);
-                targetPlot.AvailableSignals.Add(item);
-                targetPlot.RegularSignals.Add(item);
+            if (targetPlot.AvailableSignals.Count == 0)
+            {
+                foreach (var field in schema.Fields) {
+                    if (field.Name.Equals("timestamp", StringComparison.OrdinalIgnoreCase)) continue;
+                    var item = new SignalItemViewModel { Name = field.Name, IsSelected = true };
+                    targetPlot.SelectedSignalNames.Add(field.Name);
+                    targetPlot.AvailableSignals.Add(item);
+                    targetPlot.RegularSignals.Add(item);
+                }
             }
 
             if (targetPlot == SelectedPlot)
@@ -841,42 +1116,9 @@ public class MainWindowViewModel : ViewModelBase
                 foreach (var s in targetPlot.RegularSignals) RegularSignals.Add(s);
                 
                 SyncSignalCheckboxes();
+                this.RaisePropertyChanged(nameof(HasData));
             }
         } catch (Exception ex) { await ShowError("Connection Error", $"Failed to start streaming: {ex.Message}"); }
-    }
-
-    private async Task StopStreamingAsync()
-    {
-        IsStreaming = false;
-        foreach (var p in Plots) p.IsStreaming = false;
-        if (_serialSource != null) {
-            var source = _serialSource; _serialSource = null;
-            await Task.Run(() => source.Stop());
-        }
-        StatusText = "Streaming stopped.";
-    }
-
-    private async Task ToggleRecording()
-    {
-        if (_serialSource == null) return;
-        if (IsRecording) { 
-            _serialSource.StopRecording(); IsRecording = false; 
-            foreach(var p in Plots) p.IsRecording = false;
-            StatusText = "Recording stopped."; 
-        }
-        else {
-            var topLevel = (App.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)?.MainWindow;
-            if (topLevel == null) return;
-            var file = await topLevel.StorageProvider.SaveFilePickerAsync(new Avalonia.Platform.Storage.FilePickerSaveOptions {
-                Title = "Save Raw Stream", DefaultExtension = "bin",
-                FileTypeChoices = [new Avalonia.Platform.Storage.FilePickerFileType("Binary Files") { Patterns = ["*.bin", "*.dat"] }]
-            });
-            if (file != null) { 
-                _serialSource.StartRecording(file.Path.LocalPath); IsRecording = true; 
-                if (SelectedPlot != null) SelectedPlot.IsRecording = true;
-                StatusText = $"Recording to {file.Name}..."; 
-            }
-        }
     }
 
     private DateTime _lastLivePlotUpdate = DateTime.MinValue;
@@ -1359,5 +1601,83 @@ public class MainWindowViewModel : ViewModelBase
                 StatusText = "Export complete.";
             }
         } catch (Exception ex) { await ShowError("Export Error", "Failed to export CSV.", ex); }
+    }
+
+    private async Task StopStreamingAsync()
+    {
+        IsStreaming = false;
+        IsSerialStreaming = false;
+        IsSerialPaused = false;
+        IsNetworkStreaming = false;
+        IsNetworkPaused = false;
+        foreach (var p in Plots) p.IsStreaming = false;
+        if (_serialSource != null) {
+            var source = _serialSource; _serialSource = null;
+            await Task.Run(() => source.Stop());
+        }
+        if (_networkSource != null)
+        {
+            var source = _networkSource; _networkSource = null;
+            await Task.Run(() => source.Stop());
+        }
+        StatusText = "Streaming stopped.";
+    }
+
+    private async Task ToggleRecording()
+    {
+        if (_serialSource != null)
+        {
+            if (IsRecording)
+            {
+                _serialSource.StopRecording(); IsRecording = false;
+                foreach (var p in Plots) p.IsRecording = false;
+                StatusText = "Recording stopped.";
+            }
+            else
+            {
+                var topLevel = (App.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)?.MainWindow;
+                if (topLevel == null) return;
+                var file = await topLevel.StorageProvider.SaveFilePickerAsync(new Avalonia.Platform.Storage.FilePickerSaveOptions
+                {
+                    Title = "Save Raw Stream",
+                    DefaultExtension = "bin",
+                    FileTypeChoices = [new Avalonia.Platform.Storage.FilePickerFileType("Binary Files") { Patterns = ["*.bin", "*.dat"] }]
+                });
+                if (file != null)
+                {
+                    _serialSource.StartRecording(file.Path.LocalPath); IsRecording = true;
+                    foreach (var p in Plots) p.IsRecording = true;
+                    StatusText = $"Recording to {file.Name}...";
+                }
+            }
+            return;
+        }
+
+        if (_networkSource != null)
+        {
+            if (IsRecording)
+            {
+                _networkSource.StopRecording(); IsRecording = false;
+                foreach (var p in Plots) p.IsRecording = false;
+                StatusText = "Recording stopped.";
+            }
+            else
+            {
+                var topLevel = (App.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)?.MainWindow;
+                if (topLevel == null) return;
+                var file = await topLevel.StorageProvider.SaveFilePickerAsync(new Avalonia.Platform.Storage.FilePickerSaveOptions
+                {
+                    Title = "Save Raw Stream",
+                    DefaultExtension = "bin",
+                    FileTypeChoices = [new Avalonia.Platform.Storage.FilePickerFileType("Binary Files") { Patterns = ["*.bin", "*.dat"] }]
+                });
+                if (file != null)
+                {
+                    _networkSource.StartRecording(file.Path.LocalPath); IsRecording = true;
+                    foreach (var p in Plots) p.IsRecording = true;
+                    StatusText = $"Recording to {file.Name}...";
+                }
+            }
+        }
     }
 }

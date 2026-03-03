@@ -1,0 +1,67 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:SignalBench.ViewModels"
+        xmlns:mi="using:Material.Icons.Avalonia"
+        x:Class="SignalBench.Views.NetworkDialog"
+        x:DataType="vm:NetworkDialogViewModel"
+        Title="Network Configuration"
+        WindowStartupLocation="CenterOwner"
+        Width="450" Height="400"
+        CanResize="False">
+
+    <Grid RowDefinitions="*, Auto">
+        <ScrollViewer Grid.Row="0">
+            <Border Padding="20">
+                <StackPanel Spacing="20">
+                    <Grid ColumnDefinitions="*, Auto">
+                        <TextBlock Grid.Column="0" Text="NETWORK STREAM CONFIGURATION" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" VerticalAlignment="Center"/>
+                        <Button Grid.Column="1" Background="Transparent" BorderThickness="0" Padding="4" ToolTip.Tip="For TCP: Enter the server IP and port to connect to.&#x0a;For UDP: Enter the local port to listen on. IP can be used to bind to a specific interface (optional).">
+                            <mi:MaterialIcon Kind="InformationOutline" Width="16" Height="16" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                        </Button>
+                    </Grid>
+                    
+                    <Grid ColumnDefinitions="150, *" RowDefinitions="Auto, Auto, Auto, Auto">
+                        <!-- Protocol -->
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Protocol:" FontSize="13" VerticalAlignment="Center"/>
+                        <ComboBox Grid.Row="0" Grid.Column="1" Width="180" HorizontalAlignment="Left"
+                                  ItemsSource="{Binding NetworkProtocols}" 
+                                  SelectedItem="{Binding NetworkProtocol}"/>
+
+                        <!-- IP Address -->
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="IP Address:" FontSize="13" VerticalAlignment="Center" Margin="0,15,0,0"/>
+                        <TextBox Grid.Row="1" Grid.Column="1" Width="180" HorizontalAlignment="Left" Margin="0,15,0,0"
+                                 Text="{Binding NetworkIp}" Watermark="127.0.0.1"/>
+
+                        <!-- Port -->
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Port:" FontSize="13" VerticalAlignment="Center" Margin="0,15,0,0"/>
+                        <NumericUpDown Grid.Row="2" Grid.Column="1" Width="180" HorizontalAlignment="Left" Margin="0,15,0,0"
+                                       Value="{Binding NetworkPort}" Minimum="1024" Maximum="65535" Increment="1" FormatString="0"/>
+
+                        <!-- Schema File -->
+                        <TextBlock Grid.Row="3" Grid.Column="0" Text="Schema File:" FontSize="13" VerticalAlignment="Center" Margin="0,15,0,0"/>
+                        <Grid Grid.Row="3" Grid.Column="1" ColumnDefinitions="*, Auto" Margin="0,15,0,0">
+                            <TextBox Grid.Column="0"
+                                     Text="{Binding LoadedSchemaPath}"
+                                     IsReadOnly="True"
+                                     Watermark="Please select a schema..."/>
+                            <Button Grid.Column="1"
+                                    Command="{Binding OpenSchemaCommand}"
+                                    Margin="5,0,0,0"
+                                    ToolTip.Tip="Open Schema File">
+                                <mi:MaterialIcon Kind="FolderOpenOutline" Width="16" Height="16"/>
+                            </Button>
+                        </Grid>
+                    </Grid>
+                </StackPanel>
+            </Border>
+        </ScrollViewer>
+
+        <!-- Footer -->
+        <Border Grid.Row="1" Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}" Padding="20,15" BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" BorderThickness="0,1,0,0">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="12">
+                <Button Content="Cancel" Command="{Binding CancelCommand}" Width="100" HorizontalContentAlignment="Center"/>
+                <Button Content="Save" Command="{Binding SaveCommand}" Width="100" HorizontalContentAlignment="Center" Classes="accent"/>
+            </StackPanel>
+        </Border>
+    </Grid>
+</Window>

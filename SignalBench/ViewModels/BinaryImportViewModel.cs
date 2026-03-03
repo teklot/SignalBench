@@ -1,7 +1,6 @@
 using Microsoft.Extensions.Logging;
 using ReactiveUI;
-using SignalBench.Core.Data;
-using SignalBench.Core.Decoding;
+using SignalBench.Core.Ingestion;
 using SignalBench.Core.Models.Schema;
 using SignalBench.Core.Services;
 using System.Collections.ObjectModel;
@@ -40,8 +39,6 @@ public class BinaryImportViewModel : ViewModelBase
     public ReactiveCommand<Unit, PacketSchema?> ImportCommand { get; }
     public ReactiveCommand<Unit, PacketSchema?> CancelCommand { get; }
     public ReactiveCommand<Unit, Unit> BrowseSchemaCommand { get; }
-    public ReactiveCommand<Unit, Unit> CreateSchemaCommand { get; }
-    public ReactiveCommand<Unit, Unit> EditSchemaCommand { get; }
 
     public BinaryImportViewModel(string telemetryPath, ILogger<BinaryImportViewModel> logger)
     {
@@ -51,9 +48,6 @@ public class BinaryImportViewModel : ViewModelBase
         ImportCommand = ReactiveCommand.Create(() => SelectedSchema);
         CancelCommand = ReactiveCommand.Create(() => (PacketSchema?)null);
         BrowseSchemaCommand = ReactiveCommand.CreateFromTask(BrowseSchemaAsync);
-        CreateSchemaCommand = ReactiveCommand.CreateFromTask(CreateSchemaAsync);
-        var canEditSchema = this.WhenAnyValue(x => x.SelectedSchema, (PacketSchema? s) => s != null);
-        EditSchemaCommand = ReactiveCommand.CreateFromTask(EditSchemaAsync, canEditSchema);
     }
 
     private async Task ShowError(string title, string message, Exception? ex = null)
@@ -73,63 +67,6 @@ public class BinaryImportViewModel : ViewModelBase
         if (topLevel != null)
         {
             await box.ShowWindowDialogAsync(topLevel);
-        }
-    }
-
-    private async Task EditSchemaAsync()
-    {
-        try
-        {
-            if (SelectedSchema == null) return;
-
-            var topLevel = (App.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)?.MainWindow;
-            if (topLevel == null) return;
-
-            var dialog = new SignalBench.Views.SchemaEditor
-            {
-                DataContext = new SchemaEditorViewModel(SelectedSchema)
-            };
-
-            var result = await dialog.ShowDialog<SchemaEditorResult?>(topLevel);
-            if (result != null)
-            {
-                SelectedSchema = result.Schema;
-                if (!string.IsNullOrEmpty(result.FilePath))
-                {
-                    SchemaFilePath = result.FilePath;
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            await ShowError("Editor Error", "Failed to open schema editor.", ex);
-        }
-    }
-
-    private async Task CreateSchemaAsync()
-    {
-        try
-        {
-            var topLevel = (App.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)?.MainWindow;
-            if (topLevel == null) return;
-
-            var dialog = new SignalBench.Views.SchemaEditor
-            {
-                DataContext = new SchemaEditorViewModel()
-            };
-
-            var result = await dialog.ShowDialog<SchemaEditorResult?>(topLevel);
-            if (result != null)
-            {
-                SelectedSchema = result.Schema;
-                SchemaFilePath = string.IsNullOrEmpty(result.FilePath)
-                    ? "New Schema (unsaved)"
-                    : result.FilePath;
-            }
-        }
-        catch (Exception ex)
-        {
-            await ShowError("Editor Error", "Failed to open schema editor.", ex);
         }
     }
 
@@ -179,7 +116,7 @@ public class BinaryImportViewModel : ViewModelBase
 
         try
         {
-            var source = new SignalBench.Core.Ingestion.BinaryTelemetrySource(_telemetryPath, SelectedSchema);
+            var source = new BinaryTelemetrySource(_telemetryPath, SelectedSchema);
             var packets = source.ReadPackets().Take(50).ToList();
 
             if (packets.Count > 0)

@@ -9,129 +9,71 @@
         x:DataType="vm:SettingsViewModel"
         Title="Settings"
         WindowStartupLocation="CenterOwner"
-        Width="550" Height="550"
+        Width="550" Height="520"
         CanResize="False">
 
     <Grid RowDefinitions="*, Auto">
-        <TabControl Grid.Row="0" Margin="5" SelectedIndex="{Binding SelectedTabIndex}">
-            <!-- General Tab -->
-            <TabItem Header="General">
-                <ScrollViewer>
-                    <Border Padding="20">
-                        <StackPanel Spacing="25">
-                            <!-- Paths Section -->
-                            <StackPanel Spacing="15">
-                                <TextBlock Text="PATHS" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
-                                
-                                <StackPanel Spacing="8">
-                                    <TextBlock Text="Default Telemetry Folder:" FontSize="13"/>
-                                    <Grid ColumnDefinitions="*, Auto">
-                                        <TextBox Text="{Binding DefaultTelemetryPath}" Watermark="Not set..."/>
-                                        <Button Grid.Column="1" Command="{Binding BrowsePathCommand}" CommandParameter="Telemetry" Margin="5,0,0,0">
-                                            <mi:MaterialIcon Kind="FileChartOutline" Width="16" Height="16"/>
-                                        </Button>
-                                    </Grid>
-                                </StackPanel>
-
-                                <StackPanel Spacing="8">
-                                    <TextBlock Text="Default Schema Folder:" FontSize="13"/>
-                                    <Grid ColumnDefinitions="*, Auto">
-                                        <TextBox Text="{Binding DefaultSchemaPath}" Watermark="Not set..."/>
-                                        <Button Grid.Column="1" Command="{Binding BrowsePathCommand}" CommandParameter="Schema" Margin="5,0,0,0">
-                                            <mi:MaterialIcon Kind="FileChartOutline" Width="16" Height="16"/>
-                                        </Button>
-                                    </Grid>
-                                </StackPanel>
-                            </StackPanel>
-
-                            <Separator Height="1" Margin="0,5"/>
-
-                            <!-- Application Section -->
-                            <StackPanel Spacing="15">
-                                <TextBlock Text="APPLICATION" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
-                                
-                                <Grid ColumnDefinitions="*, Auto" RowDefinitions="Auto, Auto, Auto">
-                                    <StackPanel Grid.Row="0" Spacing="2" VerticalAlignment="Center">
-                                        <TextBlock Text="Theme:" FontSize="13"/>
-                                        <TextBlock Text="Restart may be required for full effect" FontSize="11" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
-                                    </StackPanel>
-                                    <ComboBox Grid.Row="0" Grid.Column="1" Width="150" 
-                                              ItemsSource="{Binding Themes}" 
-                                              SelectedItem="{Binding Theme}"/>
-
-                                    <StackPanel Grid.Row="1" Spacing="2" Margin="0,20,0,0" VerticalAlignment="Center">
-                                        <TextBlock Text="Data Storage:" FontSize="13"/>
-                                        <TextBlock Text="Use SQLite for very large files" FontSize="11" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
-                                    </StackPanel>
-                                    <ComboBox Grid.Row="1" Grid.Column="1" Width="150" Margin="0,20,0,0"
-                                              ItemsSource="{Binding StorageModes}" 
-                                              SelectedItem="{Binding StorageMode}"/>
-
-                                    <StackPanel Grid.Row="2" Spacing="2" Margin="0,20,0,0" VerticalAlignment="Center">
-                                        <TextBlock Text="Auto-load Last Session:" FontSize="13"/>
-                                        <TextBlock Text="Open last used session on startup" FontSize="11" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
-                                    </StackPanel>
-                                    <ToggleSwitch Grid.Row="2" Grid.Column="1" IsChecked="{Binding AutoLoadLastSession}" Margin="0,20,0,0" OnContent="" OffContent=""/>
-                                </Grid>
-                            </StackPanel>
-                        </StackPanel>
-                    </Border>
-                </ScrollViewer>
-            </TabItem>
-
-            <!-- Serial Port Tab -->
-            <TabItem Header="Serial Port">
-                <ScrollViewer>
-                    <Border Padding="20">
-                        <StackPanel Spacing="20">
-                            <TextBlock Text="SERIAL PORT CONFIGURATION" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
-                            
-                            <Grid ColumnDefinitions="200, *" RowDefinitions="Auto, Auto, Auto, Auto, Auto, Auto">
-                                <!-- Port -->
-                                <TextBlock Grid.Row="0" Grid.Column="0" Text="COM Port:" FontSize="13" VerticalAlignment="Center"/>
-                                <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" Spacing="5">
-                                    <ComboBox Width="180" ItemsSource="{Binding AvailablePorts}" SelectedItem="{Binding SelectedPort}"/>
-                                    <Button Command="{Binding RefreshPortsCommand}" ToolTip.Tip="Refresh Ports" VerticalAlignment="Center">
-                                        <mi:MaterialIcon Kind="Refresh" Width="16" Height="16"/>
-                                    </Button>
-                                </StackPanel>
-
-                                <!-- Baud Rate -->
-                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Baud Rate:" FontSize="13" VerticalAlignment="Center" Margin="0,15,0,0"/>
-                                <ComboBox Grid.Row="1" Grid.Column="1" Width="180" Margin="0,15,0,0"
-                                          ItemsSource="{Binding AvailableBaudRates}" 
-                                          SelectedItem="{Binding SelectedBaudRate}"/>
-
-                                <!-- Parity -->
-                                <TextBlock Grid.Row="2" Grid.Column="0" Text="Parity:" FontSize="13" VerticalAlignment="Center" Margin="0,15,0,0"/>
-                                <ComboBox Grid.Row="2" Grid.Column="1" Width="180" Margin="0,15,0,0"
-                                          ItemsSource="{Binding ParityOptions}" 
-                                          SelectedItem="{Binding Parity}"/>
-
-                                <!-- Data Bits -->
-                                <TextBlock Grid.Row="3" Grid.Column="0" Text="Data Bits:" FontSize="13" VerticalAlignment="Center" Margin="0,15,0,0"/>
-                                <NumericUpDown Grid.Row="3" Grid.Column="1" Width="180" Margin="0,15,0,0"
-                                               Value="{Binding DataBits}" Minimum="5" Maximum="8" Increment="1" FormatString="0" HorizontalAlignment="Left"/>
-
-                                <!-- Stop Bits -->
-                                <TextBlock Grid.Row="4" Grid.Column="0" Text="Stop Bits:" FontSize="13" VerticalAlignment="Center" Margin="0,15,0,0"/>
-                                <ComboBox Grid.Row="4" Grid.Column="1" Width="180" Margin="0,15,0,0"
-                                          ItemsSource="{Binding StopBitsOptions}" 
-                                          SelectedItem="{Binding StopBits}"/>
-
-                                <!-- Rolling Window -->
-                                <StackPanel Grid.Row="5" Grid.Column="0" VerticalAlignment="Center" Margin="0,15,0,0">
-                                    <TextBlock Text="Rolling Window Size:" FontSize="13"/>
-                                    <TextBlock Text="Max points on live plot" FontSize="11" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
-                                </StackPanel>
-                                <NumericUpDown Grid.Row="5" Grid.Column="1" Width="180" Margin="0,15,0,0"
-                                               Value="{Binding RollingBufferSize}" Minimum="100" Maximum="1000000" Increment="100" HorizontalAlignment="Left"/>
+        <ScrollViewer Grid.Row="0">
+            <Border Padding="20">
+                <StackPanel Spacing="25">
+                    <!-- General Tab Content -->
+                    <StackPanel Spacing="15">
+                        <TextBlock Text="PATHS" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                        
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="Default Telemetry Folder:" FontSize="13"/>
+                            <Grid ColumnDefinitions="*, Auto">
+                                <TextBox Text="{Binding DefaultTelemetryPath}" Watermark="Not set..."/>
+                                <Button Grid.Column="1" Command="{Binding BrowsePathCommand}" CommandParameter="Telemetry" Margin="5,0,0,0">
+                                    <mi:MaterialIcon Kind="FolderOpenOutline" Width="16" Height="16"/>
+                                </Button>
                             </Grid>
                         </StackPanel>
-                    </Border>
-                </ScrollViewer>
-            </TabItem>
-        </TabControl>
+
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="Default Schema Folder:" FontSize="13"/>
+                            <Grid ColumnDefinitions="*, Auto">
+                                <TextBox Text="{Binding DefaultSchemaPath}" Watermark="Not set..."/>
+                                <Button Grid.Column="1" Command="{Binding BrowsePathCommand}" CommandParameter="Schema" Margin="5,0,0,0">
+                                    <mi:MaterialIcon Kind="FolderOpenOutline" Width="16" Height="16"/>
+                                </Button>
+                            </Grid>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <Separator Height="1" Margin="0,5"/>
+
+                    <!-- Application Section -->
+                    <StackPanel Spacing="15">
+                        <TextBlock Text="APPLICATION" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                        
+                        <Grid ColumnDefinitions="*, Auto" RowDefinitions="Auto, Auto, Auto">
+                            <StackPanel Grid.Row="0" Spacing="2" VerticalAlignment="Center">
+                                <TextBlock Text="Theme:" FontSize="13"/>
+                                <TextBlock Text="Restart may be required for full effect" FontSize="11" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                            </StackPanel>
+                            <ComboBox Grid.Row="0" Grid.Column="1" Width="150" 
+                                      ItemsSource="{Binding Themes}" 
+                                      SelectedItem="{Binding Theme}"/>
+
+                            <StackPanel Grid.Row="1" Spacing="2" Margin="0,20,0,0" VerticalAlignment="Center">
+                                <TextBlock Text="Data Storage:" FontSize="13"/>
+                                <TextBlock Text="Use SQLite for very large files" FontSize="11" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                            </StackPanel>
+                            <ComboBox Grid.Row="1" Grid.Column="1" Width="150" Margin="0,20,0,0"
+                                      ItemsSource="{Binding StorageModes}" 
+                                      SelectedItem="{Binding StorageMode}"/>
+
+                            <StackPanel Grid.Row="2" Spacing="2" Margin="0,20,0,0" VerticalAlignment="Center">
+                                <TextBlock Text="Auto-load Last Session:" FontSize="13"/>
+                                <TextBlock Text="Open last used session on startup" FontSize="11" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                            </StackPanel>
+                            <ToggleSwitch Grid.Row="2" Grid.Column="1" IsChecked="{Binding AutoLoadLastSession}" Margin="0,20,0,0" OnContent="" OffContent=""/>
+                        </Grid>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </ScrollViewer>
 
         <!-- Footer -->
         <Border Grid.Row="1" Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}" Padding="20,15" BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" BorderThickness="0,1,0,0">
