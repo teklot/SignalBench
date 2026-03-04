@@ -31,6 +31,13 @@ public class NetworkDialogViewModel : ViewModelBase
         set => this.RaiseAndSetIfChanged(ref _networkPort, value);
     }
 
+    private int _rollingWindowSeconds;
+    public int RollingWindowSeconds
+    {
+        get => _rollingWindowSeconds;
+        set => this.RaiseAndSetIfChanged(ref _rollingWindowSeconds, value);
+    }
+
     private string? _loadedSchemaPath;
     public string? LoadedSchemaPath
     {
@@ -49,6 +56,7 @@ public class NetworkDialogViewModel : ViewModelBase
         _networkProtocol = settings.Protocol;
         _networkIp = settings.IpAddress;
         _networkPort = settings.Port;
+        _rollingWindowSeconds = settings.RollingWindowSeconds;
         _loadedSchemaPath = settings.SchemaPath;
 
         SaveCommand = ReactiveCommand.Create(Save);
@@ -94,6 +102,7 @@ public class NetworkDialogViewModel : ViewModelBase
         settings.Protocol = NetworkProtocol;
         settings.IpAddress = NetworkIp;
         settings.Port = NetworkPort;
+        settings.RollingWindowSeconds = RollingWindowSeconds;
         settings.SchemaPath = LoadedSchemaPath;
     }
 

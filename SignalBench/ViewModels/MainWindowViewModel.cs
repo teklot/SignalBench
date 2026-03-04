@@ -34,7 +34,10 @@ public class MainWindowViewModel : ViewModelBase
     public string StatusText
     {
         get => _statusText;
-        set => this.RaiseAndSetIfChanged(ref _statusText, value);
+        set {
+            this.RaiseAndSetIfChanged(ref _statusText, value);
+            if (SelectedPlot != null) SelectedPlot.StatusMessage = value;
+        }
     }
 
     private bool _isLoading;
@@ -167,6 +170,13 @@ public class MainWindowViewModel : ViewModelBase
                 _playbackSignalData = value.PlaybackSignalData;
                 _totalRecords = value.TotalRecords;
                 _playbackProgressValue = _totalRecords > 1 ? (double)_currentPlaybackIndex / (_totalRecords - 1) * 100 : 0;
+                
+                // Sync Status
+                _statusText = value.StatusMessage;
+                this.RaisePropertyChanged(nameof(StatusText));
+                
+                value.RaisePropertyChanged(nameof(PlotViewModel.ConnectionInfo));
+                value.RaisePropertyChanged(nameof(PlotViewModel.ConnectionIcon));
             }
 
             // Sync signal collections
@@ -186,11 +196,21 @@ public class MainWindowViewModel : ViewModelBase
             this.RaisePropertyChanged(nameof(IsPlaybackBarVisible));
             this.RaisePropertyChanged(nameof(IsStreaming));
             this.RaisePropertyChanged(nameof(IsRecording));
+            this.RaisePropertyChanged(nameof(IsSerialStreaming));
+            this.RaisePropertyChanged(nameof(IsNetworkStreaming));
+            this.RaisePropertyChanged(nameof(IsSerialPaused));
+            this.RaisePropertyChanged(nameof(IsNetworkPaused));
             this.RaisePropertyChanged(nameof(TotalRecords));
             this.RaisePropertyChanged(nameof(PlaybackProgress));
             this.RaisePropertyChanged(nameof(CurrentPlaybackTime));
             this.RaisePropertyChanged(nameof(FormattedPlaybackTime));
             
+            if (value != null)
+            {
+                value.RaisePropertyChanged(nameof(PlotViewModel.ConnectionInfo));
+                value.RaisePropertyChanged(nameof(PlotViewModel.ConnectionIcon));
+            }
+
             SyncSignalCheckboxes();
             if (value != null) UpdatePlot(value);
         }
@@ -204,36 +224,15 @@ public class MainWindowViewModel : ViewModelBase
             this.RaisePropertyChanged(nameof(IsStreaming));
             this.RaisePropertyChanged(nameof(IsPlaybackBarVisible));
             this.RaisePropertyChanged(nameof(CanAddPlot));
+            this.RaisePropertyChanged(nameof(IsSerialStreaming));
+            this.RaisePropertyChanged(nameof(IsNetworkStreaming));
         }
     }
 
-    private bool _isSerialStreaming = false;
-    public bool IsSerialStreaming
-    {
-        get => _isSerialStreaming;
-        set { this.RaiseAndSetIfChanged(ref _isSerialStreaming, value); }
-    }
-
-    private bool _isNetworkStreaming = false;
-    public bool IsNetworkStreaming
-    {
-        get => _isNetworkStreaming;
-        set { this.RaiseAndSetIfChanged(ref _isNetworkStreaming, value); }
-    }
-
-    private bool _isSerialPaused = false;
-    public bool IsSerialPaused
-    {
-        get => _isSerialPaused;
-        set { this.RaiseAndSetIfChanged(ref _isSerialPaused, value); }
-    }
-
-    private bool _isNetworkPaused = false;
-    public bool IsNetworkPaused
-    {
-        get => _isNetworkPaused;
-        set { this.RaiseAndSetIfChanged(ref _isNetworkPaused, value); }
-    }
+    public bool IsSerialStreaming => SelectedPlot?.SourceType == PlotSourceType.Serial && SelectedPlot.IsStreaming;
+    public bool IsNetworkStreaming => SelectedPlot?.SourceType == PlotSourceType.Network && SelectedPlot.IsStreaming;
+    public bool IsSerialPaused => SelectedPlot?.SourceType == PlotSourceType.Serial && SelectedPlot.IsPaused;
+    public bool IsNetworkPaused => SelectedPlot?.SourceType == PlotSourceType.Network && SelectedPlot.IsPaused;
 
     public bool IsRecording
     {
@@ -943,9 +942,14 @@ public class MainWindowViewModel : ViewModelBase
         if (_serialSource != null)
         {
             await Task.Run(() => _serialSource.Stop());
-            IsSerialStreaming = false;
-            IsSerialPaused = true;
+            if (SelectedPlot != null)
+            {
+                SelectedPlot.IsStreaming = false;
+                SelectedPlot.IsPaused = true;
+            }
             StatusText = "Serial stream paused.";
+            this.RaisePropertyChanged(nameof(IsSerialStreaming));
+            this.RaisePropertyChanged(nameof(IsSerialPaused));
         }
     }
 
@@ -954,9 +958,14 @@ public class MainWindowViewModel : ViewModelBase
         if (_serialSource != null && IsSerialPaused)
         {
             await Task.Run(() => _serialSource.Start());
-            IsSerialStreaming = true;
-            IsSerialPaused = false;
+            if (SelectedPlot != null)
+            {
+                SelectedPlot.IsStreaming = true;
+                SelectedPlot.IsPaused = false;
+            }
             StatusText = "Serial stream resumed.";
+            this.RaisePropertyChanged(nameof(IsSerialStreaming));
+            this.RaisePropertyChanged(nameof(IsSerialPaused));
         }
     }
 
@@ -965,9 +974,14 @@ public class MainWindowViewModel : ViewModelBase
         if (_networkSource != null)
         {
             await Task.Run(() => _networkSource.Stop());
-            IsNetworkStreaming = false;
-            IsNetworkPaused = true;
+            if (SelectedPlot != null)
+            {
+                SelectedPlot.IsStreaming = false;
+                SelectedPlot.IsPaused = true;
+            }
             StatusText = "Network stream paused.";
+            this.RaisePropertyChanged(nameof(IsNetworkStreaming));
+            this.RaisePropertyChanged(nameof(IsNetworkPaused));
         }
     }
 
@@ -976,9 +990,14 @@ public class MainWindowViewModel : ViewModelBase
         if (_networkSource != null && IsNetworkPaused)
         {
             await Task.Run(() => _networkSource.Start());
-            IsNetworkStreaming = true;
-            IsNetworkPaused = false;
+            if (SelectedPlot != null)
+            {
+                SelectedPlot.IsStreaming = true;
+                SelectedPlot.IsPaused = false;
+            }
             StatusText = "Network stream resumed.";
+            this.RaisePropertyChanged(nameof(IsNetworkStreaming));
+            this.RaisePropertyChanged(nameof(IsNetworkPaused));
         }
     }
 
@@ -995,22 +1014,67 @@ public class MainWindowViewModel : ViewModelBase
 
         try
         {
-            bool anyStreaming = Plots.Any(p => p.IsStreaming);
-            if (anyStreaming || _networkSource != null)
+            if (_networkSource != null)
             {
-                await StopStreamingAsync();
+                var source = _networkSource; _networkSource = null;
+                await Task.Run(() => source.Stop());
             }
 
             var protocol = settings.Protocol == "UDP" ? SignalBench.Core.Ingestion.NetworkProtocol.Udp : SignalBench.Core.Ingestion.NetworkProtocol.Tcp;
-            var plotName = protocol == SignalBench.Core.Ingestion.NetworkProtocol.Udp 
+            var plotName = !string.IsNullOrEmpty(schema.Name) ? schema.Name : (protocol == SignalBench.Core.Ingestion.NetworkProtocol.Udp 
                 ? $"UDP:{settings.Port}" 
-                : $"TCP:{settings.IpAddress}:{settings.Port}";
+                : $"TCP:{settings.IpAddress}:{settings.Port}");
             
             SelectedPlot.Name = plotName;
             var targetPlot = SelectedPlot;
             var targetStore = targetPlot.DataStore;
+            
+            // Clear old state
+            targetStore.Clear();
+            targetPlot.TotalRecords = 0;
+            targetPlot.RequestPlotClear?.Invoke();
+            _totalRecords = 0;
+            targetPlot.TelemetryPath = null;
+            _playbackTimestamps = [];
+            _playbackSignalData = [];
+            this.RaisePropertyChanged(nameof(TotalRecords));
+
+            // CRITICAL: Clear old signals so new ones from schema can be added
+            targetPlot.AvailableSignals.Clear();
+            targetPlot.RegularSignals.Clear();
+            targetPlot.SelectedSignalNames.Clear();
+            targetPlot.DerivedSignals.Clear();
+
             targetPlot.IsStreaming = true;
+            targetPlot.SourceType = PlotSourceType.Network;
             targetStore.InitializeSchema(schema);
+
+            // Populate signals IMMEDIATELY before starting the source
+            foreach (var field in schema.Fields)
+            {
+                if (field.Name.Equals("timestamp", StringComparison.OrdinalIgnoreCase)) continue;
+                
+                // Only select the first 3 signals
+                bool shouldSelect = targetPlot.AvailableSignals.Count < 2;
+                var item = new SignalItemViewModel { Name = field.Name, IsSelected = shouldSelect };
+                if (shouldSelect) targetPlot.SelectedSignalNames.Add(field.Name);
+                
+                targetPlot.AvailableSignals.Add(item);
+                targetPlot.RegularSignals.Add(item);
+            }
+
+            if (targetPlot == SelectedPlot)
+            {
+                AvailableSignals.Clear();
+                RegularSignals.Clear();
+                DerivedSignals.Clear();
+                foreach (var s in targetPlot.AvailableSignals) AvailableSignals.Add(s);
+                foreach (var s in targetPlot.RegularSignals) RegularSignals.Add(s);
+                
+                SyncSignalCheckboxes();
+                this.RaisePropertyChanged(nameof(HasData));
+                this.RaisePropertyChanged(nameof(IsPlaybackBarVisible));
+            }
 
             _networkSource = new SignalBench.Core.Ingestion.NetworkTelemetrySource(settings.IpAddress, settings.Port, schema, protocol);
             _networkSource.PacketReceived += HandleLivePacket;
@@ -1020,36 +1084,23 @@ public class MainWindowViewModel : ViewModelBase
             };
 
             await Task.Run(() => _networkSource.Start());
-            IsNetworkStreaming = true;
+            if (SelectedPlot != null)
+            {
+                SelectedPlot.IsStreaming = true;
+                SelectedPlot.IsPaused = false;
+            }
             this.RaisePropertyChanged(nameof(IsStreaming));
-            this.RaisePropertyChanged(nameof(IsPlaybackBarVisible));
+            this.RaisePropertyChanged(nameof(IsNetworkStreaming));
+            this.RaisePropertyChanged(nameof(IsNetworkPaused));
             this.RaisePropertyChanged(nameof(CanAddPlot));
+            
+            // Force status bar info refresh
+            SelectedPlot.RaisePropertyChanged(nameof(PlotViewModel.ConnectionInfo));
+            SelectedPlot.RaisePropertyChanged(nameof(PlotViewModel.ConnectionIcon));
+
             StatusText = protocol == SignalBench.Core.Ingestion.NetworkProtocol.Udp
                 ? $"Listening on UDP port {settings.Port}..." 
                 : $"Connected to TCP {settings.IpAddress}:{settings.Port}...";
-
-            if (targetPlot.AvailableSignals.Count == 0)
-            {
-                foreach (var field in schema.Fields)
-                {
-                    if (field.Name.Equals("timestamp", StringComparison.OrdinalIgnoreCase)) continue;
-                    var item = new SignalItemViewModel { Name = field.Name, IsSelected = true };
-                    targetPlot.SelectedSignalNames.Add(field.Name);
-                    targetPlot.AvailableSignals.Add(item);
-                    targetPlot.RegularSignals.Add(item);
-                }
-            }
-
-            if (targetPlot == SelectedPlot)
-            {
-                AvailableSignals.Clear();
-                RegularSignals.Clear();
-                foreach (var s in targetPlot.AvailableSignals) AvailableSignals.Add(s);
-                foreach (var s in targetPlot.RegularSignals) RegularSignals.Add(s);
-
-                SyncSignalCheckboxes();
-                this.RaisePropertyChanged(nameof(HasData));
-            }
         }
         catch (Exception ex)
         {
@@ -1068,18 +1119,63 @@ public class MainWindowViewModel : ViewModelBase
         }
 
         try {
-            // Stop any existing stream before starting a new one
-            bool anyStreaming = Plots.Any(p => p.IsStreaming);
-            if (anyStreaming || _serialSource != null)
+            if (_serialSource != null)
             {
-                await StopStreamingAsync();
+                var source = _serialSource; _serialSource = null;
+                await Task.Run(() => source.Stop());
             }
 
-            SelectedPlot.Name = $"{settings.Port}";
+            var plotName = !string.IsNullOrEmpty(schema.Name) ? schema.Name : $"{settings.Port}";
+            SelectedPlot.Name = plotName;
             var targetPlot = SelectedPlot;
             var targetStore = targetPlot.DataStore;
-            targetPlot.IsStreaming = true;
+
+            // Clear old state
+            targetStore.Clear();
+            targetPlot.TotalRecords = 0;
+            targetPlot.RequestPlotClear?.Invoke();
+            _totalRecords = 0;
+            targetPlot.TelemetryPath = null;
+            _playbackTimestamps = [];
+            _playbackSignalData = [];
+            this.RaisePropertyChanged(nameof(TotalRecords));
+
+            // CRITICAL: Clear old signals so new ones from schema can be added
+            targetPlot.AvailableSignals.Clear();
+            targetPlot.RegularSignals.Clear();
+            targetPlot.SelectedSignalNames.Clear();
+            targetPlot.DerivedSignals.Clear();
+
+            SelectedPlot.IsStreaming = true;
+            SelectedPlot.SourceType = PlotSourceType.Serial;
             targetStore.InitializeSchema(schema);
+
+            // Populate signals IMMEDIATELY before starting the source
+            foreach (var field in schema.Fields)
+            {
+                if (field.Name.Equals("timestamp", StringComparison.OrdinalIgnoreCase)) continue;
+                
+                // Only select the first 3 signals
+                bool shouldSelect = targetPlot.AvailableSignals.Count < 2;
+                var item = new SignalItemViewModel { Name = field.Name, IsSelected = shouldSelect };
+                if (shouldSelect) targetPlot.SelectedSignalNames.Add(field.Name);
+                
+                targetPlot.AvailableSignals.Add(item);
+                targetPlot.RegularSignals.Add(item);
+            }
+
+            if (targetPlot == SelectedPlot)
+            {
+                AvailableSignals.Clear();
+                RegularSignals.Clear();
+                DerivedSignals.Clear();
+                foreach (var s in targetPlot.AvailableSignals) AvailableSignals.Add(s);
+                foreach (var s in targetPlot.RegularSignals) RegularSignals.Add(s);
+                
+                SyncSignalCheckboxes();
+                this.RaisePropertyChanged(nameof(HasData));
+                this.RaisePropertyChanged(nameof(IsPlaybackBarVisible));
+            }
 
             var parity = Enum.Parse<System.IO.Ports.Parity>(settings.Parity);
             var stopBits = Enum.Parse<System.IO.Ports.StopBits>(settings.StopBits);
@@ -1091,33 +1187,24 @@ public class MainWindowViewModel : ViewModelBase
             };
             
             await Task.Run(() => _serialSource.Start());
-            IsSerialStreaming = true;
-            this.RaisePropertyChanged(nameof(IsStreaming));
-            this.RaisePropertyChanged(nameof(IsPlaybackBarVisible));
-            this.RaisePropertyChanged(nameof(CanAddPlot));
-            StatusText = $"Streaming from {settings.Port}...";
-            
-            if (targetPlot.AvailableSignals.Count == 0)
+            if (SelectedPlot != null)
             {
-                foreach (var field in schema.Fields) {
-                    if (field.Name.Equals("timestamp", StringComparison.OrdinalIgnoreCase)) continue;
-                    var item = new SignalItemViewModel { Name = field.Name, IsSelected = true };
-                    targetPlot.SelectedSignalNames.Add(field.Name);
-                    targetPlot.AvailableSignals.Add(item);
-                    targetPlot.RegularSignals.Add(item);
-                }
+                SelectedPlot.IsStreaming = true;
+                SelectedPlot.IsPaused = false;
+            }
+            this.RaisePropertyChanged(nameof(IsStreaming));
+            this.RaisePropertyChanged(nameof(IsSerialStreaming));
+            this.RaisePropertyChanged(nameof(IsSerialPaused));
+            this.RaisePropertyChanged(nameof(CanAddPlot));
+
+            // Force status bar info refresh
+            if (SelectedPlot != null)
+            {
+                SelectedPlot.RaisePropertyChanged(nameof(PlotViewModel.ConnectionInfo));
+                SelectedPlot.RaisePropertyChanged(nameof(PlotViewModel.ConnectionIcon));
             }
 
-            if (targetPlot == SelectedPlot)
-            {
-                AvailableSignals.Clear();
-                RegularSignals.Clear();
-                foreach (var s in targetPlot.AvailableSignals) AvailableSignals.Add(s);
-                foreach (var s in targetPlot.RegularSignals) RegularSignals.Add(s);
-                
-                SyncSignalCheckboxes();
-                this.RaisePropertyChanged(nameof(HasData));
-            }
+            StatusText = $"Streaming from {settings.Port}...";
         } catch (Exception ex) { await ShowError("Connection Error", $"Failed to start streaming: {ex.Message}"); }
     }
 
@@ -1140,6 +1227,7 @@ public class MainWindowViewModel : ViewModelBase
         List<DecodedPacket> batch;
         lock (_liveDataLock) { batch = _livePacketBuffer; _livePacketBuffer = []; }
 
+        // Find the active streaming plot
         var targetPlot = Plots.FirstOrDefault(p => p.IsStreaming);
         if (targetPlot == null) return;
         var targetStore = targetPlot.DataStore;
@@ -1164,17 +1252,25 @@ public class MainWindowViewModel : ViewModelBase
         }
 
         if (targetPlot.TotalRecords == 0) return;
-        int rollingWindow = _settingsService.Current.RollingBufferSize;
-        int count = Math.Min(targetPlot.TotalRecords, rollingWindow);
-        int start = Math.Max(0, targetPlot.TotalRecords - count);
 
-        var timestamps = targetStore.GetTimestamps(start, count);
+        // Determine rolling window in seconds
+        int windowSeconds = _serialSource != null 
+            ? targetPlot.SerialSettings.RollingWindowSeconds 
+            : targetPlot.NetworkSettings.RollingWindowSeconds;
+
+        DateTime latestTs = targetStore.GetTimestamp(targetPlot.TotalRecords - 1);
+        DateTime startTs = latestTs.AddSeconds(-windowSeconds);
+
+        var timestamps = targetStore.GetTimestamps(startTs);
         var plotData = new Dictionary<string, List<double>>();
         foreach (var signalName in targetPlot.SelectedSignalNames)
-            plotData[signalName] = targetStore.GetSignalData(signalName, start, count);
+            plotData[signalName] = targetStore.GetSignalData(signalName, startTs);
 
-        double? forceXMax = timestamps.Count > 0 ? timestamps[^1].ToOADate() : null;
-        targetPlot.RequestPlotUpdate?.Invoke(timestamps, plotData, null, forceXMax, rollingWindow);
+        if (timestamps.Count > 0)
+        {
+            double? forceXMax = timestamps[^1].ToOADate();
+            targetPlot.RequestPlotUpdate?.Invoke(timestamps, plotData, null, forceXMax, windowSeconds);
+        }
     }
 
     private void Seek(double progress)
@@ -1367,6 +1463,7 @@ public class MainWindowViewModel : ViewModelBase
 
                         Avalonia.Threading.Dispatcher.UIThread.Post(() => {
                             targetPlot.TelemetryPath = path; targetPlot.Schema = schema;
+                            targetPlot.SourceType = PlotSourceType.File;
                             
                             // Always populate the targetPlot's signals (excluding timestamp column)
                             targetPlot.AvailableSignals.Clear();
@@ -1374,7 +1471,7 @@ public class MainWindowViewModel : ViewModelBase
                             foreach (var field in fields) {
                                 if (field.Equals("timestamp", StringComparison.OrdinalIgnoreCase)) continue;
                                 if (!string.IsNullOrEmpty(timestampCol) && field.Equals(timestampCol, StringComparison.OrdinalIgnoreCase)) continue;
-                                bool shouldSelect = targetPlot.RegularSignals.Count < 3;
+                                bool shouldSelect = targetPlot.RegularSignals.Count < 2;
                                 var signalItem = new SignalItemViewModel { Name = field, IsSelected = shouldSelect };
                                 targetPlot.AvailableSignals.Add(signalItem); targetPlot.RegularSignals.Add(signalItem);
                                 if (shouldSelect) targetPlot.SelectedSignalNames.Add(field);
@@ -1428,13 +1525,14 @@ public class MainWindowViewModel : ViewModelBase
                     var fields = new List<string>(schema.Fields.Select(f => f.Name));
                     Avalonia.Threading.Dispatcher.UIThread.Post(() => {
                         targetPlot.TelemetryPath = path; targetPlot.Schema = schema;
+                        targetPlot.SourceType = PlotSourceType.File;
                         
                         // Always populate the targetPlot's signals
                         targetPlot.AvailableSignals.Clear();
                         targetPlot.RegularSignals.Clear();
                         foreach (var field in fields) {
                             if (field.Equals("timestamp", StringComparison.OrdinalIgnoreCase)) continue;
-                            bool shouldSelect = targetPlot.RegularSignals.Count < 3;
+                            bool shouldSelect = targetPlot.RegularSignals.Count < 2;
                             var signalItem = new SignalItemViewModel { Name = field, IsSelected = shouldSelect };
                             targetPlot.AvailableSignals.Add(signalItem); targetPlot.RegularSignals.Add(signalItem);
                             if (shouldSelect) targetPlot.SelectedSignalNames.Add(field);
@@ -1605,12 +1703,17 @@ public class MainWindowViewModel : ViewModelBase
 
     private async Task StopStreamingAsync()
     {
-        IsStreaming = false;
-        IsSerialStreaming = false;
-        IsSerialPaused = false;
-        IsNetworkStreaming = false;
-        IsNetworkPaused = false;
-        foreach (var p in Plots) p.IsStreaming = false;
+        foreach (var p in Plots) {
+            p.IsStreaming = false;
+            p.IsPaused = false;
+        }
+        
+        this.RaisePropertyChanged(nameof(IsStreaming));
+        this.RaisePropertyChanged(nameof(IsSerialStreaming));
+        this.RaisePropertyChanged(nameof(IsSerialPaused));
+        this.RaisePropertyChanged(nameof(IsNetworkStreaming));
+        this.RaisePropertyChanged(nameof(IsNetworkPaused));
+
         if (_serialSource != null) {
             var source = _serialSource; _serialSource = null;
             await Task.Run(() => source.Stop());

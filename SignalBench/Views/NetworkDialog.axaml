@@ -13,14 +13,14 @@
         <ScrollViewer Grid.Row="0">
             <Border Padding="20">
                 <StackPanel Spacing="20">
-                    <Grid ColumnDefinitions="*, Auto">
+                    <StackPanel Orientation="Horizontal">
                         <TextBlock Grid.Column="0" Text="NETWORK STREAM CONFIGURATION" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" VerticalAlignment="Center"/>
                         <Button Grid.Column="1" Background="Transparent" BorderThickness="0" Padding="4" ToolTip.Tip="For TCP: Enter the server IP and port to connect to.&#x0a;For UDP: Enter the local port to listen on. IP can be used to bind to a specific interface (optional).">
                             <mi:MaterialIcon Kind="InformationOutline" Width="16" Height="16" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
                         </Button>
-                    </Grid>
+                    </StackPanel>
                     
-                    <Grid ColumnDefinitions="150, *" RowDefinitions="Auto, Auto, Auto, Auto">
+                    <Grid ColumnDefinitions="150, *" RowDefinitions="Auto, Auto, Auto, Auto, Auto">
                         <!-- Protocol -->
                         <TextBlock Grid.Row="0" Grid.Column="0" Text="Protocol:" FontSize="13" VerticalAlignment="Center"/>
                         <ComboBox Grid.Row="0" Grid.Column="1" Width="180" HorizontalAlignment="Left"
@@ -37,9 +37,17 @@
                         <NumericUpDown Grid.Row="2" Grid.Column="1" Width="180" HorizontalAlignment="Left" Margin="0,15,0,0"
                                        Value="{Binding NetworkPort}" Minimum="1024" Maximum="65535" Increment="1" FormatString="0"/>
 
+                        <!-- Rolling Window -->
+                        <StackPanel Grid.Row="3" Grid.Column="0" VerticalAlignment="Center" Margin="0,15,0,0">
+                            <TextBlock Text="Rolling Window (sec):" FontSize="13"/>
+                            <TextBlock Text="Live data to show" FontSize="11" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                        </StackPanel>
+                        <NumericUpDown Grid.Row="3" Grid.Column="1" Width="180" Margin="0,15,0,0"
+                                       Value="{Binding RollingWindowSeconds}" Minimum="1" Maximum="3600" Increment="1" HorizontalAlignment="Left"/>
+
                         <!-- Schema File -->
-                        <TextBlock Grid.Row="3" Grid.Column="0" Text="Schema File:" FontSize="13" VerticalAlignment="Center" Margin="0,15,0,0"/>
-                        <Grid Grid.Row="3" Grid.Column="1" ColumnDefinitions="*, Auto" Margin="0,15,0,0">
+                        <TextBlock Grid.Row="4" Grid.Column="0" Text="Schema File:" FontSize="13" VerticalAlignment="Center" Margin="0,15,0,0"/>
+                        <Grid Grid.Row="4" Grid.Column="1" ColumnDefinitions="*, Auto" Margin="0,15,0,0">
                             <TextBox Grid.Column="0"
                                      Text="{Binding LoadedSchemaPath}"
                                      IsReadOnly="True"

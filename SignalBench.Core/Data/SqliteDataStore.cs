@@ -206,6 +206,38 @@ public class SqliteDataStore : IDataStore
         return data;
     }
 
+    public List<DateTime> GetTimestamps(DateTime startTime)
+    {
+        if (_connection == null) return [];
+        var data = new List<DateTime>();
+        using var command = _connection.CreateCommand();
+        command.CommandText = $"SELECT timestamp FROM {_tableName} WHERE timestamp >= @start ORDER BY id";
+        command.Parameters.AddWithValue("@start", startTime);
+        
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            data.Add(reader.GetDateTime(0));
+        }
+        return data;
+    }
+
+    public List<double> GetSignalData(string fieldName, DateTime startTime)
+    {
+        if (_connection == null) return [];
+        var data = new List<double>();
+        using var command = _connection.CreateCommand();
+        command.CommandText = $"SELECT \"{fieldName}\" FROM {_tableName} WHERE timestamp >= @start ORDER BY id";
+        command.Parameters.AddWithValue("@start", startTime);
+        
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            data.Add(reader.IsDBNull(0) ? 0 : reader.GetDouble(0));
+        }
+        return data;
+    }
+
     public DateTime GetTimestamp(int index)
     {
         if (_connection == null) return default;

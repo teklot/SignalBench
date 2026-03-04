@@ -45,11 +45,11 @@ public class SerialDialogViewModel : ViewModelBase
         set => this.RaiseAndSetIfChanged(ref _stopBits, value);
     }
 
-    private int _rollingBufferSize;
-    public int RollingBufferSize
+    private int _rollingWindowSeconds;
+    public int RollingWindowSeconds
     {
-        get => _rollingBufferSize;
-        set => this.RaiseAndSetIfChanged(ref _rollingBufferSize, value);
+        get => _rollingWindowSeconds;
+        set => this.RaiseAndSetIfChanged(ref _rollingWindowSeconds, value);
     }
 
     private string? _loadedSchemaPath;
@@ -76,7 +76,7 @@ public class SerialDialogViewModel : ViewModelBase
         _parity = settings.Parity;
         _dataBits = settings.DataBits;
         _stopBits = settings.StopBits;
-        _rollingBufferSize = settings.RollingBufferSize;
+        _rollingWindowSeconds = settings.RollingWindowSeconds;
         _loadedSchemaPath = settings.SchemaPath;
 
         SaveCommand = ReactiveCommand.Create(Save);
@@ -137,7 +137,7 @@ public class SerialDialogViewModel : ViewModelBase
         settings.Parity = Parity;
         settings.DataBits = DataBits;
         settings.StopBits = StopBits;
-        settings.RollingBufferSize = RollingBufferSize;
+        settings.RollingWindowSeconds = RollingWindowSeconds;
         settings.SchemaPath = LoadedSchemaPath;
     }
 

@@ -304,13 +304,12 @@
                     <mi:MaterialIcon Kind="InformationOutline" Width="14" Height="14" Foreground="#2b579a"/>
                     <TextBlock Text="{Binding StatusText}" FontSize="11" Foreground="#323130" VerticalAlignment="Center" FontWeight="SemiBold"/>
                     
-                    <!-- Serial Settings Info -->
-                    <Border Width="1" Height="14" Background="#e1dfdd" Margin="8,0" IsVisible="{Binding SelectedSchema, Converter={x:Static ObjectConverters.IsNotNull}}"/>
-                    <StackPanel Orientation="Horizontal" Spacing="5" IsVisible="{Binding SelectedSchema, Converter={x:Static ObjectConverters.IsNotNull}}">
-                        <mi:MaterialIcon Kind="SerialPort" Width="14" Height="14" Foreground="#605e5c"/>
-                        <TextBlock Text="{Binding SerialInfo}" FontSize="11" Foreground="#605e5c" VerticalAlignment="Center" FontWeight="SemiBold"/>
-                    </StackPanel>
-                </StackPanel>
+                    <!-- Dynamic Connection Info -->
+                    <Border Width="1" Height="14" Background="#e1dfdd" Margin="8,0" IsVisible="{Binding SelectedPlot.ConnectionInfo, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                    <StackPanel Orientation="Horizontal" Spacing="5" IsVisible="{Binding SelectedPlot.ConnectionInfo, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                        <mi:MaterialIcon Kind="{Binding SelectedPlot.ConnectionIcon}" Width="14" Height="14" Foreground="#605e5c"/>
+                        <TextBlock Text="{Binding SelectedPlot.ConnectionInfo}" FontSize="11" Foreground="#605e5c" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                    </StackPanel>                </StackPanel>
                 
                 <!-- Progress bar shown during loading -->
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Spacing="8" IsVisible="{Binding IsLoading}">

@@ -84,6 +84,20 @@ public class HybridDataStore : IDataStore
             : _inMemory.GetTimestamps(startIndex, count);
     }
 
+    public List<DateTime> GetTimestamps(DateTime startTime)
+    {
+        return _storageMode == StorageMode.Sqlite
+            ? _sqlite?.GetTimestamps(startTime) ?? []
+            : _inMemory.GetTimestamps(startTime);
+    }
+
+    public List<double> GetSignalData(string fieldName, DateTime startTime)
+    {
+        return _storageMode == StorageMode.Sqlite
+            ? _sqlite?.GetSignalData(fieldName, startTime) ?? []
+            : _inMemory.GetSignalData(fieldName, startTime);
+    }
+
     public DateTime GetTimestamp(int index)
     {
         return _storageMode == StorageMode.Sqlite

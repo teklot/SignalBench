@@ -50,11 +50,11 @@
 
                         <!-- Rolling Window -->
                         <StackPanel Grid.Row="5" Grid.Column="0" VerticalAlignment="Center" Margin="0,15,0,0">
-                            <TextBlock Text="Rolling Window Size:" FontSize="13"/>
-                            <TextBlock Text="Max points on live plot" FontSize="11" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                            <TextBlock Text="Rolling Window (sec):" FontSize="13"/>
+                            <TextBlock Text="Live data to show" FontSize="11" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
                         </StackPanel>
                         <NumericUpDown Grid.Row="5" Grid.Column="1" Width="180" Margin="0,15,0,0"
-                                       Value="{Binding RollingBufferSize}" Minimum="100" Maximum="1000000" Increment="100" HorizontalAlignment="Left"/>
+                                       Value="{Binding RollingWindowSeconds}" Minimum="1" Maximum="3600" Increment="1" HorizontalAlignment="Left"/>
 
                         <!-- Schema File -->
                         <TextBlock Grid.Row="6" Grid.Column="0" Text="Schema File:" FontSize="13" VerticalAlignment="Center" Margin="0,15,0,0"/>

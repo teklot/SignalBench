@@ -8,53 +8,59 @@ public class InMemoryDataStore : IDataStore
     private Dictionary<string, List<double>> _signals = new();
     private List<DateTime> _timestamps = [];
     private List<string> _signalNames = [];
+    private readonly object _lock = new();
 
     public void InitializeSchema(PacketSchema schema)
     {
-        _signals.Clear();
-        _timestamps.Clear();
-        _signalNames = schema.Fields.Select(f => f.Name).Where(n => !n.Equals("timestamp", StringComparison.OrdinalIgnoreCase)).ToList();
-        
-        foreach (var name in _signalNames)
+        lock (_lock)
         {
-            _signals[name] = [];
+            _signals.Clear();
+            _timestamps.Clear();
+            _signalNames = schema.Fields.Select(f => f.Name).Where(n => !n.Equals("timestamp", StringComparison.OrdinalIgnoreCase)).ToList();
+            
+            foreach (var name in _signalNames)
+            {
+                _signals[name] = [];
+            }
         }
     }
 
     public void InsertPackets(IEnumerable<DecodedPacket> packets)
     {
-        int index = 0;
-        foreach (var packet in packets)
+        lock (_lock)
         {
-            DateTime ts;
-            if (packet.Timestamp == default)
+            int index = 0;
+            foreach (var packet in packets)
             {
-                ts = DateTime.Now.AddSeconds(index * 0.001);
-            }
-            else
-            {
-                ts = packet.Timestamp;
-            }
-            _timestamps.Add(ts);
-            index++;
-            
-            foreach (var name in _signalNames)
-            {
-                if (packet.Fields.TryGetValue(name, out var val))
+                DateTime ts;
+                if (packet.Timestamp == default)
                 {
-                    if (val is double d) _signals[name].Add(d);
-                    else if (val is float f) _signals[name].Add(f);
-                    else if (val is int i) _signals[name].Add(i);
-                    else if (val is long l) _signals[name].Add(l);
-                    else if (val is double vd) _signals[name].Add(vd);
-                    else if (val != null && double.TryParse(val.ToString(), out var parsed))
-                        _signals[name].Add(parsed);
-                    else
-                        _signals[name].Add(double.NaN);
+                    ts = DateTime.Now.AddSeconds(index * 0.001);
                 }
                 else
                 {
-                    _signals[name].Add(double.NaN);
+                    ts = packet.Timestamp;
+                }
+                _timestamps.Add(ts);
+                index++;
+                
+                foreach (var name in _signalNames)
+                {
+                    if (packet.Fields.TryGetValue(name, out var val))
+                    {
+                        if (val is double d) _signals[name].Add(d);
+                        else if (val is float f) _signals[name].Add(f);
+                        else if (val is int i) _signals[name].Add(i);
+                        else if (val is long l) _signals[name].Add(l);
+                        else if (val != null && double.TryParse(val.ToString(), out var parsed))
+                            _signals[name].Add(parsed);
+                        else
+                            _signals[name].Add(double.NaN);
+                    }
+                    else
+                    {
+                        _signals[name].Add(double.NaN);
+                    }
                 }
             }
         }
@@ -89,6 +95,28 @@ public class InMemoryDataStore : IDataStore
         int actualCount = Math.Min(count, _timestamps.Count - startIndex);
         if (actualCount <= 0) return [];
         return _timestamps.GetRange(startIndex, actualCount);
+    }
+
+    public List<DateTime> GetTimestamps(DateTime startTime)
+    {
+        lock (_lock)
+        {
+            return _timestamps.Where(t => t >= startTime).ToList();
+        }
+    }
+
+    public List<double> GetSignalData(string fieldName, DateTime startTime)
+    {
+        lock (_lock)
+        {
+            if (!_signals.TryGetValue(fieldName, out var data)) return [];
+            
+            // Find the index of the first timestamp >= startTime
+            int index = _timestamps.FindIndex(t => t >= startTime);
+            if (index < 0) return [];
+            
+            return data.GetRange(index, data.Count - index);
+        }
     }
 
     public DateTime GetTimestamp(int index)

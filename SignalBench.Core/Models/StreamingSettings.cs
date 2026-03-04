@@ -7,7 +7,7 @@ public class SerialSettings
     public string Parity { get; set; } = "None";
     public int DataBits { get; set; } = 8;
     public string StopBits { get; set; } = "One";
-    public int RollingBufferSize { get; set; } = 10000;
+    public int RollingWindowSeconds { get; set; } = 10;
     public string? SchemaPath { get; set; }
 }
 
@@ -16,5 +16,6 @@ public class NetworkSettings
     public string Protocol { get; set; } = "UDP";
     public string IpAddress { get; set; } = "127.0.0.1";
     public int Port { get; set; } = 5005;
+    public int RollingWindowSeconds { get; set; } = 10;
     public string? SchemaPath { get; set; }
 }

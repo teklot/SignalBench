@@ -10,6 +10,8 @@ using System.Linq;
 
 namespace SignalBench.ViewModels;
 
+public enum PlotSourceType { None, File, Serial, Network }
+
 public class PlotViewModel : ViewModelBase
 {
     private string _name = "New Plot";
@@ -17,6 +19,17 @@ public class PlotViewModel : ViewModelBase
     {
         get => _name;
         set => this.RaiseAndSetIfChanged(ref _name, value);
+    }
+
+    private PlotSourceType _sourceType = PlotSourceType.None;
+    public PlotSourceType SourceType
+    {
+        get => _sourceType;
+        set {
+            this.RaiseAndSetIfChanged(ref _sourceType, value);
+            this.RaisePropertyChanged(nameof(ConnectionInfo));
+            this.RaisePropertyChanged(nameof(ConnectionIcon));
+        }
     }
 
     private string? _telemetryPath;
@@ -37,7 +50,18 @@ public class PlotViewModel : ViewModelBase
     public bool IsStreaming
     {
         get => _isStreaming;
-        set => this.RaiseAndSetIfChanged(ref _isStreaming, value);
+        set {
+            this.RaiseAndSetIfChanged(ref _isStreaming, value);
+            this.RaisePropertyChanged(nameof(ConnectionInfo));
+            this.RaisePropertyChanged(nameof(ConnectionIcon));
+        }
+    }
+
+    private bool _isPaused;
+    public bool IsPaused
+    {
+        get => _isPaused;
+        set => this.RaiseAndSetIfChanged(ref _isPaused, value);
     }
 
     private bool _isRecording;
@@ -47,8 +71,64 @@ public class PlotViewModel : ViewModelBase
         set => this.RaiseAndSetIfChanged(ref _isRecording, value);
     }
 
+    private string _statusMessage = "Ready";
+    public string StatusMessage
+    {
+        get => _statusMessage;
+        set => this.RaiseAndSetIfChanged(ref _statusMessage, value);
+    }
+
     public SerialSettings SerialSettings { get; } = new();
     public NetworkSettings NetworkSettings { get; } = new();
+
+    public bool IsSerialConfigured => !string.IsNullOrEmpty(SerialSettings.Port);
+    public bool IsNetworkConfigured => !string.IsNullOrEmpty(NetworkSettings.IpAddress) && NetworkSettings.Port > 0;
+
+    public string ConnectionInfo
+    {
+        get
+        {
+            if (SourceType == PlotSourceType.None) return "";
+            if (SourceType == PlotSourceType.File) return TelemetryPath != null ? System.IO.Path.GetFileName(TelemetryPath) : "";
+            
+            if (SourceType == PlotSourceType.Serial && IsSerialConfigured) return GetSerialInfo();
+            if (SourceType == PlotSourceType.Network && IsNetworkConfigured) return GetNetworkInfo();
+            
+            return "";
+        }
+    }
+
+    public string ConnectionIcon
+    {
+        get
+        {
+            return SourceType switch
+            {
+                PlotSourceType.File => "FileChartOutline",
+                PlotSourceType.Network => "Lan",
+                PlotSourceType.Serial => "SerialPort",
+                _ => "InformationOutline"
+            };
+        }
+    }
+
+    private string GetSerialInfo()
+    {
+        var s = SerialSettings;
+        string sb = s.StopBits switch {
+            "One" => "1",
+            "Two" => "2",
+            "OnePointFive" => "1.5",
+            _ => "0"
+        };
+        return $"{s.Port}: {s.BaudRate} {s.DataBits}{s.Parity[0]}{sb}";
+    }
+
+    private string GetNetworkInfo()
+    {
+        var n = NetworkSettings;
+        return $"{n.Protocol}: {n.IpAddress}:{n.Port}";
+    }
 
     private int _totalRecords;
     public int TotalRecords

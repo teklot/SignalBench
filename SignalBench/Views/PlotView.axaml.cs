@@ -102,9 +102,43 @@ public partial class PlotView : UserControl
 
         if (timestamps.Count > 0)
         {
-            // Simple filling from left: Axis fits current buffer exactly
-            mainPlot.Plot.Axes.Bottom.Min = timestamps[0].ToOADate();
-            mainPlot.Plot.Axes.Bottom.Max = timestamps[^1].ToOADate();
+            if (fixedXMax.HasValue && rollingWindowSize.HasValue)
+            {
+                // Streaming mode with rolling window
+                double xMax = fixedXMax.Value;
+                mainPlot.Plot.Axes.Bottom.Max = xMax;
+                
+                // Estimate window width based on current frequency if we don't have enough points
+                double windowWidth;
+                if (timestamps.Count > 1)
+                {
+                    // Calculate current timespan of the buffer
+                    double actualSpan = timestamps[^1].ToOADate() - timestamps[0].ToOADate();
+                    
+                    if (timestamps.Count >= rollingWindowSize.Value)
+                    {
+                        // Buffer is full, window width is the actual span
+                        windowWidth = actualSpan;
+                    }
+                    else
+                    {
+                        // Buffer filling up, project expected span for full buffer
+                        windowWidth = (actualSpan / (timestamps.Count - 1)) * rollingWindowSize.Value;
+                    }
+                }
+                else
+                {
+                    windowWidth = 0.0001; // Tiny default (~8 seconds)
+                }
+                
+                mainPlot.Plot.Axes.Bottom.Min = xMax - windowWidth;
+            }
+            else
+            {
+                // Regular mode: Axis fits current buffer exactly
+                mainPlot.Plot.Axes.Bottom.Min = timestamps[0].ToOADate();
+                mainPlot.Plot.Axes.Bottom.Max = timestamps[^1].ToOADate();
+            }
             
             // Add a tiny bit of space if only 1 point to prevent zero-width axis
             if (Math.Abs(mainPlot.Plot.Axes.Bottom.Max - mainPlot.Plot.Axes.Bottom.Min) < 0.000001)
