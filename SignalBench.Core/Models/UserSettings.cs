@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-
 namespace SignalBench.Core.Models;
 
 public class UserSettings

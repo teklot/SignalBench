@@ -461,6 +461,19 @@ public class MainWindowViewModel : ViewModelBase
         OpenNetworkSettingsCommand = ReactiveCommand.CreateFromTask(OpenNetworkSettingsAsync);
 
         RefreshPorts();
+
+        if (!Design.IsDesignMode && _settingsService.Current.AutoLoadLastSession && !string.IsNullOrEmpty(_settingsService.Current.LastSessionPath))
+        {
+            if (File.Exists(_settingsService.Current.LastSessionPath))
+            {
+                _ = Task.Run(async () => {
+                    await Task.Delay(500); // Wait for UI to settle
+                    Avalonia.Threading.Dispatcher.UIThread.Post(async () => {
+                        await LoadSessionInternalAsync(_settingsService.Current.LastSessionPath);
+                    });
+                });
+            }
+        }
     }
 
     private void AddPlot(string? name = null, string? telemetryPath = null, PacketSchema? schema = null)
@@ -612,16 +625,17 @@ public class MainWindowViewModel : ViewModelBase
             var topLevel = (App.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)?.MainWindow;
             if (topLevel == null) return false;
             
-            var dialogVm = new SerialDialogViewModel(SelectedPlot.SerialSettings);
+            var dialogVm = new SerialDialogViewModel(SelectedPlot.SerialSettings, SelectedPlot.SchemaPath);
             var dialog = new SignalBench.Views.SerialDialog { DataContext = dialogVm };
             var saved = await dialog.ShowDialog<bool>(topLevel);
             
             if (saved)
             {
                 dialogVm.ApplyTo(SelectedPlot.SerialSettings);
-                if (!string.IsNullOrEmpty(SelectedPlot.SerialSettings.SchemaPath))
+                SelectedPlot.SchemaPath = dialogVm.LoadedSchemaPath;
+                if (!string.IsNullOrEmpty(SelectedPlot.SchemaPath))
                 {
-                    var yaml = await File.ReadAllTextAsync(SelectedPlot.SerialSettings.SchemaPath);
+                    var yaml = await File.ReadAllTextAsync(SelectedPlot.SchemaPath);
                     var schema = new SchemaLoader().Load(yaml);
                     if (schema != null)
                     {
@@ -645,16 +659,17 @@ public class MainWindowViewModel : ViewModelBase
             var topLevel = (App.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)?.MainWindow;
             if (topLevel == null) return false;
             
-            var dialogVm = new NetworkDialogViewModel(SelectedPlot.NetworkSettings);
+            var dialogVm = new NetworkDialogViewModel(SelectedPlot.NetworkSettings, SelectedPlot.SchemaPath);
             var dialog = new SignalBench.Views.NetworkDialog { DataContext = dialogVm };
             var saved = await dialog.ShowDialog<bool>(topLevel);
             
             if (saved)
             {
                 dialogVm.ApplyTo(SelectedPlot.NetworkSettings);
-                if (!string.IsNullOrEmpty(SelectedPlot.NetworkSettings.SchemaPath))
+                SelectedPlot.SchemaPath = dialogVm.LoadedSchemaPath;
+                if (!string.IsNullOrEmpty(SelectedPlot.SchemaPath))
                 {
-                    var yaml = await File.ReadAllTextAsync(SelectedPlot.NetworkSettings.SchemaPath);
+                    var yaml = await File.ReadAllTextAsync(SelectedPlot.SchemaPath);
                     var schema = new SchemaLoader().Load(yaml);
                     if (schema != null)
                     {
@@ -1095,8 +1110,11 @@ public class MainWindowViewModel : ViewModelBase
             this.RaisePropertyChanged(nameof(CanAddPlot));
             
             // Force status bar info refresh
-            SelectedPlot.RaisePropertyChanged(nameof(PlotViewModel.ConnectionInfo));
-            SelectedPlot.RaisePropertyChanged(nameof(PlotViewModel.ConnectionIcon));
+            if (SelectedPlot != null)
+            {
+                SelectedPlot.RaisePropertyChanged(nameof(PlotViewModel.ConnectionInfo));
+                SelectedPlot.RaisePropertyChanged(nameof(PlotViewModel.ConnectionIcon));
+            }
 
             StatusText = protocol == SignalBench.Core.Ingestion.NetworkProtocol.Udp
                 ? $"Listening on UDP port {settings.Port}..." 
@@ -1416,7 +1434,7 @@ public class MainWindowViewModel : ViewModelBase
         } catch (Exception ex) { await ShowError("File Error", "Could not select file.", ex); }
     }
 
-    private async Task LoadTelemetryFileAsync(string path, string? schemaPath = null)
+    private async Task LoadTelemetryFileAsync(string path, string? schemaPath = null, PacketSchema? existingSchema = null, CsvSettings? existingCsvSettings = null)
     {
         if (IsStreaming) {
             await StopStreamingAsync();
@@ -1426,22 +1444,33 @@ public class MainWindowViewModel : ViewModelBase
         var startTime = DateTime.Now;
         
         if (path.EndsWith(".csv")) {
-            var topLevel = (App.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)?.MainWindow;
-            if (topLevel == null) return;
-            var dialog = new SignalBench.Views.CsvImport { DataContext = new CsvImportViewModel(path) };
-            var result = await dialog.ShowDialog<CsvImportResult?>(topLevel);
-            if (result == null) return;
+            CsvSettings csvSettings;
+            if (existingCsvSettings != null) {
+                csvSettings = existingCsvSettings;
+            } else {
+                var topLevel = (App.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)?.MainWindow;
+                if (topLevel == null) return;
+                var dialog = new SignalBench.Views.CsvImport { DataContext = new CsvImportViewModel(path) };
+                var result = await dialog.ShowDialog<CsvImportResult?>(topLevel);
+                if (result == null) return;
+                csvSettings = new CsvSettings { 
+                    Delimiter = result.Delimiter, 
+                    TimestampColumn = result.TimestampColumn, 
+                    HasHeader = result.HasHeader 
+                };
+            }
 
             AddPlot(Path.GetFileName(path), path);
             var targetPlot = SelectedPlot;
             var targetStore = targetPlot!.DataStore;
+            targetPlot.CsvSettings = csvSettings;
 
             await Task.Run(async () => {
                 try {
                     var lineCount = File.ReadLines(path).Count();
                     Avalonia.Threading.Dispatcher.UIThread.Post(() => { IsLoading = true; LoadProgress = 0; LoadElapsed = "00:00"; });
                     
-                    var source = new SignalBench.Core.Ingestion.CsvTelemetrySource(path, result.Delimiter, result.TimestampColumn, result.HasHeader);
+                    var source = new SignalBench.Core.Ingestion.CsvTelemetrySource(path, csvSettings.Delimiter, csvSettings.TimestampColumn, csvSettings.HasHeader);
                     var packets = new List<DecodedPacket>();
                     var processed = 0; var lastUpdate = DateTime.Now;
                     foreach (var packet in source.ReadPackets()) {
@@ -1454,7 +1483,7 @@ public class MainWindowViewModel : ViewModelBase
                     }
                     if (packets.Count > 0) {
                         var fields = new List<string>(packets[0].Fields.Keys);
-                        var timestampCol = result.TimestampColumn;
+                        var timestampCol = csvSettings.TimestampColumn;
                         var schema = new PacketSchema { Name = "CSV Import", Type = SchemaType.Csv };
                         foreach (var field in fields) schema.Fields.Add(new FieldDefinition { Name = field });
                         
@@ -1464,6 +1493,7 @@ public class MainWindowViewModel : ViewModelBase
                         Avalonia.Threading.Dispatcher.UIThread.Post(() => {
                             targetPlot.TelemetryPath = path; targetPlot.Schema = schema;
                             targetPlot.SourceType = PlotSourceType.File;
+                            targetPlot.CsvSettings = csvSettings;
                             
                             // Always populate the targetPlot's signals (excluding timestamp column)
                             targetPlot.AvailableSignals.Clear();
@@ -1503,8 +1533,8 @@ public class MainWindowViewModel : ViewModelBase
                 } catch (Exception ex) { Avalonia.Threading.Dispatcher.UIThread.Post(() => IsLoading = false); await ShowError("Load Error", "Failed to load CSV telemetry.", ex); }
             });
         } else {
-            PacketSchema? schema = null;
-            if (!string.IsNullOrEmpty(schemaPath)) {
+            PacketSchema? schema = existingSchema;
+            if (schema == null && !string.IsNullOrEmpty(schemaPath)) {
                 try { var yaml = await File.ReadAllTextAsync(schemaPath); schema = new SchemaLoader().Load(yaml); }
                 catch (Exception ex) { _logger.LogWarning(ex, "Could not load schema."); }
             }
@@ -1514,6 +1544,7 @@ public class MainWindowViewModel : ViewModelBase
 
             AddPlot(Path.GetFileName(path), path, schema);
             var targetPlot = SelectedPlot;
+            targetPlot!.SchemaPath = schemaPath; // Store the actual file path
             var targetStore = targetPlot!.DataStore;
 
             await Task.Run(async () => {
@@ -1662,8 +1693,275 @@ public class MainWindowViewModel : ViewModelBase
         return result;
     }
 
-    private async Task SaveSessionAsync() { await Task.CompletedTask; }
-    private async Task OpenSessionAsync() { await Task.CompletedTask; }
+    private async Task SaveSessionAsync()
+    {
+        try {
+            var topLevel = (App.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)?.MainWindow;
+            if (topLevel == null) return;
+            var file = await topLevel.StorageProvider.SaveFilePickerAsync(new Avalonia.Platform.Storage.FilePickerSaveOptions {
+                Title = "Save Session", DefaultExtension = "sbs",
+                FileTypeChoices = [new Avalonia.Platform.Storage.FilePickerFileType("SignalBench Session") { Patterns = ["*.sbs"] }]
+            });
+            if (file != null) {
+                var tabs = new List<TabSession>();
+                foreach (var p in Plots)
+                {
+                    var tab = new TabSession {
+                        Name = p.Name,
+                        SourceType = p.SourceType.ToString(),
+                        TelemetryPath = p.TelemetryPath,
+                        SelectedSignalNames = [.. p.SelectedSignalNames],
+                        DerivedSignals = [.. p.DerivedSignals]
+                    };
+
+                    // Embed schema YAML if available
+                    if (p.Schema != null)
+                    {
+                        try { tab.SchemaYaml = new SchemaLoader().Save(p.Schema); } catch { }
+                    }
+
+                    // Only save settings relevant to the source type
+                    if (p.SourceType == PlotSourceType.Serial) tab.SerialSettings = p.SerialSettings;
+                    if (p.SourceType == PlotSourceType.Network) tab.NetworkSettings = p.NetworkSettings;
+                    if (p.SourceType == PlotSourceType.File && p.Schema?.Type == SchemaType.Csv)
+                    {
+                        tab.CsvSettings = new CsvSettings
+                        {
+                            Delimiter = p.CsvSettings.Delimiter,
+                            TimestampColumn = p.CsvSettings.TimestampColumn,
+                            HasHeader = p.CsvSettings.HasHeader
+                        };
+                    }
+
+                    tabs.Add(tab);
+                }
+
+                var session = new ProjectSession {
+                    SelectedTabIndex = SelectedPlot != null ? Plots.IndexOf(SelectedPlot) : 0,
+                    Tabs = tabs
+                };
+                
+                _sessionManager.SaveSession(file.Path.LocalPath, session);
+                StatusText = "Session saved.";
+            }
+        } catch (Exception ex) { await ShowError("Save Error", "Failed to save session.", ex); }
+    }
+
+    private async Task LoadSessionInternalAsync(string path)
+    {
+        try {
+            var session = _sessionManager.LoadSession(path);
+            
+            // Clear existing plots
+            if (IsStreaming) await StopStreamingAsync();
+            foreach(var p in Plots) p.Dispose();
+            Plots.Clear();
+            
+            foreach (var tab in session.Tabs)
+            {
+                // Reconstruct PlotViewModel
+                var mode = _settingsService.Current.StorageMode == "Sqlite" ? StorageMode.Sqlite : StorageMode.InMemory;
+                IDataStore store;
+                if (mode == StorageMode.Sqlite) {
+                    store = new SqliteDataStore(Path.Combine(Path.GetTempPath(), $"signalbench_{Guid.NewGuid():N}.db"));
+                } else {
+                    store = new InMemoryDataStore();
+                }
+
+                var plot = new PlotViewModel(tab.Name, store);
+                plot.SourceType = Enum.Parse<PlotSourceType>(tab.SourceType);
+                plot.TelemetryPath = tab.TelemetryPath;
+                
+                // Restore settings if provided
+                if (tab.SerialSettings != null)
+                {
+                    plot.SerialSettings.Port = tab.SerialSettings.Port;
+                    plot.SerialSettings.BaudRate = tab.SerialSettings.BaudRate;
+                    plot.SerialSettings.Parity = tab.SerialSettings.Parity;
+                    plot.SerialSettings.DataBits = tab.SerialSettings.DataBits;
+                    plot.SerialSettings.StopBits = tab.SerialSettings.StopBits;
+                    plot.SerialSettings.RollingWindowSeconds = tab.SerialSettings.RollingWindowSeconds;
+                }
+
+                if (tab.NetworkSettings != null)
+                {
+                    plot.NetworkSettings.Protocol = tab.NetworkSettings.Protocol;
+                    plot.NetworkSettings.IpAddress = tab.NetworkSettings.IpAddress;
+                    plot.NetworkSettings.Port = tab.NetworkSettings.Port;
+                    plot.NetworkSettings.RollingWindowSeconds = tab.NetworkSettings.RollingWindowSeconds;
+                }
+
+                // Load Schema (prefer embedded YAML)
+                PacketSchema? schema = null;
+                if (!string.IsNullOrEmpty(tab.SchemaYaml))
+                {
+                    schema = new SchemaLoader().Load(tab.SchemaYaml);
+                    plot.Schema = schema;
+                }
+
+                Plots.Add(plot);
+                SelectedPlot = plot;
+
+                // Load data if it was a file
+                if (plot.SourceType == PlotSourceType.File && !string.IsNullOrEmpty(tab.TelemetryPath) && File.Exists(tab.TelemetryPath))
+                {
+                    await LoadTelemetryFileAsync(tab.TelemetryPath, null, schema, tab.CsvSettings);
+                }
+                
+                // Restart streaming if it was a stream
+                if (plot.SourceType == PlotSourceType.Serial && plot.IsSerialConfigured && plot.Schema != null)
+                {
+                    await StartStreamingAsync();
+                }
+                else if (plot.SourceType == PlotSourceType.Network && plot.IsNetworkConfigured && plot.Schema != null)
+                {
+                    await StartNetworkStreamingAsync();
+                }
+                
+                var targetPlot = Plots.Last();
+                targetPlot.SelectedSignalNames.Clear();
+                foreach (var sName in tab.SelectedSignalNames) targetPlot.SelectedSignalNames.Add(sName);
+                
+                foreach (var ds in tab.DerivedSignals)
+                {
+                    if (!targetPlot.DerivedSignals.Any(d => d.Name == ds.Name))
+                        targetPlot.DerivedSignals.Add(ds);
+                }
+            }
+
+            if (session.SelectedTabIndex >= 0 && session.SelectedTabIndex < Plots.Count)
+                SelectedPlot = Plots[session.SelectedTabIndex];
+            
+            StatusText = $"Session loaded: {Path.GetFileName(path)}";
+            
+            // Persist as last session
+            _settingsService.Current.LastSessionPath = path;
+            _settingsService.Save();
+        } catch (Exception ex) { await ShowError("Load Error", "Failed to load session.", ex); }
+    }
+
+    private async Task OpenSessionAsync()
+    {
+        try {
+            var topLevel = (App.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)?.MainWindow;
+            if (topLevel == null) return;
+            var files = await topLevel.StorageProvider.OpenFilePickerAsync(new Avalonia.Platform.Storage.FilePickerOpenOptions {
+                Title = "Open Session", AllowMultiple = false,
+                FileTypeFilter = [new Avalonia.Platform.Storage.FilePickerFileType("SignalBench Session") { Patterns = ["*.sbs"] }]
+            });
+            
+            if (files.Count > 0) {
+                var session = _sessionManager.LoadSession(files[0].Path.LocalPath);
+                
+                // Clear existing plots
+                if (IsStreaming) await StopStreamingAsync();
+                foreach(var p in Plots) p.Dispose();
+                Plots.Clear();
+                
+                foreach (var tab in session.Tabs)
+                {
+                    // Reconstruct PlotViewModel
+                    var mode = _settingsService.Current.StorageMode == "Sqlite" ? StorageMode.Sqlite : StorageMode.InMemory;
+                    IDataStore store;
+                    if (mode == StorageMode.Sqlite) {
+                        store = new SqliteDataStore(Path.Combine(Path.GetTempPath(), $"signalbench_{Guid.NewGuid():N}.db"));
+                    } else {
+                        store = new InMemoryDataStore();
+                    }
+
+                    var plot = new PlotViewModel(tab.Name, store);
+                    plot.SourceType = Enum.Parse<PlotSourceType>(tab.SourceType);
+                    plot.TelemetryPath = tab.TelemetryPath;
+                    
+                    // Restore settings if provided
+                    if (tab.SerialSettings != null)
+                    {
+                        plot.SerialSettings.Port = tab.SerialSettings.Port;
+                        plot.SerialSettings.BaudRate = tab.SerialSettings.BaudRate;
+                        plot.SerialSettings.Parity = tab.SerialSettings.Parity;
+                        plot.SerialSettings.DataBits = tab.SerialSettings.DataBits;
+                        plot.SerialSettings.StopBits = tab.SerialSettings.StopBits;
+                        plot.SerialSettings.RollingWindowSeconds = tab.SerialSettings.RollingWindowSeconds;
+                    }
+
+                    if (tab.NetworkSettings != null)
+                    {
+                        plot.NetworkSettings.Protocol = tab.NetworkSettings.Protocol;
+                        plot.NetworkSettings.IpAddress = tab.NetworkSettings.IpAddress;
+                        plot.NetworkSettings.Port = tab.NetworkSettings.Port;
+                        plot.NetworkSettings.RollingWindowSeconds = tab.NetworkSettings.RollingWindowSeconds;
+                    }
+
+                    // Load Schema from embedded YAML
+                    PacketSchema? schema = null;
+                    if (!string.IsNullOrEmpty(tab.SchemaYaml))
+                    {
+                        schema = new SchemaLoader().Load(tab.SchemaYaml);
+                        plot.Schema = schema;
+                    }
+
+                    Plots.Add(plot);
+                    SelectedPlot = plot;
+
+                    // Load data if it was a file
+                    if (plot.SourceType == PlotSourceType.File && !string.IsNullOrEmpty(tab.TelemetryPath) && File.Exists(tab.TelemetryPath))
+                    {
+                        await LoadTelemetryFileAsync(tab.TelemetryPath, null, schema, tab.CsvSettings);
+                    }
+                    
+                    // Restart streaming if it was a stream
+                    if (plot.SourceType == PlotSourceType.Serial && plot.IsSerialConfigured && plot.Schema != null)
+                    {
+                        await StartStreamingAsync();
+                    }
+                    else if (plot.SourceType == PlotSourceType.Network && plot.IsNetworkConfigured && plot.Schema != null)
+                    {
+                        await StartNetworkStreamingAsync();
+                    }
+                    
+                    var targetPlot = Plots.Last();
+                    targetPlot.SelectedSignalNames.Clear();
+                    foreach (var sName in tab.SelectedSignalNames) targetPlot.SelectedSignalNames.Add(sName);
+                    
+                    foreach (var ds in tab.DerivedSignals)
+                    {
+                        if (!targetPlot.DerivedSignals.Any(d => d.Name == ds.Name))
+                            targetPlot.DerivedSignals.Add(ds);
+                    }
+                }
+
+                if (session.SelectedTabIndex >= 0 && session.SelectedTabIndex < Plots.Count)
+                    SelectedPlot = Plots[session.SelectedTabIndex];
+                
+                StatusText = "Session loaded.";
+            }
+        } catch (Exception ex) { await ShowError("Load Error", "Failed to load session.", ex); }
+    }
+    public void AutoSaveSession()
+    {
+        try {
+            string autoSavePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SignalBench", "autosave.sbs");
+            Directory.CreateDirectory(Path.GetDirectoryName(autoSavePath)!);
+
+            var tabs = new List<TabSession>();
+            foreach (var p in Plots) {
+                var tab = new TabSession {
+                    Name = p.Name, SourceType = p.SourceType.ToString(), TelemetryPath = p.TelemetryPath,
+                    SelectedSignalNames = [.. p.SelectedSignalNames], DerivedSignals = [.. p.DerivedSignals],
+                    SerialSettings = p.SerialSettings, NetworkSettings = p.NetworkSettings, CsvSettings = p.CsvSettings
+                };
+                if (p.Schema != null) { try { tab.SchemaYaml = new SchemaLoader().Save(p.Schema); } catch { } }
+                tabs.Add(tab);
+            }
+
+            var session = new ProjectSession { SelectedTabIndex = SelectedPlot != null ? Plots.IndexOf(SelectedPlot) : 0, Tabs = tabs };
+            _sessionManager.SaveSession(autoSavePath, session);
+            
+            _settingsService.Current.LastSessionPath = autoSavePath;
+            _settingsService.Save();
+        } catch (Exception ex) { _logger.LogWarning(ex, "Auto-save failed."); }
+    }
+
     private async Task OpenAboutAsync() {
         var topLevel = (App.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)?.MainWindow;
         if (topLevel != null) await new SignalBench.Views.AboutWindow().ShowDialog(topLevel);

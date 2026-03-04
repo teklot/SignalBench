@@ -79,7 +79,7 @@
         <Border Grid.Row="1" Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}" Padding="20,15" BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" BorderThickness="0,1,0,0">
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="12">
                 <Button Content="Cancel" Command="{Binding CancelCommand}" Width="100" HorizontalContentAlignment="Center"/>
-                <Button Content="Save" Command="{Binding SaveCommand}" Width="100" HorizontalContentAlignment="Center" Classes="accent"/>
+                <Button Content="Connect" Command="{Binding SaveCommand}" Width="100" HorizontalContentAlignment="Center" Classes="accent"/>
             </StackPanel>
         </Border>
     </Grid>

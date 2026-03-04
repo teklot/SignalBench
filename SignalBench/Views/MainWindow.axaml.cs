@@ -1,3 +1,4 @@
+using Avalonia.Controls;
 using Avalonia.ReactiveUI;
 using SignalBench.ViewModels;
 
@@ -8,5 +9,14 @@ public partial class MainWindow : ReactiveWindow<MainWindowViewModel>
     public MainWindow()
     {
         InitializeComponent();
+    }
+
+    protected override void OnClosing(WindowClosingEventArgs e)
+    {
+        if (ViewModel != null)
+        {
+            ViewModel.AutoSaveSession();
+        }
+        base.OnClosing(e);
     }
 }

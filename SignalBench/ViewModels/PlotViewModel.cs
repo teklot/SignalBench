@@ -3,10 +3,7 @@ using SignalBench.Core.Data;
 using SignalBench.Core.Models;
 using SignalBench.Core.Models.Schema;
 using SignalBench.Core.Session;
-using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Linq;
 
 namespace SignalBench.ViewModels;
 
@@ -46,6 +43,13 @@ public class PlotViewModel : ViewModelBase
         set => this.RaiseAndSetIfChanged(ref _schema, value);
     }
 
+    private string? _schemaPath;
+    public string? SchemaPath
+    {
+        get => _schemaPath;
+        set => this.RaiseAndSetIfChanged(ref _schemaPath, value);
+    }
+
     private bool _isStreaming;
     public bool IsStreaming
     {
@@ -80,6 +84,7 @@ public class PlotViewModel : ViewModelBase
 
     public SerialSettings SerialSettings { get; } = new();
     public NetworkSettings NetworkSettings { get; } = new();
+    public CsvSettings CsvSettings { get; set; } = new();
 
     public bool IsSerialConfigured => !string.IsNullOrEmpty(SerialSettings.Port);
     public bool IsNetworkConfigured => !string.IsNullOrEmpty(NetworkSettings.IpAddress) && NetworkSettings.Port > 0;

@@ -51,13 +51,13 @@ public class NetworkDialogViewModel : ViewModelBase
     public ReactiveCommand<Unit, Unit> CancelCommand { get; }
     public ReactiveCommand<Unit, Unit> OpenSchemaCommand { get; }
 
-    public NetworkDialogViewModel(NetworkSettings settings)
+    public NetworkDialogViewModel(NetworkSettings settings, string? currentSchemaPath)
     {
         _networkProtocol = settings.Protocol;
         _networkIp = settings.IpAddress;
         _networkPort = settings.Port;
         _rollingWindowSeconds = settings.RollingWindowSeconds;
-        _loadedSchemaPath = settings.SchemaPath;
+        _loadedSchemaPath = currentSchemaPath;
 
         SaveCommand = ReactiveCommand.Create(Save);
         CancelCommand = ReactiveCommand.Create(() => { });
@@ -103,7 +103,6 @@ public class NetworkDialogViewModel : ViewModelBase
         settings.IpAddress = NetworkIp;
         settings.Port = NetworkPort;
         settings.RollingWindowSeconds = RollingWindowSeconds;
-        settings.SchemaPath = LoadedSchemaPath;
     }
 
     private async Task OpenSchemaAsync()

@@ -69,7 +69,7 @@ public class SerialDialogViewModel : ViewModelBase
     public ReactiveCommand<Unit, Unit> RefreshPortsCommand { get; }
     public ReactiveCommand<Unit, Unit> OpenSchemaCommand { get; }
 
-    public SerialDialogViewModel(SerialSettings settings)
+    public SerialDialogViewModel(SerialSettings settings, string? currentSchemaPath)
     {
         _selectedPort = settings.Port;
         _selectedBaudRate = settings.BaudRate;
@@ -77,7 +77,7 @@ public class SerialDialogViewModel : ViewModelBase
         _dataBits = settings.DataBits;
         _stopBits = settings.StopBits;
         _rollingWindowSeconds = settings.RollingWindowSeconds;
-        _loadedSchemaPath = settings.SchemaPath;
+        _loadedSchemaPath = currentSchemaPath;
 
         SaveCommand = ReactiveCommand.Create(Save);
         CancelCommand = ReactiveCommand.Create(() => { });
@@ -138,7 +138,6 @@ public class SerialDialogViewModel : ViewModelBase
         settings.DataBits = DataBits;
         settings.StopBits = StopBits;
         settings.RollingWindowSeconds = RollingWindowSeconds;
-        settings.SchemaPath = LoadedSchemaPath;
     }
 
     private async Task OpenSchemaAsync()
