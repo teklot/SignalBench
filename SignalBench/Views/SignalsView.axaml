@@ -35,9 +35,9 @@
                 <TextBlock Text="DERIVED SIGNALS" 
                            FontSize="11" 
                            FontWeight="Bold" 
-                           Foreground="#605e5c" 
+                           Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" 
                            Margin="0,15,0,5"/>
-                <Border Height="1" Background="#e1dfdd" Margin="0,0,0,5"/>
+                <Border Height="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" Margin="0,0,0,5"/>
                 <ItemsControl ItemsSource="{Binding AvailableSignals}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="vm:SignalItemViewModel">
@@ -56,7 +56,7 @@
                                         Padding="4,2"
                                         Margin="4,0,0,0"
                                         ToolTip.Tip="Edit">
-                                    <mi:MaterialIcon Kind="Pencil" Width="14" Height="14" Foreground="#605e5c"/>
+                                    <mi:MaterialIcon Kind="Pencil" Width="14" Height="14" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
                                 </Button>
                             </Grid>
                         </DataTemplate>

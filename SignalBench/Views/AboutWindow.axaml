@@ -10,7 +10,7 @@
         SizeToContent="Height"
         WindowStartupLocation="CenterOwner"
         CanResize="False">
-    <Grid Margin="30">
+    <Grid Margin="30" Background="{DynamicResource SystemRegionBrush}">
         <StackPanel Spacing="12" HorizontalAlignment="Center">
             <!-- Icon with Fade Grid -->
             <Grid Width="200" Height="200" HorizontalAlignment="Center" Margin="0,-50">
@@ -50,17 +50,17 @@
             </Grid>
             
             <!-- App Name -->
-            <TextBlock Text="SignalBench" FontSize="28" FontWeight="Bold" HorizontalAlignment="Center" Foreground="#323130"/>
+            <TextBlock Text="SignalBench" FontSize="28" FontWeight="Bold" HorizontalAlignment="Center" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
             
             <!-- Version -->
-            <TextBlock x:Name="VersionText" FontSize="15" HorizontalAlignment="Center" Foreground="#605e5c"/>
+            <TextBlock x:Name="VersionText" FontSize="15" HorizontalAlignment="Center" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
             
             <!-- Tagline -->
             <TextBlock x:Name="TaglineText" 
                        FontSize="14" 
                        TextWrapping="Wrap" 
                        TextAlignment="Center" 
-                       Foreground="#323130"
+                       Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
                        Margin="0,8,0,0"/>
             
             <!-- Description -->
@@ -68,14 +68,14 @@
                        FontSize="13" 
                        TextWrapping="Wrap" 
                        TextAlignment="Center" 
-                       Foreground="#605e5c"
+                       Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
                        Margin="0,5,0,0"/>
             
             <!-- Copyright -->
             <TextBlock x:Name="CopyrightText" 
                        FontSize="12" 
                        HorizontalAlignment="Center" 
-                       Foreground="#8a8886"
+                       Foreground="{DynamicResource SystemControlForegroundBaseLowBrush}"
                        Margin="0,15,0,0"/>
             
             <!-- Close Button -->

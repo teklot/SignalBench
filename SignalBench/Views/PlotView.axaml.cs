@@ -1,11 +1,7 @@
 using Avalonia.Controls;
-using Avalonia.Media;
-using ScottPlot;
 using ScottPlot.Plottables;
 using SignalBench.ViewModels;
-using System;
-using System.Collections.Generic;
-using System.Linq;
+using System.Reactive.Linq;
 
 namespace SignalBench.Views;
 
@@ -17,14 +13,35 @@ public partial class PlotView : UserControl
     {
         InitializeComponent();
         DataContextChanged += PlotView_DataContextChanged;
+        
+        // Listen for theme changes
+        ActualThemeVariantChanged += (s, e) => {
+            var mainPlot = this.FindControl<ScottPlot.Avalonia.AvaPlot>("MainPlot");
+            if (mainPlot != null) {
+                ApplyTheme(mainPlot.Plot);
+                mainPlot.Refresh();
+            }
+        };
     }
 
-    private void PlotView_DataContextChanged(object? sender, EventArgs e)
+    private void ApplyTheme(ScottPlot.Plot plot)
     {
-        // Detach from previous VM if it exists
-        // Note: We don't have a direct reference to the old VM here easily, 
-        // but we can ensure the NEW VM is set, and the VM itself should handle its own cleanup.
-        // Actually, a better way is to track the last VM we attached to.
+        bool isDark = ActualThemeVariant == Avalonia.Styling.ThemeVariant.Dark;
+        
+        if (isDark)
+        {
+            plot.FigureBackground.Color = ScottPlot.Color.FromHex("#1e1e1e");
+            plot.DataBackground.Color = ScottPlot.Color.FromHex("#1e1e1e");
+            plot.Axes.Color(ScottPlot.Colors.White);
+            plot.Grid.MajorLineColor = ScottPlot.Colors.Gray.WithAlpha(0.2);
+        }
+        else
+        {
+            plot.FigureBackground.Color = ScottPlot.Colors.White;
+            plot.DataBackground.Color = ScottPlot.Colors.White;
+            plot.Axes.Color(ScottPlot.Colors.Black);
+            plot.Grid.MajorLineColor = ScottPlot.Colors.Gray.WithAlpha(0.1);
+        }
     }
 
     private PlotViewModel? _attachedVm;
@@ -66,6 +83,7 @@ public partial class PlotView : UserControl
         if (mainPlot == null) return;
 
         mainPlot.Plot.Clear();
+        ApplyTheme(mainPlot.Plot);
         _cursorLine = null;
 
         if (timestamps.Count == 0) 
@@ -189,6 +207,7 @@ public partial class PlotView : UserControl
         var mainPlot = this.FindControl<ScottPlot.Avalonia.AvaPlot>("MainPlot");
         if (mainPlot == null) return;
 
+        ApplyTheme(mainPlot.Plot);
         AddOrUpdateCursor(mainPlot, cursorPosition);
         mainPlot.Refresh();
     }
@@ -199,6 +218,7 @@ public partial class PlotView : UserControl
         if (mainPlot == null) return;
 
         mainPlot.Plot.Clear();
+        ApplyTheme(mainPlot.Plot);
         _cursorLine = null;
         
         mainPlot.Plot.Axes.Bottom.Min = -10;

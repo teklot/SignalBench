@@ -27,10 +27,10 @@
             <Setter Property="VerticalAlignment" Value="Center"/>
         </Style>
         <Style Selector="Button.toolbar:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="#edebe9"/>
+            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}"/>
         </Style>
         <Style Selector="Button.toolbar:pressed /template/ ContentPresenter">
-            <Setter Property="Background" Value="#e1dfdd"/>
+            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundChromeMediumBrush}"/>
         </Style>
         <Style Selector="Button.toolbar:disabled">
             <Setter Property="Opacity" Value="0.4"/>
@@ -43,21 +43,21 @@
         <Style Selector="TextBlock.header">
             <Setter Property="FontSize" Value="11"/>
             <Setter Property="FontWeight" Value="Bold"/>
-            <Setter Property="Foreground" Value="#605e5c"/>
+            <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
             <Setter Property="Margin" Value="0,0,0,5"/>
         </Style>
 
         <Style Selector="Menu">
-            <Setter Property="Background" Value="#dae5f0"/>
+            <Setter Property="Background" Value="Transparent"/>
         </Style>
         <Style Selector="MenuItem">
             <Setter Property="Padding" Value="12,6"/>
         </Style>
     </Window.Styles>
 
-    <DockPanel Background="White">
+    <DockPanel Background="{DynamicResource SystemRegionBrush}">
         <!-- 1. Top Menu Bar -->
-        <Menu DockPanel.Dock="Top" BorderBrush="#e1dfdd" BorderThickness="0,0,0,1">
+        <Menu DockPanel.Dock="Top" BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}" BorderThickness="0,0,0,1">
             <MenuItem Header="_File">
                 <MenuItem Header="_Open Telemetry..." Command="{Binding OpenFileCommand}">
                     <MenuItem.Icon>
@@ -107,16 +107,17 @@
                 <MenuItem Header="Signals Panel" 
                           Command="{Binding ToggleSignalsPaneCommand}">
                     <MenuItem.Icon>
-                        <mi:MaterialIcon Kind="Check" IsVisible="{Binding IsSignalsPaneOpen}" Width="18" Height="18" Foreground="#2b579a"/>
+                        <mi:MaterialIcon Kind="Check" IsVisible="{Binding IsSignalsPaneOpen}" Width="18" Height="18" Foreground="{DynamicResource SystemAccentColor}"/>
                     </MenuItem.Icon>
                 </MenuItem>
                 <MenuItem Header="Toolbar" 
                           Command="{Binding ToggleToolbarCommand}">
                     <MenuItem.Icon>
-                        <mi:MaterialIcon Kind="Check" IsVisible="{Binding IsToolbarVisible}" Width="18" Height="18" Foreground="#2b579a"/>
+                        <mi:MaterialIcon Kind="Check" IsVisible="{Binding IsToolbarVisible}" Width="18" Height="18" Foreground="{DynamicResource SystemAccentColor}"/>
                     </MenuItem.Icon>
                 </MenuItem>
             </MenuItem>
+
 
             <MenuItem Header="_Tools">
                 <MenuItem Header="_Open Schema..." Command="{Binding OpenSchemaCommand}">
@@ -176,47 +177,47 @@
         </Menu>
 
         <!-- 2. Ribbon Toolbar -->
-        <Border DockPanel.Dock="Top" Background="#f3f2f1" BorderBrush="#e1dfdd" BorderThickness="0,0,0,1" IsVisible="{Binding IsToolbarVisible}">
+        <Border DockPanel.Dock="Top" Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}" BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}" BorderThickness="0,0,0,1" IsVisible="{Binding IsToolbarVisible}">
             <StackPanel Orientation="Horizontal" Margin="5,0">
                 <!-- SESSION GROUP -->
                 <StackPanel Orientation="Vertical" Margin="8,6">
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="2">
                         <Button Classes="toolbar" Command="{Binding OpenSessionCommand}" ToolTip.Tip="Open Session">
-                            <mi:MaterialIcon Kind="FolderOpenOutline" Width="22" Height="22" Foreground="#2b579a"/>
+                            <mi:MaterialIcon Kind="FolderOpenOutline" Width="22" Height="22" Foreground="{DynamicResource SystemAccentColor}"/>
                         </Button>
                         <Button Classes="toolbar" Command="{Binding SaveSessionCommand}" ToolTip.Tip="Save Session">
-                            <mi:MaterialIcon Kind="ContentSaveOutline" Width="22" Height="22" Foreground="#2b579a"/>
+                            <mi:MaterialIcon Kind="ContentSaveOutline" Width="22" Height="22" Foreground="{DynamicResource SystemAccentColor}"/>
                         </Button>
                         <Button Classes="toolbar" Command="{Binding CloseAllCommand}" ToolTip.Tip="Close All / Reset Workspace">
                             <mi:MaterialIcon Kind="WindowClose" Width="22" Height="22" Foreground="#d83b01"/>
                         </Button>
                     </StackPanel>
-                    <TextBlock Text="SESSION" FontSize="9" FontWeight="SemiBold" HorizontalAlignment="Center" Foreground="#605e5c" Margin="0,2,0,0"/>
+                    <TextBlock Text="SESSION" FontSize="9" FontWeight="SemiBold" HorizontalAlignment="Center" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" Margin="0,2,0,0"/>
                 </StackPanel>
-                <Border Width="1" Background="#e1dfdd" VerticalAlignment="Stretch"/>
+                <Border Width="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" VerticalAlignment="Stretch"/>
                 
                 <!-- DATA FILE GROUP -->
                 <StackPanel Orientation="Vertical" Margin="8,6">
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="2">
                         <Button Classes="toolbar" Command="{Binding OpenFileCommand}" ToolTip.Tip="Open Telemetry File">
-                            <mi:MaterialIcon Kind="TableLarge" Width="22" Height="22" Foreground="#2b579a"/>
+                            <mi:MaterialIcon Kind="TableLarge" Width="22" Height="22" Foreground="{DynamicResource SystemAccentColor}"/>
                         </Button>
                         <Button Classes="toolbar" Command="{Binding ExportCsvCommand}" ToolTip.Tip="Export CSV">
-                            <mi:MaterialIcon Kind="FileExportOutline" Width="22" Height="22" Foreground="#2b579a"/>
+                            <mi:MaterialIcon Kind="FileExportOutline" Width="22" Height="22" Foreground="{DynamicResource SystemAccentColor}"/>
                         </Button>
                     </StackPanel>
-                    <TextBlock Text="DATA FILE" FontSize="9" FontWeight="SemiBold" HorizontalAlignment="Center" Foreground="#605e5c" Margin="0,2,0,0"/>
+                    <TextBlock Text="DATA FILE" FontSize="9" FontWeight="SemiBold" HorizontalAlignment="Center" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" Margin="0,2,0,0"/>
                 </StackPanel>
-                <Border Width="1" Background="#e1dfdd" VerticalAlignment="Stretch"/>
+                <Border Width="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" VerticalAlignment="Stretch"/>
 
                 <!-- STREAM GROUP -->
                 <StackPanel Orientation="Vertical" Margin="8,6">
                     <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
                         <Button Classes="toolbar" Command="{Binding ToggleStreamingCommand}" ToolTip.Tip="Serial Stream">
                             <Grid Width="24" Height="24" ClipToBounds="False">
-                                <mi:MaterialIcon Kind="SerialPort" Width="24" Height="24" Foreground="#2b579a"/>
+                                <mi:MaterialIcon Kind="SerialPort" Width="24" Height="24" Foreground="{DynamicResource SystemAccentColor}"/>
                                 <!-- Bordered Badge (Pro Look) -->
-                                <Border Background="White" 
+                                <Border Background="{DynamicResource SystemRegionBrush}" 
                                         CornerRadius="5"
                                         Padding="1"
                                         HorizontalAlignment="Right" 
@@ -236,9 +237,9 @@
                         </Button>
                         <Button Classes="toolbar" Command="{Binding ToggleUdpStreamingCommand}" ToolTip.Tip="Network Stream">
                             <Grid Width="24" Height="24" ClipToBounds="False">
-                                <mi:MaterialIcon Kind="Lan" Width="24" Height="24" Foreground="#2b579a"/>
+                                <mi:MaterialIcon Kind="Lan" Width="24" Height="24" Foreground="{DynamicResource SystemAccentColor}"/>
                                 <!-- Bordered Badge (Pro Look) -->
-                                <Border Background="White" 
+                                <Border Background="{DynamicResource SystemRegionBrush}" 
                                         CornerRadius="5"
                                         Padding="1"
                                         HorizontalAlignment="Right" 
@@ -260,60 +261,60 @@
                             <mi:MaterialIcon Kind="{Binding IsRecording, Converter={x:Static converters:BoolToRecordIconConverter.Instance}}" Width="24" Height="24" Foreground="{Binding IsRecording, Converter={x:Static converters:BoolToColorConverter.Instance}, ConverterParameter='Recording'}"/>
                         </Button>
                     </StackPanel>
-                    <TextBlock Text="STREAM" FontSize="9" FontWeight="SemiBold" HorizontalAlignment="Center" Foreground="#605e5c" Margin="0,2,0,0"/>
+                    <TextBlock Text="STREAM" FontSize="9" FontWeight="SemiBold" HorizontalAlignment="Center" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" Margin="0,2,0,0"/>
                 </StackPanel>
-                <Border Width="1" Background="#e1dfdd" VerticalAlignment="Stretch"/>
+                <Border Width="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" VerticalAlignment="Stretch"/>
                 
                 <!-- SCHEMA GROUP -->
                 <StackPanel Orientation="Vertical" Margin="8,6">
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="2">
                         <Button Classes="toolbar" Command="{Binding CreateSchemaCommand}" ToolTip.Tip="Create New Schema">
-                            <mi:MaterialIcon Kind="FilePlusOutline" Width="22" Height="22" Foreground="#2b579a"/>
+                            <mi:MaterialIcon Kind="FilePlusOutline" Width="22" Height="22" Foreground="{DynamicResource SystemAccentColor}"/>
                         </Button>
                         <Button Classes="toolbar" Command="{Binding EditSchemaCommand}" ToolTip.Tip="Edit Current Schema">
-                            <mi:MaterialIcon Kind="FileDocumentEditOutline" Width="22" Height="22" Foreground="#2b579a"/>
+                            <mi:MaterialIcon Kind="FileDocumentEditOutline" Width="22" Height="22" Foreground="{DynamicResource SystemAccentColor}"/>
                         </Button>
                         <Button Classes="toolbar" Command="{Binding CreateDerivedSignalCommand}" ToolTip.Tip="Create Derived Signal">
-                            <mi:MaterialIcon Kind="FunctionVariant" Width="22" Height="22" Foreground="#2b579a"/>
+                            <mi:MaterialIcon Kind="FunctionVariant" Width="22" Height="22" Foreground="{DynamicResource SystemAccentColor}"/>
                         </Button>
                     </StackPanel>
-                    <TextBlock Text="SCHEMA" FontSize="9" FontWeight="SemiBold" HorizontalAlignment="Center" Foreground="#605e5c" Margin="0,2,0,0"/>
+                    <TextBlock Text="SCHEMA" FontSize="9" FontWeight="SemiBold" HorizontalAlignment="Center" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" Margin="0,2,0,0"/>
                 </StackPanel>
-                <Border Width="1" Background="#e1dfdd" VerticalAlignment="Stretch"/>
+                <Border Width="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" VerticalAlignment="Stretch"/>
                 
                 <!-- APP GROUP -->
                 <StackPanel Orientation="Vertical" Margin="8,6" VerticalAlignment="Center">
                     <Button Classes="toolbar" Command="{Binding OpenSettingsCommand}" ToolTip.Tip="Settings" HorizontalAlignment="Center">
-                        <mi:MaterialIcon Kind="SettingsOutline" Width="22" Height="22" Foreground="#605e5c"/>
+                        <mi:MaterialIcon Kind="SettingsOutline" Width="22" Height="22" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
                     </Button>
-                    <TextBlock Text="APP" FontSize="9" FontWeight="SemiBold" HorizontalAlignment="Center" Foreground="#605e5c" Margin="0,2,0,0"/>
+                    <TextBlock Text="APP" FontSize="9" FontWeight="SemiBold" HorizontalAlignment="Center" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" Margin="0,2,0,0"/>
                 </StackPanel>
             </StackPanel>
         </Border>
 
         <!-- 3. Status Bar (Docked Bottom) -->
         <Border DockPanel.Dock="Bottom" 
-                Background="#f3f2f1" 
-                BorderBrush="#e1dfdd" 
+                Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}" 
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}" 
                 BorderThickness="0,1,0,0" 
                 Height="28" 
                 Padding="10,0">
             <Grid ColumnDefinitions="*, Auto, Auto">
                 <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Spacing="8">
-                    <mi:MaterialIcon Kind="InformationOutline" Width="14" Height="14" Foreground="#2b579a"/>
-                    <TextBlock Text="{Binding StatusText}" FontSize="11" Foreground="#323130" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                    <mi:MaterialIcon Kind="InformationOutline" Width="14" Height="14" Foreground="{DynamicResource SystemAccentColor}"/>
+                    <TextBlock Text="{Binding StatusText}" FontSize="11" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" VerticalAlignment="Center" FontWeight="SemiBold"/>
                     
                     <!-- Dynamic Connection Info -->
-                    <Border Width="1" Height="14" Background="#e1dfdd" Margin="8,0" IsVisible="{Binding SelectedPlot.ConnectionInfo, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                    <Border Width="1" Height="14" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" Margin="8,0" IsVisible="{Binding SelectedPlot.ConnectionInfo, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                     <StackPanel Orientation="Horizontal" Spacing="5" IsVisible="{Binding SelectedPlot.ConnectionInfo, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-                        <mi:MaterialIcon Kind="{Binding SelectedPlot.ConnectionIcon}" Width="14" Height="14" Foreground="#605e5c"/>
-                        <TextBlock Text="{Binding SelectedPlot.ConnectionInfo}" FontSize="11" Foreground="#605e5c" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                        <mi:MaterialIcon Kind="{Binding SelectedPlot.ConnectionIcon}" Width="14" Height="14" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                        <TextBlock Text="{Binding SelectedPlot.ConnectionInfo}" FontSize="11" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" VerticalAlignment="Center" FontWeight="SemiBold"/>
                     </StackPanel>                </StackPanel>
                 
                 <!-- Progress bar shown during loading -->
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Spacing="8" IsVisible="{Binding IsLoading}">
                     <ProgressBar Value="{Binding LoadProgress}" Width="100" Height="10"/>
-                    <TextBlock Text="{Binding LoadElapsed}" FontSize="11" Foreground="#605e5c" VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding LoadElapsed}" FontSize="11" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" VerticalAlignment="Center"/>
                 </StackPanel>
             </Grid>
         </Border>
@@ -321,7 +322,7 @@
         <!-- 4. Main Content Area -->
         <Grid ColumnDefinitions="Auto, *">
             <!-- Vertical Tab Strip -->
-            <Border Grid.Column="0" Width="24" Background="#f3f2f1" BorderBrush="#e1dfdd" BorderThickness="0,0,1,0" IsVisible="{Binding !IsSignalsPaneOpen}">
+            <Border Grid.Column="0" Width="24" Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}" BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}" BorderThickness="0,0,1,0" IsVisible="{Binding !IsSignalsPaneOpen}">
                 <Button Command="{Binding ToggleSignalsPaneCommand}" 
                         Background="Transparent" BorderThickness="0" Padding="0" 
                         VerticalAlignment="Top" Margin="0,20,0,0"
@@ -331,7 +332,7 @@
                         <LayoutTransformControl.LayoutTransform>
                             <RotateTransform Angle="-90"/>
                         </LayoutTransformControl.LayoutTransform>
-                        <TextBlock Text="SIGNALS" FontSize="11" FontWeight="Bold" Foreground="#2b579a"/>
+                        <TextBlock Text="SIGNALS" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource SystemAccentColor}"/>
                     </LayoutTransformControl>
                 </Button>
             </Border>
@@ -348,14 +349,14 @@
                 <!-- Open Signals Sidebar -->
                 <Border Grid.Column="0" 
                         HorizontalAlignment="Stretch"
-                        Background="White" BorderBrush="#e1dfdd" BorderThickness="0,0,1,0" 
+                        Background="{DynamicResource SystemRegionBrush}" BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}" BorderThickness="0,0,1,0" 
                         IsVisible="{Binding IsSignalsPaneOpen}">
                     <Grid RowDefinitions="Auto, *">
-                        <Border Grid.Row="0" Background="#f3f2f1" Height="32" Padding="10,0">
+                        <Border Grid.Row="0" Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}" Height="32" Padding="10,0">
                             <Grid ColumnDefinitions="*, Auto">
-                                <TextBlock Grid.Column="0" Text="SIGNALS" VerticalAlignment="Center" FontSize="11" FontWeight="Bold" Foreground="#2b579a"/>
+                                <TextBlock Grid.Column="0" Text="SIGNALS" VerticalAlignment="Center" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource SystemAccentColor}"/>
                                 <Button Grid.Column="1" Command="{Binding ToggleSignalsPaneCommand}" Background="Transparent" BorderThickness="0" Padding="4" ToolTip.Tip="Collapse">
-                                    <mi:MaterialIcon Kind="ChevronLeft" Width="14" Height="14" Foreground="#2b579a"/>
+                                    <mi:MaterialIcon Kind="ChevronLeft" Width="14" Height="14" Foreground="{DynamicResource SystemAccentColor}"/>
                                 </Button>
                             </Grid>
                         </Border>
@@ -364,7 +365,7 @@
                 </Border>
 
                 <!-- GridSplitter -->
-                <GridSplitter Grid.Column="1" Width="4" Background="#e1dfdd" IsVisible="{Binding IsSignalsPaneOpen}"/>
+                <GridSplitter Grid.Column="1" Width="4" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" IsVisible="{Binding IsSignalsPaneOpen}"/>
 
                 <!-- Plot Area -->
                 <Border Grid.Column="2" Padding="15">
@@ -398,7 +399,7 @@
                                         Background="Transparent" BorderThickness="0" Padding="8,4"
                                         VerticalAlignment="Center"
                                         IsVisible="{Binding CanAddPlot}">
-                                    <mi:MaterialIcon Kind="Plus" Width="18" Height="18" Foreground="#2b579a"/>
+                                    <mi:MaterialIcon Kind="Plus" Width="18" Height="18" Foreground="{DynamicResource SystemAccentColor}"/>
                                 </Button>
                             </StackPanel>
 
@@ -414,7 +415,7 @@
                         
                         <!-- Replay Controls - Bottom of Plot -->
                         <Border Grid.Row="1" 
-                                Background="#f3f2f1" 
+                                Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}" 
                                 CornerRadius="4" 
                                 Padding="8,3" 
                                 Margin="0,5,0,0"
@@ -447,7 +448,7 @@
 
                                 <!-- Timestamp Display -->
                                 <Border Grid.Column="5" 
-                                        Background="#edebe9" 
+                                        Background="{DynamicResource SystemControlBackgroundAltHighBrush}" 
                                         CornerRadius="2"
                                         Padding="8,2"
                                         Margin="10,0"
@@ -458,7 +459,7 @@
                                                LineHeight="14"
                                                HorizontalAlignment="Center"
                                                TextAlignment="Center"
-                                               Foreground="#2b579a"
+                                               Foreground="{DynamicResource SystemAccentColor}"
                                                FontWeight="SemiBold"/>
                                 </Border>
 

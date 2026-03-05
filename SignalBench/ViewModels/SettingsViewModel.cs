@@ -28,7 +28,22 @@ public class SettingsViewModel : ViewModelBase
     public string Theme
     {
         get => _theme;
-        set => this.RaiseAndSetIfChanged(ref _theme, value);
+        set {
+            this.RaiseAndSetIfChanged(ref _theme, value);
+            ApplyTheme(value);
+        }
+    }
+
+    private void ApplyTheme(string themeName)
+    {
+        if (Application.Current == null) return;
+        
+        Application.Current.RequestedThemeVariant = themeName switch
+        {
+            "Light" => Avalonia.Styling.ThemeVariant.Light,
+            "Dark" => Avalonia.Styling.ThemeVariant.Dark,
+            _ => Avalonia.Styling.ThemeVariant.Default
+        };
     }
 
     private string _storageMode;

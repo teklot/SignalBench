@@ -4,18 +4,12 @@ using ReactiveUI;
 using SignalBench.Core;
 using SignalBench.Core.Data;
 using SignalBench.Core.Decoding;
-using SignalBench.Core.Models;
 using SignalBench.Core.Models.Schema;
 using SignalBench.Core.Services;
 using SignalBench.Core.Session;
-using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.IO;
-using System.Linq;
 using System.Reactive;
 using System.Timers;
-using System.Threading.Tasks;
 
 namespace SignalBench.ViewModels;
 
