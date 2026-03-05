@@ -16,5 +16,5 @@ public static class AppInfo
     public static string Name => "SignalBench";
     public static string Copyright => "© 2026 TekLot";
     public static string Tagline => "A telemetry analysis workbench suitable for real test campaigns.";
-    public static string Description => "The cleanest binary telemetry decoding desktop tool a CubeSat engineer can install and use within 5 minutes.";
+    public static string Description => "A professional-grade telemetry decoding and analysis workbench for satellite, aerospace, automotive, and industrial test engineers. Supporting everything from CubeSat missions to complex flight test campaigns with high-performance visualization.";
 }

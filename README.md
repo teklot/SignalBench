@@ -1,8 +1,8 @@
 # SignalBench v0.2.3.2
 
-**A telemetry analysis workbench suitable for real test campaigns.**
+**A professional-grade telemetry decoding and analysis workbench for satellite, aerospace, automotive, and industrial test engineers.**
 
-SignalBench is the cleanest binary telemetry decoding desktop tool a CubeSat engineer can install and use within 5 minutes. It is a high-performance, engineer-grade telemetry workbench designed for aerospace test and telemetry engineers that supports CSV, binary logs, and live network or serial streams. Decode, visualize, and analyze telemetry without the need for custom scripting.
+SignalBench is a high-performance, engineer-grade telemetry workbench designed for mission-critical test campaigns. It supports everything from CubeSat missions to complex flight test systems, providing robust decoding for CSV, binary logs, and live network or serial streams. Decode, visualize, and analyze telemetry without the need for custom scripting.
 
 ## 🚀 Features
 
@@ -72,13 +72,6 @@ dotnet build SignalBench.sln
 ```bash
 dotnet test
 ```
-
-## 🛠 Simulation & Testing
-
-To test serial streaming without physical hardware:
-1.  Setup a virtual serial pair (e.g., `COM1` <-> `COM2`).
-2.  Run the included simulation script: `powershell -File simulate.ps1` (streams to `COM1`).
-3.  In SignalBench, configure Serial for `COM2` and start streaming.
 
 ---
 

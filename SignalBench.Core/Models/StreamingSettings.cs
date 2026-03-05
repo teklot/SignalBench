@@ -14,6 +14,6 @@ public class NetworkSettings
 {
     public string Protocol { get; set; } = "UDP";
     public string IpAddress { get; set; } = "127.0.0.1";
-    public int Port { get; set; } = 5005;
+    public int Port { get; set; } = 5000;
     public int RollingWindowSeconds { get; set; } = 10;
 }

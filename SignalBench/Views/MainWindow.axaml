@@ -10,7 +10,6 @@
         mc:Ignorable="d" d:DesignWidth="1100" d:DesignHeight="750"
         x:Class="SignalBench.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
-        Icon="/Assets/signalbench_logo.ico"
         Title="{Binding AppTitle}">
 
     <Design.DataContext>

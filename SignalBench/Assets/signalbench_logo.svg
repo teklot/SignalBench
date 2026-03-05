@@ -1,10 +1,6 @@
 <svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
     <!-- Transparent Background (No rect) -->
     
-    <!-- Subtle Grid (Expanded) -->
-    <path d="M100 100H924M100 300H924M100 512H924M100 724H924M100 924H924" stroke="#E0E0E0" stroke-width="4" opacity="0.3"/>
-    <path d="M100 100V924M300 100V924M512 100V924M724 100V924M924 100V924" stroke="#E0E0E0" stroke-width="4" opacity="0.3"/>
-
     <!-- 'S' as a flowing Analog Signal (Brand Blue) - Scaled Larger -->
     <path d="M500 200 
              C200 200 150 450 350 512 

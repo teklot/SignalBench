@@ -12,6 +12,10 @@
   
     <Application.Styles>
         <FluentTheme />
+        <!-- Global Window Icon -->
+        <Style Selector="Window">
+            <Setter Property="Icon" Value="/Assets/signalbench_logo.ico" />
+        </Style>
         <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml"/>
         <mi:MaterialIconStyles />
     </Application.Styles>
