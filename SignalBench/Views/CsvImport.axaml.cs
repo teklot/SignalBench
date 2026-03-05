@@ -1,6 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Data;
-using Avalonia.ReactiveUI;
+using ReactiveUI.Avalonia;
 using ReactiveUI;
 using SignalBench.ViewModels;
 using System.Collections.Specialized;

@@ -12,7 +12,6 @@ public partial class PlotView : UserControl
     public PlotView()
     {
         InitializeComponent();
-        DataContextChanged += PlotView_DataContextChanged;
         
         // Listen for theme changes
         ActualThemeVariantChanged += (s, e) => {

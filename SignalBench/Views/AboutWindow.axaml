@@ -42,11 +42,8 @@
                 </Rectangle>
 
                 <!-- Logo Image (Centered) -->
-                <Image Width="128" Height="128" HorizontalAlignment="Center" VerticalAlignment="Center">
-                    <Image.Source>
-                        <SvgImage Source="avares://SignalBench/Assets/signalbench_logo.svg"/>
-                    </Image.Source>
-                </Image>
+                <Image Width="128" Height="128" HorizontalAlignment="Center" VerticalAlignment="Center"
+                       Source="avares://SignalBench/Assets/signalbench_logo.png"/>
             </Grid>
             
             <!-- App Name -->
