@@ -59,9 +59,25 @@
         <!-- 1. Top Menu Bar -->
         <Menu DockPanel.Dock="Top" BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}" BorderThickness="0,0,0,1">
             <MenuItem Header="_File">
-                <MenuItem Header="_Open Telemetry..." Command="{Binding OpenFileCommand}">
+                <MenuItem Header="Open _CSV..." Command="{Binding OpenCsvCommand}">
                     <MenuItem.Icon>
-                        <mi:MaterialIcon Kind="TableLarge" Width="20" Height="20"/>
+                        <mi:MaterialIcon Kind="FileTableOutline" Width="20" Height="20"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="Open _Binary..." Command="{Binding OpenBinaryCommand}">
+                    <MenuItem.Icon>
+                        <Grid Width="20" Height="20">
+                            <mi:MaterialIcon Kind="FileOutline" Width="20" Height="20"/>
+                            <TextBlock Text="101&#x0a;010" 
+                                       FontSize="5" 
+                                       FontWeight="Black" 
+                                       Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
+                                       HorizontalAlignment="Center" 
+                                       VerticalAlignment="Center"
+                                       Margin="0,3,0,0"
+                                       LineHeight="5"
+                                       TextAlignment="Center"/>
+                        </Grid>
                     </MenuItem.Icon>
                 </MenuItem>
                 <MenuItem Header="Recent Telemetry" ItemsSource="{Binding RecentFiles}">
@@ -199,8 +215,22 @@
                 <!-- DATA FILE GROUP -->
                 <StackPanel Orientation="Vertical" Margin="8,6">
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="2">
-                        <Button Classes="toolbar" Command="{Binding OpenFileCommand}" ToolTip.Tip="Open Telemetry File">
-                            <mi:MaterialIcon Kind="TableLarge" Width="22" Height="22" Foreground="{DynamicResource SystemAccentColor}"/>
+                        <Button Classes="toolbar" Command="{Binding OpenCsvCommand}" ToolTip.Tip="Open CSV Telemetry">
+                            <mi:MaterialIcon Kind="FileTableOutline" Width="22" Height="22" Foreground="{DynamicResource SystemAccentColor}"/>
+                        </Button>
+                        <Button Classes="toolbar" Command="{Binding OpenBinaryCommand}" ToolTip.Tip="Open Binary Telemetry">
+                            <Grid Width="22" Height="22">
+                                <mi:MaterialIcon Kind="FileOutline" Width="22" Height="22" Foreground="{DynamicResource SystemAccentColor}"/>
+                                <TextBlock Text="101&#x0a;010" 
+                                           FontSize="6.5" 
+                                           FontWeight="Black" 
+                                           Foreground="{DynamicResource SystemAccentColor}"
+                                           HorizontalAlignment="Center" 
+                                           VerticalAlignment="Center"
+                                           Margin="0,4,0,0"
+                                           LineHeight="6.5"
+                                           TextAlignment="Center"/>
+                            </Grid>
                         </Button>
                         <Button Classes="toolbar" Command="{Binding ExportCsvCommand}" ToolTip.Tip="Export CSV">
                             <mi:MaterialIcon Kind="FileExportOutline" Width="22" Height="22" Foreground="{DynamicResource SystemAccentColor}"/>

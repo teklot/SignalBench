@@ -18,12 +18,12 @@
             <Border Grid.Row="0" BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" BorderThickness="0,0,0,1" Padding="20">
                 <Grid ColumnDefinitions="*, 150">
                     <StackPanel Spacing="8">
-                        <TextBlock Text="Schema Name:" FontSize="13"/>
+                        <TextBlock Text="SCHEMA NAME" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
                         <TextBox Text="{Binding Name}" Watermark="Enter schema name..."/>
                     </StackPanel>
                     
                     <StackPanel Grid.Column="1" Spacing="8" Margin="20,0,0,0">
-                        <TextBlock Text="Endianness:" FontSize="13"/>
+                        <TextBlock Text="ENDIANNESS" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
                         <ComboBox HorizontalAlignment="Stretch" 
                                   ItemsSource="{Binding AvailableEndianness}"
                                   SelectedItem="{Binding Endianness}"/>
@@ -37,20 +37,20 @@
                     <Button Command="{Binding AddFieldCommand}" Classes="accent">
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <mi:MaterialIcon Kind="Plus" Width="16" Height="16"/>
-                            <TextBlock Text="Add Field" VerticalAlignment="Center"/>
+                            <TextBlock Text="ADD FIELD" FontWeight="Bold" FontSize="11" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Button>
                     <Separator Width="1" Margin="5,0"/>
                     <Button Command="{Binding OpenFromFileCommand}">
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <mi:MaterialIcon Kind="FolderOpenOutline" Width="16" Height="16"/>
-                            <TextBlock Text="Open from File..." VerticalAlignment="Center"/>
+                            <TextBlock Text="OPEN FROM FILE" FontWeight="Bold" FontSize="11" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Button>
                     <Button Command="{Binding SaveToFileCommand}">
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <mi:MaterialIcon Kind="ContentSaveOutline" Width="16" Height="16"/>
-                            <TextBlock Text="Save to File..." VerticalAlignment="Center"/>
+                            <TextBlock Text="SAVE TO FILE" FontWeight="Bold" FontSize="11" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Button>
                 </StackPanel>
@@ -65,8 +65,8 @@
                               HeadersVisibility="All"
                               Background="{DynamicResource SystemControlBackgroundAltHighBrush}">
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*"/>
-                            <DataGridTemplateColumn Header="Type" Width="120">
+                            <DataGridTextColumn Header="NAME" Binding="{Binding Name}" Width="*"/>
+                            <DataGridTemplateColumn Header="TYPE" Width="120">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <TextBlock Text="{Binding Type}" VerticalAlignment="Center" Margin="10,0"/>
@@ -80,8 +80,8 @@
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellEditingTemplate>
                             </DataGridTemplateColumn>
-                            <DataGridTextColumn Header="Bit Offset" Binding="{Binding BitOffset}" Width="100"/>
-                            <DataGridTextColumn Header="Bit Length" Binding="{Binding BitLength}" Width="100"/>
+                            <DataGridTextColumn Header="BIT OFFSET" Binding="{Binding BitOffset}" Width="100"/>
+                            <DataGridTextColumn Header="BIT LENGTH" Binding="{Binding BitLength}" Width="100"/>
                             <DataGridTemplateColumn Width="50">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>

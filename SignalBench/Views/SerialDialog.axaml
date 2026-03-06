@@ -6,18 +6,17 @@
         x:DataType="vm:SerialDialogViewModel"
         Title="Serial Port Configuration"
         WindowStartupLocation="CenterOwner"
-        Width="450" Height="500"
+        SizeToContent="Height"
+        Width="600"
         CanResize="False">
 
     <Grid RowDefinitions="*, Auto">
         <ScrollViewer Grid.Row="0">
             <Border Padding="20">
                 <StackPanel Spacing="20">
-                    <TextBlock Text="SERIAL PORT CONFIGURATION" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
-                    
                     <Grid ColumnDefinitions="150, *" RowDefinitions="Auto, Auto, Auto, Auto, Auto, Auto, Auto">
                         <!-- Port -->
-                        <TextBlock Grid.Row="0" Grid.Column="0" Text="COM Port:" FontSize="13" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="COM PORT" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" VerticalAlignment="Center"/>
                         <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" Spacing="5">
                             <ComboBox Width="180" ItemsSource="{Binding AvailablePorts}" SelectedItem="{Binding SelectedPort}"/>
                             <Button Command="{Binding RefreshPortsCommand}" ToolTip.Tip="Refresh Ports" VerticalAlignment="Center">
@@ -26,38 +25,38 @@
                         </StackPanel>
 
                         <!-- Baud Rate -->
-                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Baud Rate:" FontSize="13" VerticalAlignment="Center" Margin="0,15,0,0"/>
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="BAUD RATE" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" VerticalAlignment="Center" Margin="0,15,0,0"/>
                         <ComboBox Grid.Row="1" Grid.Column="1" Width="180" Margin="0,15,0,0"
                                   ItemsSource="{Binding AvailableBaudRates}" 
                                   SelectedItem="{Binding SelectedBaudRate}"/>
 
                         <!-- Parity -->
-                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Parity:" FontSize="13" VerticalAlignment="Center" Margin="0,15,0,0"/>
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="PARITY" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" VerticalAlignment="Center" Margin="0,15,0,0"/>
                         <ComboBox Grid.Row="2" Grid.Column="1" Width="180" Margin="0,15,0,0"
                                   ItemsSource="{Binding ParityOptions}" 
                                   SelectedItem="{Binding Parity}"/>
 
                         <!-- Data Bits -->
-                        <TextBlock Grid.Row="3" Grid.Column="0" Text="Data Bits:" FontSize="13" VerticalAlignment="Center" Margin="0,15,0,0"/>
+                        <TextBlock Grid.Row="3" Grid.Column="0" Text="DATA BITS" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" VerticalAlignment="Center" Margin="0,15,0,0"/>
                         <NumericUpDown Grid.Row="3" Grid.Column="1" Width="180" Margin="0,15,0,0"
                                        Value="{Binding DataBits}" Minimum="5" Maximum="8" Increment="1" FormatString="0" HorizontalAlignment="Left"/>
 
                         <!-- Stop Bits -->
-                        <TextBlock Grid.Row="4" Grid.Column="0" Text="Stop Bits:" FontSize="13" VerticalAlignment="Center" Margin="0,15,0,0"/>
+                        <TextBlock Grid.Row="4" Grid.Column="0" Text="STOP BITS" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" VerticalAlignment="Center" Margin="0,15,0,0"/>
                         <ComboBox Grid.Row="4" Grid.Column="1" Width="180" Margin="0,15,0,0"
                                   ItemsSource="{Binding StopBitsOptions}" 
                                   SelectedItem="{Binding StopBits}"/>
 
                         <!-- Rolling Window -->
                         <StackPanel Grid.Row="5" Grid.Column="0" VerticalAlignment="Center" Margin="0,15,0,0">
-                            <TextBlock Text="Rolling Window (sec):" FontSize="13"/>
+                            <TextBlock Text="ROLLING WINDOW (SEC)" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
                             <TextBlock Text="Live data to show" FontSize="11" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
                         </StackPanel>
                         <NumericUpDown Grid.Row="5" Grid.Column="1" Width="180" Margin="0,15,0,0"
                                        Value="{Binding RollingWindowSeconds}" Minimum="1" Maximum="3600" Increment="1" HorizontalAlignment="Left"/>
 
                         <!-- Schema File -->
-                        <TextBlock Grid.Row="6" Grid.Column="0" Text="Schema File:" FontSize="13" VerticalAlignment="Center" Margin="0,15,0,0"/>
+                        <TextBlock Grid.Row="6" Grid.Column="0" Text="SCHEMA FILE" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" VerticalAlignment="Center" Margin="0,15,0,0"/>
                         <Grid Grid.Row="6" Grid.Column="1" ColumnDefinitions="*, Auto" Margin="0,15,0,0">
                             <TextBox Grid.Column="0"
                                      Text="{Binding LoadedSchemaPath}"

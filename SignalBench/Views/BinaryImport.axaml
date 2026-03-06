@@ -20,26 +20,58 @@
                     BorderThickness="0,0,0,1"
                     Padding="20">
                 <StackPanel Spacing="15">
-                    <TextBlock Text="SCHEMA"
-                               FontWeight="Bold"
-                               FontSize="11"
-                               Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
-                    
                     <StackPanel Spacing="8">
-                        <TextBlock Text="Schema File:" FontSize="13"/>
+                        <TextBlock Text="DATA FILE"
+                                   FontWeight="Bold"
+                                   FontSize="11"
+                                   Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
                         <Grid ColumnDefinitions="*, Auto">
                             <TextBox Grid.Column="0"
-                                     Text="{Binding SchemaFilePath}"
+                                     Text="{Binding TelemetryPath}"
                                      IsReadOnly="True"
-                                     Watermark="Please select a schema to preview data."/>
+                                     Watermark="Select binary telemetry file..."/>
                             <Button Grid.Column="1"
-                                    Command="{Binding BrowseSchemaCommand}"
-                                    Margin="5,0,0,0"
-                                    ToolTip.Tip="Open Schema File">
+                                    Command="{Binding BrowseTelemetryCommand}"
+                                    Margin="8,0,0,0"
+                                    ToolTip.Tip="Open Binary Telemetry">
                                 <mi:MaterialIcon Kind="FolderOpenOutline" Width="16" Height="16"/>
                             </Button>
                         </Grid>
                     </StackPanel>
+
+                    <Grid ColumnDefinitions="2.5*, *" ColumnSpacing="30">
+                        <!-- Schema Selection -->
+                        <StackPanel Grid.Column="0" Spacing="8">
+                            <TextBlock Text="SCHEMA"
+                                       FontWeight="Bold"
+                                       FontSize="11"
+                                       Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                            <Grid ColumnDefinitions="*, Auto">
+                                <TextBox Grid.Column="0"
+                                         Text="{Binding SchemaFilePath}"
+                                         IsReadOnly="True"
+                                         Watermark="Select YAML schema file..."/>
+                                <Button Grid.Column="1"
+                                        Command="{Binding BrowseSchemaCommand}"
+                                        Margin="5,0,0,0"
+                                        ToolTip.Tip="Open Schema File">
+                                    <mi:MaterialIcon Kind="FolderOpenOutline" Width="16" Height="16"/>
+                                </Button>
+                            </Grid>
+                        </StackPanel>
+                        
+                        <!-- Timestamp Selection -->
+                        <StackPanel Grid.Column="1" Spacing="8">
+                            <TextBlock Text="TIMESTAMP COLUMN"
+                                       FontWeight="Bold"
+                                       FontSize="11"
+                                       Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                            <ComboBox ItemsSource="{Binding AvailableColumns}"
+                                      SelectedItem="{Binding TimestampField}"
+                                      HorizontalAlignment="Stretch"
+                                      PlaceholderText="Select field..."/>
+                        </StackPanel>
+                    </Grid>
                 </StackPanel>
             </Border>
 

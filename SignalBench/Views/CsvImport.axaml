@@ -3,6 +3,7 @@
         xmlns:vm="using:SignalBench.ViewModels"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:mi="using:Material.Icons.Avalonia"
         mc:Ignorable="d" d:DesignWidth="600" d:DesignHeight="500"
         x:Class="SignalBench.Views.CsvImport"
         x:DataType="vm:CsvImportViewModel"
@@ -19,6 +20,24 @@
                     BorderThickness="0,0,0,1"
                     Padding="20">
                 <StackPanel Spacing="15">
+                    <StackPanel Spacing="5">
+                        <TextBlock Text="DATA FILE"
+                                   FontWeight="Bold"
+                                   FontSize="11"
+                                   Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" />
+                        <Grid ColumnDefinitions="*, Auto">
+                            <TextBox Grid.Column="0" 
+                                     Text="{Binding FilePath}" 
+                                     IsReadOnly="True"
+                                     Watermark="Select CSV file..." />
+                            <Button Grid.Column="1" 
+                                    Command="{Binding BrowseCommand}" 
+                                    Margin="8,0,0,0"
+                                    ToolTip.Tip="Open CSV File">
+                                <mi:MaterialIcon Kind="FolderOpenOutline" Width="16" Height="16"/>
+                            </Button>
+                        </Grid>
+                    </StackPanel>
 
                     <StackPanel Orientation="Horizontal" Spacing="30">
                         <StackPanel Spacing="5">
@@ -31,11 +50,6 @@
                                       SelectedItem="{Binding Delimiter}" />
                         </StackPanel>
 
-                        <CheckBox Content="Has Header"
-                                  IsChecked="{Binding HasHeader}"
-                                  VerticalAlignment="Bottom"
-                                  Margin="0,0,0,2" />
-
                         <StackPanel Spacing="5">
                             <TextBlock Text="TIMESTAMP COLUMN"
                                        FontWeight="Bold"
@@ -44,6 +58,15 @@
                             <ComboBox Width="200"
                                       ItemsSource="{Binding AvailableColumns}"
                                       SelectedItem="{Binding TimestampColumn}" />
+                        </StackPanel>
+
+                        <StackPanel Spacing="5">
+                            <TextBlock Text="HAS HEADER"
+                                       FontWeight="Bold"
+                                       FontSize="11"
+                                       Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" />
+                            <CheckBox IsChecked="{Binding HasHeader}"
+                                      VerticalAlignment="Center" />
                         </StackPanel>
                     </StackPanel>
                 </StackPanel>

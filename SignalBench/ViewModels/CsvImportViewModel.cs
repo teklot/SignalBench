@@ -55,32 +55,85 @@ public class CsvImportViewModel : ViewModelBase
 
     public ObservableCollection<IDictionary<string, object>> PreviewRecords { get; } = [];
 
-    private readonly string _filePath;
+    private bool _isPreviewLoaded;
+    public bool IsPreviewLoaded
+    {
+        get => _isPreviewLoaded;
+        set => this.RaiseAndSetIfChanged(ref _isPreviewLoaded, value);
+    }
+
+    private string? _filePath;
+    public string? FilePath
+    {
+        get => _filePath;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _filePath, value);
+            LoadPreview();
+        }
+    }
 
     public ReactiveCommand<Unit, CsvImportResult?> ImportCommand { get; }
     public ReactiveCommand<Unit, CsvImportResult?> CancelCommand { get; }
+    public ReactiveCommand<Unit, Unit> BrowseCommand { get; }
 
-    public CsvImportViewModel(string filePath)
+    public CsvImportViewModel(string? filePath = null)
     {
         _filePath = filePath;
         _delimiter = "Comma (,)";
         _hasHeader = true;
         ImportCommand = ReactiveCommand.Create(() => (CsvImportResult?)new CsvImportResult
         {
+            FilePath = FilePath ?? string.Empty,
             Delimiter = GetActualDelimiter(),
             TimestampColumn = TimestampColumn,
             HasHeader = HasHeader
-        });
+        }, this.WhenAnyValue(x => x.IsPreviewLoaded));
+        
         CancelCommand = ReactiveCommand.Create(() => (CsvImportResult?)null);
+        BrowseCommand = ReactiveCommand.CreateFromTask(BrowseAsync);
 
-        LoadPreview();
+        if (!string.IsNullOrEmpty(_filePath)) LoadPreview();
+    }
+
+    private async Task BrowseAsync()
+    {
+        try
+        {
+            var topLevel = (App.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)?.MainWindow;
+            if (topLevel == null) return;
+
+            var files = await topLevel.StorageProvider.OpenFilePickerAsync(new Avalonia.Platform.Storage.FilePickerOpenOptions
+            {
+                Title = "Select CSV Telemetry",
+                AllowMultiple = false,
+                FileTypeFilter = [
+                    new Avalonia.Platform.Storage.FilePickerFileType("CSV Files") { Patterns = ["*.csv", "*.tsv", "*.txt"] },
+                    Avalonia.Platform.Storage.FilePickerFileTypes.All
+                ]
+            });
+
+            if (files.Count > 0)
+            {
+                FilePath = files[0].Path.LocalPath;
+            }
+        }
+        catch (Exception) { /* Handle or log */ }
     }
 
     private void LoadPreview()
     {
+        IsPreviewLoaded = false;
+        if (string.IsNullOrEmpty(FilePath) || !System.IO.File.Exists(FilePath))
+        {
+            PreviewRecords.Clear();
+            AvailableColumns.Clear();
+            return;
+        }
+
         try
         {
-            var source = new CsvTelemetrySource(_filePath, GetActualDelimiter(), hasHeader: HasHeader);
+            var source = new CsvTelemetrySource(FilePath, GetActualDelimiter(), hasHeader: HasHeader);
             var packets = source.ReadPackets().Take(10).ToList();
 
             var newRecords = new List<IDictionary<string, object>>();
@@ -108,17 +161,21 @@ public class CsvImportViewModel : ViewModelBase
                     TimestampColumn = AvailableColumns.FirstOrDefault(c => c.Contains("time", StringComparison.OrdinalIgnoreCase))
                                       ?? AvailableColumns.FirstOrDefault();
                 }
+                IsPreviewLoaded = true;
             }
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"CSV Preview Error: {ex.Message} (File: {_filePath}, Delimiter: {GetActualDelimiter()})");
+            PreviewRecords.Clear();
+            AvailableColumns.Clear();
+            System.Diagnostics.Debug.WriteLine($"CSV Preview Error: {ex.Message} (File: {FilePath}, Delimiter: {GetActualDelimiter()})");
         }
     }
 }
 
 public class CsvImportResult
 {
+    public string FilePath { get; set; } = string.Empty;
     public string Delimiter { get; set; } = ",";
     public string? TimestampColumn { get; set; }
     public bool HasHeader { get; set; } = true;

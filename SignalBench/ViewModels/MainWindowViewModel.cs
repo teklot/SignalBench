@@ -398,7 +398,8 @@ public class MainWindowViewModel : ViewModelBase
     private readonly SessionManager _sessionManager = new();
     private readonly Core.DerivedSignals.FormulaEngine _formulaEngine = new();
 
-    public ReactiveCommand<Unit, Unit> OpenFileCommand { get; }
+    public ReactiveCommand<Unit, Unit> OpenCsvCommand { get; }
+    public ReactiveCommand<Unit, Unit> OpenBinaryCommand { get; }
     public ReactiveCommand<string, Unit> OpenRecentFileCommand { get; }
     public ReactiveCommand<Unit, Unit> SaveSessionCommand { get; }
     public ReactiveCommand<Unit, Unit> OpenSessionCommand { get; }
@@ -445,7 +446,8 @@ public class MainWindowViewModel : ViewModelBase
             AddPlot("Untitled");
         }
 
-        OpenFileCommand = ReactiveCommand.CreateFromTask(OpenFileAsync);
+        OpenCsvCommand = ReactiveCommand.CreateFromTask(OpenCsvAsync);
+        OpenBinaryCommand = ReactiveCommand.CreateFromTask(OpenBinaryAsync);
         OpenRecentFileCommand = ReactiveCommand.CreateFromTask<string>(path => LoadTelemetryFileAsync(path));
         
         var canExecuteSession = this.WhenAnyValue(x => x.HasData);
@@ -1451,24 +1453,40 @@ public class MainWindowViewModel : ViewModelBase
         UpdatePlaybackView();
     }
 
-    private async Task OpenFileAsync()
+    private async Task OpenCsvAsync()
     {
         try {
             var topLevel = (App.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)?.MainWindow;
             if (topLevel == null) return;
-            var files = await topLevel.StorageProvider.OpenFilePickerAsync(
-                new Avalonia.Platform.Storage.FilePickerOpenOptions {
-                    Title = "Open Telemetry File", AllowMultiple = false,
-                    FileTypeFilter = [new Avalonia.Platform.Storage.FilePickerFileType("Telemetry Files") {
-                        Patterns = ["*.csv", "*.tsv", "*.txt", "*.bin", "*.dat"]
-                },
-                Avalonia.Platform.Storage.FilePickerFileTypes.All]
-            });
-            if (files.Count > 0) await LoadTelemetryFileAsync(files[0].Path.LocalPath);
-        } catch (Exception ex) { await ShowError("File Error", "Could not select file.", ex); }
+            var dialog = new SignalBench.Views.CsvImport { DataContext = new CsvImportViewModel() };
+            var result = await dialog.ShowDialog<CsvImportResult?>(topLevel);
+            if (result != null && !string.IsNullOrEmpty(result.FilePath))
+            {
+                var settings = new SignalBench.Core.Session.CsvSettings { 
+                    Delimiter = result.Delimiter, 
+                    TimestampColumn = result.TimestampColumn, 
+                    HasHeader = result.HasHeader 
+                };
+                await LoadTelemetryFileAsync(result.FilePath, null, null, settings);
+            }
+        } catch (Exception ex) { await ShowError("CSV Error", "Failed to open CSV import.", ex); }
     }
 
-    private async Task LoadTelemetryFileAsync(string path, string? schemaPath = null, PacketSchema? existingSchema = null, CsvSettings? existingCsvSettings = null)
+    private async Task OpenBinaryAsync()
+    {
+        try {
+            var topLevel = (App.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)?.MainWindow;
+            if (topLevel == null) return;
+            var dialog = new SignalBench.Views.BinaryImport { DataContext = new BinaryImportViewModel(null, _loggerFactory.CreateLogger<BinaryImportViewModel>()) };
+            var result = await dialog.ShowDialog<BinaryImportResult?>(topLevel);
+            if (result != null && !string.IsNullOrEmpty(result.TelemetryPath))
+            {
+                await LoadTelemetryFileAsync(result.TelemetryPath, null, result.Schema, null, result.TimestampField);
+            }
+        } catch (Exception ex) { await ShowError("Binary Error", "Failed to open binary import.", ex); }
+    }
+
+    private async Task LoadTelemetryFileAsync(string path, string? schemaPath = null, PacketSchema? existingSchema = null, CsvSettings? existingCsvSettings = null, string? timestampField = null)
     {
         if (IsStreaming) {
             await StopStreamingAsync();
@@ -1586,6 +1604,27 @@ public class MainWindowViewModel : ViewModelBase
                     targetStore.InitializeSchema(schema);
                     var source = new SignalBench.Core.Ingestion.BinaryTelemetrySource(path, schema);
                     var packets = source.ReadPackets().ToList();
+                    
+                    // Update packet timestamps if a specific field was chosen
+                    if (!string.IsNullOrEmpty(timestampField))
+                    {
+                        foreach (var packet in packets)
+                        {
+                            if (packet.Fields.TryGetValue(timestampField, out var val))
+                            {
+                                try
+                                {
+                                    // Handle numeric timestamp (seconds or milliseconds since some epoch, or just raw increment)
+                                    // For now, we'll treat it as seconds if it's large, or just a relative offset.
+                                    // Let's assume the value is seconds for now if it's a number.
+                                    double seconds = Convert.ToDouble(val);
+                                    packet.Timestamp = DateTime.UnixEpoch.AddSeconds(seconds);
+                                }
+                                catch { /* fallback to default */ }
+                            }
+                        }
+                    }
+
                     targetStore.InsertPackets(packets);
                     var fields = new List<string>(schema.Fields.Select(f => f.Name));
                     Avalonia.Threading.Dispatcher.UIThread.Post(() => {
@@ -1634,7 +1673,8 @@ public class MainWindowViewModel : ViewModelBase
             var topLevel = (App.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)?.MainWindow;
             if (topLevel == null) return null;
             var dialog = new SignalBench.Views.BinaryImport { DataContext = new BinaryImportViewModel(telemetryPath, _loggerFactory.CreateLogger<BinaryImportViewModel>()) };
-            return await dialog.ShowDialog<PacketSchema?>(topLevel);
+            var result = await dialog.ShowDialog<BinaryImportResult?>(topLevel);
+            return result?.Schema;
         } catch (Exception ex) { await ShowError("Schema Error", "Failed to prompt for schema.", ex); return null; }
     }
 

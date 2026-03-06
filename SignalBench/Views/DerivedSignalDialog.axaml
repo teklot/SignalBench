@@ -20,14 +20,14 @@
                            Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" />
 
                 <StackPanel Spacing="5">
-                    <TextBlock Text="Signal Name:" FontSize="13" />
+                    <TextBlock Text="SIGNAL NAME" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
                     <TextBox Text="{Binding Name}"
                              Watermark="e.g., power_consumption"
                              HorizontalAlignment="Stretch" />
                 </StackPanel>
 
                 <StackPanel Spacing="5">
-                    <TextBlock Text="Formula:" FontSize="13" />
+                    <TextBlock Text="FORMULA" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
                     <TextBox Text="{Binding Formula}"
                              Watermark="e.g., battery_voltage * battery_current"
                              HorizontalAlignment="Stretch" />
