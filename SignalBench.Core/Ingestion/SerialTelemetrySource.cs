@@ -4,7 +4,7 @@ using SignalBench.Core.Models.Schema;
 
 namespace SignalBench.Core.Ingestion;
 
-public class SerialTelemetrySource : IDisposable
+public class SerialTelemetrySource : IStreamingSource
 {
     private readonly string _portName;
     private readonly int _baudRate;

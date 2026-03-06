@@ -11,7 +11,7 @@ public enum NetworkProtocol
     Udp
 }
 
-public class NetworkTelemetrySource : IDisposable
+public class NetworkTelemetrySource : IStreamingSource
 {
     private readonly NetworkProtocol _protocol;
     private readonly string _ipAddress;

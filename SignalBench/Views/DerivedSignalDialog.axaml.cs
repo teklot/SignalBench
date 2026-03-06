@@ -15,6 +15,7 @@ public partial class DerivedSignalDialog : ReactiveWindow<DerivedSignalViewModel
             if (ViewModel != null)
             {
                 ViewModel.AddCommand.Subscribe(result => Close(result));
+                ViewModel.DeleteCommand.Subscribe(result => Close(result));
                 ViewModel.CancelCommand.Subscribe(result => Close(result));
             }
         });

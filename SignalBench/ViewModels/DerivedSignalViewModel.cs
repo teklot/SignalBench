@@ -36,25 +36,41 @@ public class DerivedSignalViewModel : ViewModelBase
     }
 
     public ObservableCollection<string> AvailableFields { get; } = [];
+    private readonly List<string> _existingNames;
+    private readonly string? _originalName;
 
     public ReactiveCommand<Unit, DerivedSignalResult?> DeleteCommand { get; }
     public ReactiveCommand<Unit, DerivedSignalResult?> AddCommand { get; }
     public ReactiveCommand<Unit, DerivedSignalResult?> CancelCommand { get; }
 
-    public DerivedSignalViewModel(IEnumerable<string> availableFields, DerivedSignalDefinition? existing = null)
+    public DerivedSignalViewModel(IEnumerable<string> availableFields, IEnumerable<string> existingNames, DerivedSignalDefinition? existing = null)
     {
         foreach (var f in availableFields) AvailableFields.Add(f);
+        _existingNames = existingNames.ToList();
 
         if (existing != null)
         {
             _name = existing.Name;
+            _originalName = existing.Name;
             _formula = existing.Formula;
         }
 
         var canAdd = this.WhenAnyValue(
             x => x.Name,
             x => x.Formula,
-            (name, formula) => !string.IsNullOrWhiteSpace(name) && !string.IsNullOrWhiteSpace(formula));
+            (name, formula) => {
+                if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(formula)) return false;
+                
+                // If it's a new name or changed name, check for duplicates
+                if (name != _originalName && _existingNames.Contains(name, StringComparer.OrdinalIgnoreCase))
+                {
+                    ValidationMessage = "A signal with this name already exists.";
+                    return false;
+                }
+                
+                ValidationMessage = null;
+                return true;
+            });
 
         DeleteCommand = ReactiveCommand.Create<DerivedSignalResult?>(() =>
         {

@@ -114,7 +114,17 @@ public partial class PlotView : UserControl
             var scatter = mainPlot.Plot.Add.Scatter(x, y);
             scatter.LegendText = kv.Key;
             scatter.MarkerSize = 0;
-            scatter.LineWidth = 1;
+            scatter.LineWidth = 2;
+
+            // Use persistent color index if available
+            if (DataContext is PlotViewModel vm)
+            {
+                var signal = vm.AvailableSignals.FirstOrDefault(s => s.Name == kv.Key);
+                if (signal != null)
+                {
+                    scatter.Color = mainPlot.Plot.Add.Palette.GetColor(signal.ColorIndex);
+                }
+            }
         }
 
         if (timestamps.Count > 0)

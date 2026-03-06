@@ -24,4 +24,11 @@ public class SignalItemViewModel : ViewModelBase
         get => _isDerived;
         set => this.RaiseAndSetIfChanged(ref _isDerived, value);
     }
+
+    private int _colorIndex;
+    public int ColorIndex
+    {
+        get => _colorIndex;
+        set => this.RaiseAndSetIfChanged(ref _colorIndex, value);
+    }
 }

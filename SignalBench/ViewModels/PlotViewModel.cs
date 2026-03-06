@@ -43,11 +43,28 @@ public class PlotViewModel : ViewModelBase
         set => this.RaiseAndSetIfChanged(ref _schema, value);
     }
 
-    private string? _schemaPath;
+    private string? _serialSchemaPath;
+    public string? SerialSchemaPath
+    {
+        get => _serialSchemaPath;
+        set => this.RaiseAndSetIfChanged(ref _serialSchemaPath, value);
+    }
+
+    private string? _networkSchemaPath;
+    public string? NetworkSchemaPath
+    {
+        get => _networkSchemaPath;
+        set => this.RaiseAndSetIfChanged(ref _networkSchemaPath, value);
+    }
+
     public string? SchemaPath
     {
-        get => _schemaPath;
-        set => this.RaiseAndSetIfChanged(ref _schemaPath, value);
+        get => SourceType == PlotSourceType.Serial ? SerialSchemaPath : (SourceType == PlotSourceType.Network ? NetworkSchemaPath : null);
+        set {
+            if (SourceType == PlotSourceType.Serial) SerialSchemaPath = value;
+            else if (SourceType == PlotSourceType.Network) NetworkSchemaPath = value;
+            this.RaisePropertyChanged(nameof(SchemaPath));
+        }
     }
 
     private bool _isStreaming;
@@ -74,6 +91,8 @@ public class PlotViewModel : ViewModelBase
         get => _isRecording;
         set => this.RaiseAndSetIfChanged(ref _isRecording, value);
     }
+
+    public SignalBench.Core.Ingestion.IStreamingSource? ActiveSource { get; set; }
 
     private string _statusMessage = "Ready";
     public string StatusMessage
@@ -185,6 +204,12 @@ public class PlotViewModel : ViewModelBase
 
     public void Dispose()
     {
+        if (ActiveSource != null)
+        {
+            var s = ActiveSource;
+            ActiveSource = null;
+            System.Threading.Tasks.Task.Run(() => s.Stop());
+        }
         DataStore.Dispose();
     }
 }

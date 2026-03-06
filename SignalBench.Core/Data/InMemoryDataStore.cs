@@ -69,7 +69,8 @@ public class InMemoryDataStore : IDataStore
     public void InsertDerivedSignal(string name, List<double> data)
     {
         _signals[name] = data;
-        _signalNames.Add(name);
+        if (!_signalNames.Contains(name))
+            _signalNames.Add(name);
     }
 
     public void DeleteSignal(string name)
