@@ -2,9 +2,8 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:SignalBench.ViewModels"
              xmlns:mi="using:Material.Icons.Avalonia"
-             xmlns:converters="using:SignalBench.ViewModels"
              x:Class="SignalBench.Views.SignalsView"
-             x:DataType="vm:MainWindowViewModel">
+             x:DataType="vm:PlotViewModel">
     <ScrollViewer>
         <StackPanel Margin="10,5,5,5">
             <!-- Regular Signals -->
@@ -49,7 +48,7 @@
                                            VerticalAlignment="Center"
                                            Foreground="#107c10"/>
                                 <Button Grid.Column="2" 
-                                        Command="{Binding $parent[ItemsControl].((vm:MainWindowViewModel)DataContext).EditDerivedSignalCommand}"
+                                        Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).EditDerivedSignalCommand}"
                                         CommandParameter="{Binding Name}"
                                         Background="Transparent"
                                         BorderThickness="0"

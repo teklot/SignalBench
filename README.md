@@ -6,47 +6,48 @@ SignalBench is a high-performance, engineer-grade telemetry workbench designed f
 
 ## 🚀 Features
 
-- **Multiple Format Support**: Load and decode CSV files or binary telemetry using YAML-defined packet schemas.
+- **Workspace-Centric UI**: Top-level tabbed architecture. Each tab is a complete workspace with its own independent data source (File, Serial, or Network), signal selection sidebar, and plot configuration.
+- **Intelligent Data Import**: Specialized, format-aware dialogs for CSV and Binary data. Includes live data previews, delimiter/header configuration, and validation to prevent malformed imports.
+- **Binary Telemetry Mapping**: Full control over binary decoding via YAML-defined packet schemas. Supports custom timestamp field selection from any numeric field in the schema.
 - **Live Network Streaming**: Connect via **TCP (Client)** or **UDP (Listener)** to decode and visualize data in real-time.
 - **Live Serial Streaming**: Connect to COM ports with full control over Baud Rate, Parity, and Stop Bits.
-- **Independent Tab Architecture**: Each plot tab maintains its own independent data source (File, Serial, or Network) and configuration.
 - **High Performance**: Handles large files (> 500K+ records) and high-frequency streams efficiently using a Hybrid (In-Memory/SQLite) data store.
 - **Visualization**: Interactive plots with a **Time-Based Rolling Window** (e.g., show the last 10 seconds of live data).
 - **Derived Signals**: Create custom calculated signals using math expressions (e.g., `sqrt(battery_voltage)`).
 - **Data Logging**: Record raw network or serial streams directly to disk while visualizing.
 - **Session Management**: Save and restore workspace sessions (`.sbs` files). Supports multi-tab persistence, embedded schemas, and **automatic restoration** of the last session on startup.
-- **Telemetry Reliability**: Built-in detection for **packet misalignment** and framing errors in streaming modes.
 
 ## 🚀 Getting Started (Quick Start)
 
 ### 1. Load a Packet Schema
 Before loading binary data or streaming, the app needs to know the structure of the packets.
-*   Click **"Open Schema"** in the **SCHEMA** group.
-*   Select a `.yaml` schema file.
+*   Click **"Create Schema"** or **"Open Schema"** in the **SCHEMA** group.
+*   Define or select a `.yaml` schema file.
 
-### 2. Live Streaming (Serial or Network)
-Streaming settings are **per-tab**. You can stream from multiple different sources simultaneously in different tabs.
+### 2. Import Static Telemetry Data
+*   **CSV Import**: Click the **CSV File icon** in the **DATA FILE** group.
+    *   Select your file, configure the **Delimiter** and **Has Header** settings.
+    *   The preview grid will update automatically to validate your settings.
+*   **Binary Import**: Click the **Binary File icon** (identified by the '101' badge).
+    *   Select your file and a corresponding schema.
+    *   Optionally select which schema field to use as the **Timestamp Column**.
+
+### 3. Live Streaming (Serial or Network)
+Streaming settings are **per-workspace (per-tab)**. You can stream from multiple different sources simultaneously in different tabs.
 
 #### Serial Port
-*   **Configure**: Right-click the **Serial icon** in the **STREAM** group (or use the File menu).
+*   Click the **Serial icon** in the **STREAM** group to open configuration.
     *   Select your **COM Port**, **Baud Rate**, and parameters.
-    *   Set the **Rolling Window** in seconds (e.g., 10s).
-*   **Start**: Click **Connect** in the dialog or left-click the **Serial icon** to toggle.
+    *   Click **Connect** to start the stream.
 
 #### Network (TCP/UDP)
-*   **Configure**: Right-click the **Network icon** in the **STREAM** group.
+*   Click the **Network icon** in the **STREAM** group.
     *   **Protocol**: Choose **UDP** (listens on a local port) or **TCP** (connects to a server).
-    *   **IP Address**: For TCP, the server IP. 
-*   **Start**: Click **Connect** in the dialog or left-click the **Network icon** to toggle.
-
-### 3. Static Telemetry Data
-*   Click **"Open Telemetry"** in the **DATA FILE** group.
-    *   **CSV**: Detects headers and loads data automatically. Settings are saved with your session.
-    *   **Binary**: Uses the selected schema to decode the file.
+    *   Click **Connect** to start the stream.
 
 ### 4. Session Management
-*   **Save**: Save your entire workspace (all tabs, signals, and schemas) to a `.sbs` file.
-*   **Auto-Load**: SignalBench can automatically load your most recent session on startup, picking up exactly where you left off.
+*   **Save**: Save your entire workspace (all tabs, signals, and schemas) to a `.sbs` file using the **SESSION** group.
+*   **Auto-Load**: SignalBench automatically saves your progress and can restore your most recent session on startup.
 
 ## 📋 Requirements & Setup
 

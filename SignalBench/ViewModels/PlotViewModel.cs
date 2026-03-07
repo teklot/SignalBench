@@ -179,10 +179,43 @@ public class PlotViewModel : ViewModelBase
     public Action<DateTime>? RequestCursorUpdate;
     public Action? RequestPlotClear;
 
+    private bool _isSignalsPaneOpen = true;
+    public bool IsSignalsPaneOpen
+    {
+        get => _isSignalsPaneOpen;
+        set {
+            this.RaiseAndSetIfChanged(ref _isSignalsPaneOpen, value);
+            this.RaisePropertyChanged(nameof(SignalsPaneColumnWidth));
+        }
+    }
+
+    private Avalonia.Controls.GridLength _signalsPaneColumnWidth = new Avalonia.Controls.GridLength(200);
+    public Avalonia.Controls.GridLength SignalsPaneColumnWidth
+    {
+        get => IsSignalsPaneOpen ? _signalsPaneColumnWidth : new Avalonia.Controls.GridLength(0);
+        set {
+            if (IsSignalsPaneOpen && value.IsAbsolute)
+            {
+                if (value.Value < 150)
+                {
+                    IsSignalsPaneOpen = false;
+                }
+                else
+                {
+                    _signalsPaneColumnWidth = value;
+                }
+            }
+            this.RaisePropertyChanged(nameof(SignalsPaneColumnWidth));
+        }
+    }
+
+    public ReactiveCommand<System.Reactive.Unit, System.Reactive.Unit> ToggleSignalsPaneCommand { get; }
+
     public PlotViewModel(string name, IDataStore dataStore)
     {
         Name = name;
         DataStore = dataStore;
+        ToggleSignalsPaneCommand = ReactiveCommand.Create(() => { IsSignalsPaneOpen = !IsSignalsPaneOpen; });
     }
 
     public void ToggleSignal(string signalName)

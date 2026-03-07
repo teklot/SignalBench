@@ -11,4 +11,11 @@ public class UserSettings
     public int MaxRecentFiles { get; set; } = 10;
     public string StorageMode { get; set; } = "InMemory"; // InMemory, Sqlite
     public int RollingBufferSize { get; set; } = 500;
+
+    // Window State Persistence
+    public double WindowWidth { get; set; } = 1280;
+    public double WindowHeight { get; set; } = 850;
+    public string WindowState { get; set; } = "Normal"; // Normal, Maximized
+    public int? WindowX { get; set; }
+    public int? WindowY { get; set; }
 }

@@ -81,7 +81,7 @@ public class MainWindowViewModel : ViewModelBase
             bool isEmpty = string.IsNullOrEmpty(lastPlot.TelemetryPath) && 
                            lastPlot.AvailableSignals.Count == 0 && 
                            !lastPlot.IsStreaming;
-            return !isEmpty;
+            return !isEmpty && Plots.Count < 10;
         }
     }
 
@@ -115,32 +115,21 @@ public class MainWindowViewModel : ViewModelBase
         }
     }
 
-    private bool _isSignalsPaneOpen = true;
     public bool IsSignalsPaneOpen
     {
-        get => _isSignalsPaneOpen;
+        get => SelectedPlot?.IsSignalsPaneOpen ?? true;
         set {
-            this.RaiseAndSetIfChanged(ref _isSignalsPaneOpen, value);
+            if (SelectedPlot != null) SelectedPlot.IsSignalsPaneOpen = value;
+            this.RaisePropertyChanged(nameof(IsSignalsPaneOpen));
             this.RaisePropertyChanged(nameof(SignalsPaneColumnWidth));
         }
     }
 
-    private GridLength _signalsPaneColumnWidth = new GridLength(200);
     public GridLength SignalsPaneColumnWidth
     {
-        get => IsSignalsPaneOpen ? _signalsPaneColumnWidth : new GridLength(0);
+        get => SelectedPlot?.SignalsPaneColumnWidth ?? new GridLength(200);
         set {
-            if (IsSignalsPaneOpen && value.IsAbsolute)
-            {
-                if (value.Value < 150)
-                {
-                    IsSignalsPaneOpen = false;
-                }
-                else
-                {
-                    _signalsPaneColumnWidth = value;
-                }
-            }
+            if (SelectedPlot != null) SelectedPlot.SignalsPaneColumnWidth = value;
             this.RaisePropertyChanged(nameof(SignalsPaneColumnWidth));
         }
     }
@@ -152,11 +141,7 @@ public class MainWindowViewModel : ViewModelBase
         set => this.RaiseAndSetIfChanged(ref _isToolbarVisible, value);
     }
 
-    public ObservableCollection<SignalItemViewModel> AvailableSignals { get; } = [];
-    public ObservableCollection<SignalItemViewModel> RegularSignals { get; } = [];
-    public ObservableCollection<dynamic> DecodedRecords { get; } = [];
     public ObservableCollection<RecentFileViewModel> RecentFiles { get; } = [];
-    public ObservableCollection<DerivedSignalDefinition> DerivedSignals { get; } = [];
     public ObservableCollection<PlotViewModel> Plots { get; } = [];
 
     private PlotViewModel? _selectedPlot;
@@ -184,18 +169,6 @@ public class MainWindowViewModel : ViewModelBase
                 value.RaisePropertyChanged(nameof(PlotViewModel.ConnectionIcon));
             }
 
-            // Sync signal collections
-            AvailableSignals.Clear();
-            RegularSignals.Clear();
-            DerivedSignals.Clear();
-            
-            if (value != null)
-            {
-                foreach (var s in value.AvailableSignals) AvailableSignals.Add(s);
-                foreach (var s in value.RegularSignals) RegularSignals.Add(s);
-                foreach (var s in value.DerivedSignals) DerivedSignals.Add(s);
-            }
-
             this.RaisePropertyChanged(nameof(SelectedSchema));
             this.RaisePropertyChanged(nameof(HasData));
             this.RaisePropertyChanged(nameof(IsPlaybackBarVisible));
@@ -209,6 +182,8 @@ public class MainWindowViewModel : ViewModelBase
             this.RaisePropertyChanged(nameof(PlaybackProgress));
             this.RaisePropertyChanged(nameof(CurrentPlaybackTime));
             this.RaisePropertyChanged(nameof(FormattedPlaybackTime));
+            this.RaisePropertyChanged(nameof(IsSignalsPaneOpen));
+            this.RaisePropertyChanged(nameof(SignalsPaneColumnWidth));
             
             if (value != null)
             {
@@ -395,6 +370,7 @@ public class MainWindowViewModel : ViewModelBase
     private readonly ILogger<MainWindowViewModel> _logger;
     private readonly ILoggerFactory _loggerFactory;
     private readonly ISettingsService _settingsService;
+    public ISettingsService SettingsService => _settingsService;
     private readonly SessionManager _sessionManager = new();
     private readonly Core.DerivedSignals.FormulaEngine _formulaEngine = new();
 
@@ -465,7 +441,7 @@ public class MainWindowViewModel : ViewModelBase
         var canEditSchema = this.WhenAnyValue(x => x.SelectedSchema, (PacketSchema? s) => s != null);
         EditSchemaCommand = ReactiveCommand.CreateFromTask(EditSchemaAsync, canEditSchema);
         
-        var canCreateDerived = this.WhenAnyValue(x => x.AvailableSignals.Count, count => count > 0);
+        var canCreateDerived = this.WhenAnyValue(x => x.SelectedPlot, p => p != null && p.AvailableSignals.Count > 0);
         CreateDerivedSignalCommand = ReactiveCommand.CreateFromTask(CreateDerivedSignalAsync, canCreateDerived);
         
         EditDerivedSignalCommand = ReactiveCommand.CreateFromTask<string>(EditDerivedSignalAsync);
@@ -536,11 +512,6 @@ public class MainWindowViewModel : ViewModelBase
             p.IsStreaming = false;
             p.RequestPlotClear?.Invoke();
 
-            // Sync main VM collections
-            AvailableSignals.Clear();
-            RegularSignals.Clear();
-            DerivedSignals.Clear();
-
             this.RaisePropertyChanged(nameof(HasData));
             this.RaisePropertyChanged(nameof(IsPlaybackBarVisible));
             this.RaisePropertyChanged(nameof(CanAddPlot));
@@ -596,10 +567,11 @@ public class MainWindowViewModel : ViewModelBase
 
     private void SyncSignalCheckboxes()
     {
-        foreach (var signal in AvailableSignals)
+        if (SelectedPlot == null) return;
+        foreach (var signal in SelectedPlot.AvailableSignals)
         {
             signal.PropertyChanged -= SignalItem_PropertyChanged;
-            signal.IsSelected = SelectedPlot?.IsSignalSelected(signal.Name) ?? false;
+            signal.IsSelected = SelectedPlot.IsSignalSelected(signal.Name);
             signal.PropertyChanged += SignalItem_PropertyChanged;
         }
     }
@@ -1113,12 +1085,6 @@ public class MainWindowViewModel : ViewModelBase
 
             if (targetPlot == SelectedPlot)
             {
-                AvailableSignals.Clear();
-                RegularSignals.Clear();
-                DerivedSignals.Clear();
-                foreach (var s in targetPlot.AvailableSignals) AvailableSignals.Add(s);
-                foreach (var s in targetPlot.RegularSignals) RegularSignals.Add(s);
-                
                 SyncSignalCheckboxes();
                 this.RaisePropertyChanged(nameof(HasData));
                 this.RaisePropertyChanged(nameof(IsPlaybackBarVisible));
@@ -1212,12 +1178,6 @@ public class MainWindowViewModel : ViewModelBase
 
             if (targetPlot == SelectedPlot)
             {
-                AvailableSignals.Clear();
-                RegularSignals.Clear();
-                DerivedSignals.Clear();
-                foreach (var s in targetPlot.AvailableSignals) AvailableSignals.Add(s);
-                foreach (var s in targetPlot.RegularSignals) RegularSignals.Add(s);
-                
                 SyncSignalCheckboxes();
                 this.RaisePropertyChanged(nameof(HasData));
                 this.RaisePropertyChanged(nameof(IsPlaybackBarVisible));
@@ -1561,15 +1521,6 @@ public class MainWindowViewModel : ViewModelBase
 
                             if (targetPlot == SelectedPlot)
                             {
-                                AvailableSignals.Clear(); 
-                                RegularSignals.Clear(); 
-                                DerivedSignals.Clear();
-                                foreach (var s in targetPlot.AvailableSignals) AvailableSignals.Add(s);
-                                foreach (var s in targetPlot.RegularSignals) RegularSignals.Add(s);
-                                foreach (var s in targetPlot.DerivedSignals) DerivedSignals.Add(s);
-
-                                this.RaisePropertyChanged(nameof(AvailableSignals)); 
-                                this.RaisePropertyChanged(nameof(RegularSignals));
                                 this.RaisePropertyChanged(nameof(HasData));
                                 AddToRecentFiles(path); UpdatePlot(targetPlot);
                                 this.RaisePropertyChanged(nameof(CurrentPlaybackIndex)); this.RaisePropertyChanged(nameof(CurrentPlaybackTime));
@@ -1643,15 +1594,6 @@ public class MainWindowViewModel : ViewModelBase
                         }
 
                         if (SelectedPlot == targetPlot) {
-                            AvailableSignals.Clear(); 
-                            RegularSignals.Clear(); 
-                            DerivedSignals.Clear();
-                            foreach (var s in targetPlot.AvailableSignals) AvailableSignals.Add(s);
-                            foreach (var s in targetPlot.RegularSignals) RegularSignals.Add(s);
-                            foreach (var s in targetPlot.DerivedSignals) DerivedSignals.Add(s);
-
-                            this.RaisePropertyChanged(nameof(AvailableSignals)); 
-                            this.RaisePropertyChanged(nameof(RegularSignals));
                             this.RaisePropertyChanged(nameof(HasData));
                             AddToRecentFiles(path); UpdatePlot(targetPlot);
                             this.RaisePropertyChanged(nameof(CurrentPlaybackIndex)); this.RaisePropertyChanged(nameof(CurrentPlaybackTime));
@@ -1725,22 +1667,18 @@ public class MainWindowViewModel : ViewModelBase
             if (SelectedPlot == null) return;
             var topLevel = (App.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)?.MainWindow;
             if (topLevel == null) return;
-            var availableFields = RegularSignals.Select(s => s.Name).ToList();
-            var allSignalNames = AvailableSignals.Select(s => s.Name).ToList();
+            var availableFields = SelectedPlot.RegularSignals.Select(s => s.Name).ToList();
+            var allSignalNames = SelectedPlot.AvailableSignals.Select(s => s.Name).ToList();
             var dialog = new SignalBench.Views.DerivedSignalDialog { DataContext = new DerivedSignalViewModel(availableFields, allSignalNames) };
             var result = await dialog.ShowDialog<DerivedSignalResult?>(topLevel);
             if (result != null) {
                 var ds = new DerivedSignalDefinition { Name = result.Name, Formula = result.Formula };
-                DerivedSignals.Add(ds);
+                SelectedPlot.DerivedSignals.Add(ds);
                 _dataStore.InsertDerivedSignal(result.Name, ComputeDerivedSignal(ds, _dataStore, SelectedPlot));
                 var item = new SignalItemViewModel { Name = result.Name, IsSelected = true, IsDerived = true };
                 
-                // Add to plot's collections for persistence
+                // Add to plot's collection
                 SelectedPlot.AvailableSignals.Add(item);
-                SelectedPlot.DerivedSignals.Add(ds);
-                
-                // Add to main collections for UI
-                AvailableSignals.Add(item);
                 SelectedPlot.SelectedSignalNames.Add(result.Name);
                 
                 SyncSignalCheckboxes();
@@ -1759,8 +1697,8 @@ public class MainWindowViewModel : ViewModelBase
             var topLevel = (App.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)?.MainWindow;
             if (topLevel == null) return;
 
-            var availableFields = RegularSignals.Select(s => s.Name).ToList();
-            var allSignalNames = AvailableSignals.Select(s => s.Name).ToList();
+            var availableFields = SelectedPlot.RegularSignals.Select(s => s.Name).ToList();
+            var allSignalNames = SelectedPlot.AvailableSignals.Select(s => s.Name).ToList();
             var dialog = new SignalBench.Views.DerivedSignalDialog { 
                 DataContext = new DerivedSignalViewModel(availableFields, allSignalNames, ds) { IsEditMode = true } 
             };
@@ -1777,7 +1715,7 @@ public class MainWindowViewModel : ViewModelBase
                 
                 // Recompute and update UI
                 _dataStore.InsertDerivedSignal(ds.Name, ComputeDerivedSignal(ds, _dataStore, SelectedPlot));
-                var item = AvailableSignals.FirstOrDefault(s => s.Name == name);
+                var item = SelectedPlot.AvailableSignals.FirstOrDefault(s => s.Name == name);
                 if (item != null) item.Name = ds.Name;
 
                 UpdatePlot(SelectedPlot);
@@ -1792,14 +1730,10 @@ public class MainWindowViewModel : ViewModelBase
             var ds = SelectedPlot.DerivedSignals.FirstOrDefault(d => d.Name == name);
             if (ds != null) SelectedPlot.DerivedSignals.Remove(ds);
 
-            var item = AvailableSignals.FirstOrDefault(s => s.Name == name);
-            if (item != null) AvailableSignals.Remove(item);
-            
             var pItem = SelectedPlot.AvailableSignals.FirstOrDefault(s => s.Name == name);
             if (pItem != null) SelectedPlot.AvailableSignals.Remove(pItem);
 
             SelectedPlot.SelectedSignalNames.Remove(name);
-            DerivedSignals.Remove(ds!);
             
             _dataStore.DeleteSignal(name);
             UpdatePlot(SelectedPlot);
