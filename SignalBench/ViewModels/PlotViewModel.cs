@@ -3,15 +3,16 @@ using SignalBench.Core.Data;
 using SignalBench.Core.Models;
 using SignalBench.Core.Models.Schema;
 using SignalBench.Core.Session;
+using SignalBench.SDK.Interfaces;
 using System.Collections.ObjectModel;
 
 namespace SignalBench.ViewModels;
 
 public enum PlotSourceType { None, File, Serial, Network }
 
-public class PlotViewModel : ViewModelBase
+public sealed class PlotViewModel : ViewModelBase
 {
-    private string _name = "New Plot";
+    private string _name;
     public string Name
     {
         get => _name;
@@ -92,7 +93,7 @@ public class PlotViewModel : ViewModelBase
         set => this.RaiseAndSetIfChanged(ref _isRecording, value);
     }
 
-    public SignalBench.Core.Ingestion.IStreamingSource? ActiveSource { get; set; }
+    public IStreamingSource? ActiveSource { get; set; }
 
     private string _statusMessage = "Ready";
     public string StatusMessage
@@ -189,7 +190,7 @@ public class PlotViewModel : ViewModelBase
         }
     }
 
-    private Avalonia.Controls.GridLength _signalsPaneColumnWidth = new Avalonia.Controls.GridLength(200);
+    private Avalonia.Controls.GridLength _signalsPaneColumnWidth = new(200);
     public Avalonia.Controls.GridLength SignalsPaneColumnWidth
     {
         get => IsSignalsPaneOpen ? _signalsPaneColumnWidth : new Avalonia.Controls.GridLength(0);
@@ -213,7 +214,7 @@ public class PlotViewModel : ViewModelBase
 
     public PlotViewModel(string name, IDataStore dataStore)
     {
-        Name = name;
+        _name = name;
         DataStore = dataStore;
         ToggleSignalsPaneCommand = ReactiveCommand.Create(() => { IsSignalsPaneOpen = !IsSignalsPaneOpen; });
     }
@@ -230,10 +231,7 @@ public class PlotViewModel : ViewModelBase
         }
     }
 
-    public bool IsSignalSelected(string signalName)
-    {
-        return SelectedSignalNames.Contains(signalName);
-    }
+    public bool IsSignalSelected(string signalName) => SelectedSignalNames.Contains(signalName);
 
     public void Dispose()
     {

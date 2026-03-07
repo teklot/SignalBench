@@ -2,6 +2,8 @@ using System.Net;
 using System.Net.Sockets;
 using SignalBench.Core.Decoding;
 using SignalBench.Core.Models.Schema;
+using SignalBench.SDK.Interfaces;
+using SignalBench.SDK.Models;
 
 namespace SignalBench.Core.Ingestion;
 
@@ -11,13 +13,9 @@ public enum NetworkProtocol
     Udp
 }
 
-public class NetworkTelemetrySource : IStreamingSource
+public sealed class NetworkTelemetrySource(string ipAddress, int port, PacketSchema schema, NetworkProtocol protocol = NetworkProtocol.Tcp) : IStreamingSource
 {
-    private readonly NetworkProtocol _protocol;
-    private readonly string _ipAddress;
-    private readonly int _port;
-    private readonly PacketSchema _schema;
-    private readonly StreamingPacketScanner _scanner;
+    private readonly StreamingPacketScanner _scanner = new(schema);
     private TcpClient? _tcpClient;
     private UdpClient? _udpClient;
     private CancellationTokenSource? _cancellationSource;
@@ -36,45 +34,36 @@ public class NetworkTelemetrySource : IStreamingSource
     public long PacketCount => _packetCount;
     public long ErrorCount => _errorCount;
 
-    public NetworkTelemetrySource(string ipAddress, int port, PacketSchema schema, NetworkProtocol protocol = NetworkProtocol.Tcp)
-    {
-        _ipAddress = ipAddress;
-        _port = port;
-        _protocol = protocol;
-        _schema = schema;
-        _scanner = new StreamingPacketScanner(schema);
-    }
-
     public void Start()
     {
         if (_receiveTask != null) return;
 
         try
         {
-            if (_protocol == NetworkProtocol.Tcp)
+            if (protocol == NetworkProtocol.Tcp)
             {
                 _tcpClient = new TcpClient();
-                _tcpClient.Connect(_ipAddress, _port);
+                _tcpClient.Connect(ipAddress, port);
                 _networkStream = _tcpClient.GetStream();
                 _networkStream.ReadTimeout = 1000;
                 
                 _cancellationSource = new CancellationTokenSource();
                 _receiveTask = Task.Run(() => TcpReceiveLoop(_cancellationSource.Token));
                 
-                ErrorReceived?.Invoke($"TCP client connected to {_ipAddress}:{_port}");
+                ErrorReceived?.Invoke($"TCP client connected to {ipAddress}:{port}");
             }
             else
             {
-                if (IPAddress.TryParse(_ipAddress, out var localAddress))
+                if (IPAddress.TryParse(ipAddress, out var localAddress))
                 {
-                    var localEndPoint = new IPEndPoint(localAddress, _port);
+                    var localEndPoint = new IPEndPoint(localAddress, port);
                     _udpClient = new UdpClient(localEndPoint);
-                    ErrorReceived?.Invoke($"UDP listener started on {_ipAddress}:{_port}");
+                    ErrorReceived?.Invoke($"UDP listener started on {ipAddress}:{port}");
                 }
                 else
                 {
-                    _udpClient = new UdpClient(_port);
-                    ErrorReceived?.Invoke($"UDP listener started on all interfaces, port {_port}");
+                    _udpClient = new UdpClient(port);
+                    ErrorReceived?.Invoke($"UDP listener started on all interfaces, port {port}");
                 }
 
                 _udpClient.Client.ReceiveTimeout = 1000;
@@ -86,10 +75,10 @@ public class NetworkTelemetrySource : IStreamingSource
         catch (Exception ex)
         {
             Stop();
-            if (_protocol == NetworkProtocol.Tcp)
-                ErrorReceived?.Invoke($"Failed to connect to {_ipAddress}:{_port}: {ex.Message}");
+            if (protocol == NetworkProtocol.Tcp)
+                ErrorReceived?.Invoke($"Failed to connect to {ipAddress}:{port}: {ex.Message}");
             else
-                ErrorReceived?.Invoke($"Failed to start UDP listener on port {_port}: {ex.Message}");
+                ErrorReceived?.Invoke($"Failed to start UDP listener on port {port}: {ex.Message}");
             throw;
         }
     }
@@ -182,9 +171,8 @@ public class NetworkTelemetrySource : IStreamingSource
 
         foreach (var packet in scanResult.Packets)
         {
-            packet.Timestamp = DateTime.Now;
             _packetCount++;
-            PacketReceived?.Invoke(packet);
+            PacketReceived?.Invoke(packet with { Timestamp = DateTime.Now });
         }
 
         if (_packetCount % 100 == 0)
@@ -220,7 +208,7 @@ public class NetworkTelemetrySource : IStreamingSource
 
         try
         {
-            if (_protocol == NetworkProtocol.Tcp)
+            if (protocol == NetworkProtocol.Tcp)
             {
                 _networkStream?.Close();
                 _tcpClient?.Close();
@@ -232,7 +220,7 @@ public class NetworkTelemetrySource : IStreamingSource
         }
         catch { }
 
-        if (_protocol == NetworkProtocol.Tcp)
+        if (protocol == NetworkProtocol.Tcp)
         {
             _networkStream?.Dispose();
             _tcpClient?.Dispose();
@@ -266,4 +254,7 @@ public class NetworkTelemetrySource : IStreamingSource
     {
         Stop();
     }
+
+    public IEnumerable<DecodedPacket> ReadPackets() => [];
+    public void Seek(long position) { }
 }

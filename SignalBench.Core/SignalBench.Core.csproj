@@ -16,4 +16,8 @@
     <PackageReference Include="YamlDotNet" Version="16.3.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\SignalBench.SDK\SignalBench.SDK.csproj" />
+  </ItemGroup>
+
 </Project>

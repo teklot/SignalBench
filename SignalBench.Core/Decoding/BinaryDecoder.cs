@@ -1,13 +1,14 @@
 using System.Buffers.Binary;
 using SignalBench.Core.Models.Schema;
+using SignalBench.SDK.Models;
 
 namespace SignalBench.Core.Decoding;
 
-public class BinaryDecoder
+public sealed class BinaryDecoder
 {
     public DecodedPacket Decode(ReadOnlySpan<byte> data, PacketSchema schema)
     {
-        var packet = new DecodedPacket { SchemaName = schema.Name, Timestamp = default };
+        var fields = new Dictionary<string, object>();
 
         foreach (var field in schema.Fields)
         {
@@ -43,10 +44,15 @@ public class BinaryDecoder
                 _ => (object)0
             };
 
-            packet.Fields[field.Name] = value;
+            fields[field.Name] = value;
         }
 
-        return packet;
+        return new DecodedPacket 
+        { 
+            SchemaName = schema.Name, 
+            Timestamp = DateTime.Now, 
+            Fields = fields 
+        };
     }
 
     private uint ExtractBits(byte b, int offset, int length)

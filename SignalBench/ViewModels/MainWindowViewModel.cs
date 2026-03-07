@@ -7,6 +7,8 @@ using SignalBench.Core.Decoding;
 using SignalBench.Core.Models.Schema;
 using SignalBench.Core.Services;
 using SignalBench.Core.Session;
+using SignalBench.SDK.Interfaces;
+using SignalBench.SDK.Models;
 using System.Collections.ObjectModel;
 using System.Reactive;
 using System.Timers;
@@ -366,7 +368,7 @@ public class MainWindowViewModel : ViewModelBase
     private IDataStore _dataStore => SelectedPlot?.DataStore ?? _dummyDataStore;
     private readonly IDataStore _dummyDataStore = new InMemoryDataStore();
 
-    private SignalBench.Core.Ingestion.IStreamingSource? _activeSource => SelectedPlot?.ActiveSource;
+    private IStreamingSource? _activeSource => SelectedPlot?.ActiveSource;
     private readonly ILogger<MainWindowViewModel> _logger;
     private readonly ILoggerFactory _loggerFactory;
     private readonly ISettingsService _settingsService;
@@ -1559,21 +1561,21 @@ public class MainWindowViewModel : ViewModelBase
                     // Update packet timestamps if a specific field was chosen
                     if (!string.IsNullOrEmpty(timestampField))
                     {
+                        var updatedPackets = new List<DecodedPacket>();
                         foreach (var packet in packets)
                         {
                             if (packet.Fields.TryGetValue(timestampField, out var val))
                             {
                                 try
                                 {
-                                    // Handle numeric timestamp (seconds or milliseconds since some epoch, or just raw increment)
-                                    // For now, we'll treat it as seconds if it's large, or just a relative offset.
-                                    // Let's assume the value is seconds for now if it's a number.
                                     double seconds = Convert.ToDouble(val);
-                                    packet.Timestamp = DateTime.UnixEpoch.AddSeconds(seconds);
+                                    updatedPackets.Add(packet with { Timestamp = DateTime.UnixEpoch.AddSeconds(seconds) });
                                 }
-                                catch { /* fallback to default */ }
+                                catch { updatedPackets.Add(packet); }
                             }
+                            else updatedPackets.Add(packet);
                         }
+                        packets = updatedPackets;
                     }
 
                     targetStore.InsertPackets(packets);

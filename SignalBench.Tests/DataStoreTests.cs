@@ -1,8 +1,8 @@
 using FluentAssertions;
 using SignalBench.Core.Data;
-using SignalBench.Core.Decoding;
 using SignalBench.Core.Models.Schema;
-using System;
+using SignalBench.SDK.Models;
+using Xunit;
 using System.Collections.Generic;
 using System.IO;
 using Xunit;
@@ -27,6 +27,7 @@ public class DataStoreTests
         {
             packets.Add(new DecodedPacket
             {
+                SchemaName = "Test",
                 Timestamp = startTime.AddSeconds(i),
                 Fields = new Dictionary<string, object> { ["val"] = (float)i }
             });
@@ -60,6 +61,7 @@ public class DataStoreTests
         {
             packets.Add(new DecodedPacket
             {
+                SchemaName = "Test",
                 Timestamp = startTime.AddSeconds(i),
                 Fields = new Dictionary<string, object> { ["val"] = (float)i }
             });

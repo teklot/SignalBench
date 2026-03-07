@@ -1,21 +1,17 @@
 using System.IO.Ports;
 using SignalBench.Core.Decoding;
 using SignalBench.Core.Models.Schema;
+using SignalBench.SDK.Interfaces;
+using SignalBench.SDK.Models;
 
 namespace SignalBench.Core.Ingestion;
 
-public class SerialTelemetrySource : IStreamingSource
+public sealed class SerialTelemetrySource(string portName, int baudRate, PacketSchema schema, Parity parity = Parity.None, int dataBits = 8, StopBits stopBits = StopBits.One) : IStreamingSource
 {
-    private readonly string _portName;
-    private readonly int _baudRate;
-    private readonly Parity _parity;
-    private readonly int _dataBits;
-    private readonly StopBits _stopBits;
-    private readonly PacketSchema _schema;
     private SerialPort? _serialPort;
     private bool _isRunning;
     private Thread? _readThread;
-    private readonly StreamingPacketScanner _scanner;
+    private readonly StreamingPacketScanner _scanner = new(schema);
     private FileStream? _rawLogStream;
     private long _frameErrorCount;
     private long _misalignmentCount;
@@ -29,24 +25,13 @@ public class SerialTelemetrySource : IStreamingSource
     public long FrameErrorCount => _frameErrorCount;
     public long MisalignmentCount => _misalignmentCount;
 
-    public SerialTelemetrySource(string portName, int baudRate, PacketSchema schema, Parity parity = Parity.None, int dataBits = 8, StopBits stopBits = StopBits.One)
-    {
-        _portName = portName;
-        _baudRate = baudRate;
-        _parity = parity;
-        _dataBits = dataBits;
-        _stopBits = stopBits;
-        _schema = schema;
-        _scanner = new StreamingPacketScanner(schema);
-    }
-
     public void Start()
     {
         if (_isRunning) return;
 
         try
         {
-            _serialPort = new SerialPort(_portName, _baudRate, _parity, _dataBits, _stopBits);
+            _serialPort = new SerialPort(portName, baudRate, parity, dataBits, stopBits);
             _serialPort.Handshake = Handshake.None;
             _serialPort.ReadTimeout = 500;
             _serialPort.WriteTimeout = 500;
@@ -54,14 +39,14 @@ public class SerialTelemetrySource : IStreamingSource
             _serialPort.Open();
 
             _isRunning = true;
-            _readThread = new Thread(ReadLoop) { IsBackground = true, Name = $"SerialRead-{_portName}" };
+            _readThread = new Thread(ReadLoop) { IsBackground = true, Name = $"SerialRead-{portName}" };
             _readThread.Start();
         }
         catch (Exception ex)
         {
             _serialPort?.Dispose();
             _serialPort = null;
-            ErrorReceived?.Invoke($"Failed to open port {_portName}: {ex.Message}");
+            ErrorReceived?.Invoke($"Failed to open port {portName}: {ex.Message}");
             throw;
         }
     }
@@ -176,8 +161,7 @@ public class SerialTelemetrySource : IStreamingSource
                     // Dispatch decoded packets to handlers
                     foreach (var packet in result.Packets)
                     {
-                        packet.Timestamp = DateTime.Now;
-                        PacketReceived?.Invoke(packet);
+                        PacketReceived?.Invoke(packet with { Timestamp = DateTime.Now });
                     }
                 }
                 else
@@ -202,8 +186,8 @@ public class SerialTelemetrySource : IStreamingSource
         Stop();
     }
 
-    public static string[] GetAvailablePorts()
-    {
-        return SerialPort.GetPortNames();
-    }
+    public static string[] GetAvailablePorts() => SerialPort.GetPortNames();
+
+    public IEnumerable<DecodedPacket> ReadPackets() => [];
+    public void Seek(long position) { }
 }

@@ -1,12 +1,12 @@
-using SignalBench.Core.Decoding;
+using SignalBench.SDK.Models;
 using SignalBench.Core.Models.Schema;
 
 namespace SignalBench.Core.Data;
 
-public class InMemoryDataStore : IDataStore
+public sealed class InMemoryDataStore : IDataStore
 {
-    private Dictionary<string, List<double>> _signals = new();
-    private List<DateTime> _timestamps = [];
+    private readonly Dictionary<string, List<double>> _signals = [];
+    private readonly List<DateTime> _timestamps = [];
     private List<string> _signalNames = [];
     private readonly object _lock = new();
 
@@ -88,7 +88,7 @@ public class InMemoryDataStore : IDataStore
             return _timestamps;
         
         var step = Math.Max(1, _timestamps.Count / maxPoints.Value);
-        return _timestamps.Where((t, i) => i % step == 0).ToList();
+        return [.. _timestamps.Where((t, i) => i % step == 0)];
     }
 
     public List<DateTime> GetTimestamps(int startIndex, int count)
@@ -102,7 +102,7 @@ public class InMemoryDataStore : IDataStore
     {
         lock (_lock)
         {
-            return _timestamps.Where(t => t >= startTime).ToList();
+            return [.. _timestamps.Where(t => t >= startTime)];
         }
     }
 
@@ -135,7 +135,7 @@ public class InMemoryDataStore : IDataStore
             return data;
         
         var step = Math.Max(1, data.Count / maxPoints.Value);
-        return data.Where((d, i) => i % step == 0).ToList();
+        return [.. data.Where((d, i) => i % step == 0)];
     }
 
     public int GetRowCount() => _timestamps.Count;

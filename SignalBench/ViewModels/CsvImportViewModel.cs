@@ -1,5 +1,6 @@
 using ReactiveUI;
 using SignalBench.Core.Ingestion;
+using SignalBench.SDK.Models;
 using System.Collections.ObjectModel;
 using System.Reactive;
 

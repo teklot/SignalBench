@@ -2,6 +2,7 @@ using FluentAssertions;
 using SignalBench.Core.Decoding;
 using SignalBench.Core.Ingestion;
 using SignalBench.Core.Models.Schema;
+using SignalBench.SDK.Models;
 using System.Net;
 using System.Net.Sockets;
 using Xunit;

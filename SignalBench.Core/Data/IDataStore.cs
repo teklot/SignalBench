@@ -1,4 +1,4 @@
-using SignalBench.Core.Decoding;
+using SignalBench.SDK.Models;
 using SignalBench.Core.Models.Schema;
 
 namespace SignalBench.Core.Data;

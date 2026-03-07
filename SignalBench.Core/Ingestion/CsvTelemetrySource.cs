@@ -1,35 +1,24 @@
-using SignalBench.Core.Decoding;
+using SignalBench.SDK.Interfaces;
+using SignalBench.SDK.Models;
 
 namespace SignalBench.Core.Ingestion;
 
-public class CsvTelemetrySource : ITelemetrySource
+public sealed class CsvTelemetrySource(string filePath, string delimiter = ",", string? timestampColumn = null, bool hasHeader = true) : ITelemetrySource
 {
-    private readonly string _filePath;
-    private readonly string _delimiter;
-    private readonly string? _timestampColumn;
-    private readonly bool _hasHeader;
     private string[]? _headers;
 
-    public CsvTelemetrySource(string filePath, string delimiter = ",", string? timestampColumn = null, bool hasHeader = true)
-    {
-        _filePath = filePath;
-        _delimiter = delimiter;
-        _timestampColumn = timestampColumn;
-        _hasHeader = hasHeader;
-    }
-
-    public long TotalRecords => 0;
+    public void Dispose() { }
 
     public IEnumerable<DecodedPacket> ReadPackets()
     {
-        using var reader = new StreamReader(_filePath);
+        using var reader = new StreamReader(filePath);
         
         string? line;
-        if (_hasHeader)
+        if (hasHeader)
         {
             var headerLine = reader.ReadLine();
             if (string.IsNullOrEmpty(headerLine)) yield break;
-            _headers = headerLine.Split(_delimiter);
+            _headers = headerLine.Split(delimiter);
         }
 
         while ((line = reader.ReadLine()) != null)
@@ -47,7 +36,9 @@ public class CsvTelemetrySource : ITelemetrySource
                 }
             }
 
-            var packet = new DecodedPacket();
+            var fields = new Dictionary<string, object>();
+            DateTime timestamp = DateTime.MinValue;
+
             for (int i = 0; i < _headers.Length && i < values.Length; i++)
             {
                 var header = _headers[i];
@@ -55,23 +46,28 @@ public class CsvTelemetrySource : ITelemetrySource
                 
                 if (double.TryParse(rawVal, out double val))
                 {
-                    packet.Fields[header] = val;
+                    fields[header] = val;
                 }
                 else
                 {
-                    packet.Fields[header] = rawVal;
+                    fields[header] = rawVal;
                 }
 
-                if (_timestampColumn != null && header.Equals(_timestampColumn, StringComparison.OrdinalIgnoreCase))
+                if (timestampColumn != null && header.Equals(timestampColumn, StringComparison.OrdinalIgnoreCase))
                 {
                     if (DateTime.TryParse(rawVal, out var dt))
-                        packet.Timestamp = dt;
+                        timestamp = dt;
                     else if (double.TryParse(rawVal, out double unix))
-                        packet.Timestamp = DateTime.UnixEpoch.AddSeconds(unix);
+                        timestamp = DateTime.UnixEpoch.AddSeconds(unix);
                 }
             }
             
-            yield return packet;
+            yield return new DecodedPacket 
+            { 
+                SchemaName = "CSV", 
+                Timestamp = timestamp, 
+                Fields = fields 
+            };
         }
     }
 
@@ -83,11 +79,11 @@ public class CsvTelemetrySource : ITelemetrySource
         for (int i = 0; i < line.Length; i++)
         {
             char c = line[i];
-            if (c == _delimiter[0] && (_delimiter.Length == 1 || line.Substring(i).StartsWith(_delimiter)))
+            if (c == delimiter[0] && (delimiter.Length == 1 || line[i..].StartsWith(delimiter)))
             {
                 result.Add(current.ToString());
                 current.Clear();
-                if (_delimiter.Length > 1) i += _delimiter.Length - 1;
+                if (delimiter.Length > 1) i += delimiter.Length - 1;
             }
             else if (c == '"')
             {
@@ -105,11 +101,8 @@ public class CsvTelemetrySource : ITelemetrySource
         }
         result.Add(current.ToString());
         
-        return result.ToArray();
+        return [.. result];
     }
 
-    public void Seek(long position)
-    {
-        throw new NotImplementedException();
-    }
+    public void Seek(long position) => throw new NotImplementedException();
 }

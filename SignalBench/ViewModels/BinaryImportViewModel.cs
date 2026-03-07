@@ -3,6 +3,7 @@ using ReactiveUI;
 using SignalBench.Core.Ingestion;
 using SignalBench.Core.Models.Schema;
 using SignalBench.Core.Services;
+using SignalBench.SDK.Models;
 using System.Collections.ObjectModel;
 using System.Reactive;
 

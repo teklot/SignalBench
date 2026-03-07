@@ -1,10 +1,10 @@
 using Microsoft.Data.Sqlite;
-using SignalBench.Core.Decoding;
+using SignalBench.SDK.Models;
 using SignalBench.Core.Models.Schema;
 
 namespace SignalBench.Core.Data;
 
-public class SqliteDataStore : IDataStore
+public sealed class SqliteDataStore : IDataStore
 {
     private SqliteConnection? _connection;
     private readonly string _tableName = "telemetry";
@@ -171,13 +171,13 @@ public class SqliteDataStore : IDataStore
         if (_connection == null) return [];
         var data = new List<DateTime>();
         using var command = _connection.CreateCommand();
-        command.CommandText = $"SELECT timestamp FROM {_tableName} ORDER BY id";
+        command.CommandText = "SELECT timestamp FROM " + _tableName + " ORDER BY id";
         
         if (maxPoints.HasValue)
         {
-            command.CommandText = $"SELECT timestamp FROM {_tableName} WHERE id % @step = 0 ORDER BY id";
             var totalRows = GetTotalRowCount();
             var step = Math.Max(1, totalRows / maxPoints.Value);
+            command.CommandText = $"SELECT timestamp FROM {_tableName} WHERE id % @step = 0 ORDER BY id";
             command.Parameters.AddWithValue("@step", step);
         }
         
@@ -248,13 +248,7 @@ public class SqliteDataStore : IDataStore
         return result != null ? (result is DateTime dt ? dt : ParseTimestamp(result)) : default;
     }
 
-    public int GetRowCount()
-    {
-        if (_connection == null) return 0;
-        using var command = _connection.CreateCommand();
-        command.CommandText = $"SELECT COUNT(*) FROM {_tableName}";
-        return Convert.ToInt32(command.ExecuteScalar());
-    }
+    public int GetRowCount() => GetTotalRowCount();
 
     private int GetTotalRowCount()
     {
@@ -338,9 +332,7 @@ public class SqliteDataStore : IDataStore
 
         var tempTable = $"{_tableName}_temp";
         
-        command.CommandText = $@"
-            PRAGMA table_info({_tableName});
-        ";
+        command.CommandText = $"PRAGMA table_info({_tableName});";
         var columns = new List<string>();
         using (var reader = command.ExecuteReader())
         {

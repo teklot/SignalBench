@@ -1,32 +1,24 @@
 using SignalBench.Core.Models.Schema;
+using SignalBench.SDK.Models;
 
 namespace SignalBench.Core.Decoding;
 
-public class StreamingPacketScanner
+public sealed class StreamingPacketScanner(PacketSchema schema)
 {
-    public class ScanResult
+    public sealed class ScanResult
     {
-        public List<DecodedPacket> Packets { get; set; } = [];
+        public List<DecodedPacket> Packets { get; init; } = [];
         public bool MisalignmentDetected { get; set; }
     }
 
-    private readonly PacketSchema _schema;
-    private readonly BinaryDecoder _decoder;
-    private readonly int _packetSize;
-    private readonly List<byte> _internalBuffer = new();
-    private readonly uint? _syncWord;
+    private readonly BinaryDecoder _decoder = new();
+    private readonly int _packetSize = CalculatePacketSize(schema);
+    private readonly List<byte> _internalBuffer = [];
+    private readonly uint? _syncWord = schema.SyncWord;
     private readonly int _syncWordSize = 2;
     private int _consecutiveBadSyncs;
 
-    public StreamingPacketScanner(PacketSchema schema)
-    {
-        _schema = schema;
-        _decoder = new BinaryDecoder();
-        _packetSize = CalculatePacketSize(schema);
-        _syncWord = schema.SyncWord;
-    }
-
-    private int CalculatePacketSize(PacketSchema schema)
+    private static int CalculatePacketSize(PacketSchema schema)
     {
         if (schema?.Fields == null) return 0;
         int size = 0;
@@ -34,13 +26,10 @@ public class StreamingPacketScanner
         {
             size += GetTypeSize(field.Type);
         }
-        // If we have a sync word, it's ALREADY included in the schema fields? 
-        // Let's check SchemaLoader or DecodingTests.
-        // Actually, usually the sync word is NOT a field in the schema fields list.
         return size;
     }
 
-    private int GetTypeSize(FieldType type) => type switch
+    private static int GetTypeSize(FieldType type) => type switch
     {
         FieldType.Uint8 or FieldType.Int8 => 1,
         FieldType.Uint16 or FieldType.Int16 => 2,
@@ -86,13 +75,7 @@ public class StreamingPacketScanner
                     _consecutiveBadSyncs = 0;
                 }
 
-                // The BinaryDecoder.Decode expects the data stream to START at the first field.
-                // We must check if the sync word itself is part of the fields.
-                // In this project's architecture, the decoder doesn't know about sync words, it just decodes fields.
-                // So if we found a sync word, we should probably SKIP it before passing to decoder, 
-                // UNLESS the sync word is also defined as a field in the schema.
-                
-                bool syncIsField = _schema.Fields.Any(f => f.Name.Equals("sync", StringComparison.OrdinalIgnoreCase) || f.Name.Equals("syncword", StringComparison.OrdinalIgnoreCase));
+                bool syncIsField = schema.Fields.Any(f => f.Name.Equals("sync", StringComparison.OrdinalIgnoreCase) || f.Name.Equals("syncword", StringComparison.OrdinalIgnoreCase));
                 int dataStartIndex = syncIsField ? 0 : _syncWordSize;
                 int requiredSize = _packetSize + (syncIsField ? 0 : _syncWordSize);
 
@@ -102,7 +85,7 @@ public class StreamingPacketScanner
                 }
 
                 byte[] packetData = _internalBuffer.Skip(dataStartIndex).Take(_packetSize).ToArray();
-                result.Packets.Add(_decoder.Decode(packetData, _schema));
+                result.Packets.Add(_decoder.Decode(packetData, schema));
                 
                 // Remove the processed packet (including the sync word)
                 _internalBuffer.RemoveRange(0, requiredSize);
@@ -112,7 +95,7 @@ public class StreamingPacketScanner
                 if (_internalBuffer.Count < _packetSize) break;
 
                 byte[] packetData = _internalBuffer.Take(_packetSize).ToArray();
-                result.Packets.Add(_decoder.Decode(packetData, _schema));
+                result.Packets.Add(_decoder.Decode(packetData, schema));
                 _internalBuffer.RemoveRange(0, _packetSize);
             }
         }
