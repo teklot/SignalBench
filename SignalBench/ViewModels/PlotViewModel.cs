@@ -12,6 +12,8 @@ public enum PlotSourceType { None, File, Serial, Network }
 
 public sealed class PlotViewModel : TabViewModelBase
 {
+    public override string TabTypeId => "SignalBench.Plot";
+
     private PlotSourceType _sourceType = PlotSourceType.None;
     public PlotSourceType SourceType
     {
@@ -218,6 +220,31 @@ public sealed class PlotViewModel : TabViewModelBase
     }
 
     public bool IsSignalSelected(string signalName) => SelectedSignalNames.Contains(signalName);
+
+    public override Dictionary<string, object> GetSettings()
+    {
+        return new Dictionary<string, object>
+        {
+            { "SourceType", SourceType.ToString() },
+            { "TelemetryPath", TelemetryPath ?? "" },
+            { "SerialSettings", SerialSettings },
+            { "NetworkSettings", NetworkSettings },
+            { "CsvSettings", CsvSettings },
+            { "SelectedSignalNames", SelectedSignalNames.ToList() },
+            { "DerivedSignals", DerivedSignals.ToList() },
+            { "IsSignalsPaneOpen", IsSignalsPaneOpen }
+        };
+    }
+
+    public override void LoadSettings(Dictionary<string, object> settings)
+    {
+        if (settings.TryGetValue("SourceType", out var sourceType)) SourceType = Enum.Parse<PlotSourceType>(sourceType.ToString()!);
+        if (settings.TryGetValue("TelemetryPath", out var path)) TelemetryPath = path.ToString();
+        if (settings.TryGetValue("IsSignalsPaneOpen", out var paneOpen)) IsSignalsPaneOpen = (bool)paneOpen;
+        
+        // Complex objects might need better handling depending on how YAML deserializes to Dictionary<string, object>
+        // For now, we assume the core logic will handle the specific TabSession properties which overlap with these for the Plot type.
+    }
 
     public override void Dispose()
     {

@@ -7,11 +7,12 @@
         xmlns:scott="clr-namespace:ScottPlot.Avalonia;assembly=ScottPlot.Avalonia"
         xmlns:mi="using:Material.Icons.Avalonia"
         xmlns:views="using:SignalBench.Views"
+        xmlns:sdk="using:SignalBench.SDK.Interfaces"
         mc:Ignorable="d" d:DesignWidth="1280" d:DesignHeight="850"
         x:Class="SignalBench.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Title="{Binding AppTitle}"
-        Width="1280" Height="850"
+
         WindowStartupLocation="CenterScreen">
 
     <Design.DataContext>
@@ -441,12 +442,26 @@
                     </TabStrip.ItemTemplate>
                 </TabStrip>
                 
-                <Button Command="{Binding AddEmptyPlotCommand}" 
-                        ToolTip.Tip="New Tab"
+                <Button ToolTip.Tip="New Tab"
                         Background="Transparent" BorderThickness="0" Padding="8,4"
                         VerticalAlignment="Center"
                         IsVisible="{Binding CanAddPlot}">
                     <mi:MaterialIcon Kind="Plus" Width="18" Height="18" Foreground="{DynamicResource SystemAccentColor}"/>
+                    <Button.Flyout>
+                        <MenuFlyout ItemsSource="{Binding AvailableTabFactories}">
+                            <MenuFlyout.ItemTemplate>
+                                <DataTemplate x:DataType="sdk:ITabFactory">
+                                    <MenuItem Header="{Binding DisplayName}" 
+                                              Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).AddTabCommand}"
+                                              CommandParameter="{Binding}">
+                                        <MenuItem.Icon>
+                                            <mi:MaterialIcon Kind="{Binding Icon}" Width="16" Height="16"/>
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                </DataTemplate>
+                            </MenuFlyout.ItemTemplate>
+                        </MenuFlyout>
+                    </Button.Flyout>
                 </Button>
             </StackPanel>
         </Border>

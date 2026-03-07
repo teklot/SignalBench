@@ -146,6 +146,7 @@ public class MainWindowViewModel : ViewModelBase
 
     public ObservableCollection<RecentFileViewModel> RecentFiles { get; } = [];
     public ObservableCollection<TabViewModelBase> Tabs { get; } = [];
+    public ObservableCollection<ITabFactory> AvailableTabFactories { get; } = [];
 
     private TabViewModelBase? _selectedTab;
     public TabViewModelBase? SelectedTab
@@ -396,6 +397,7 @@ public class MainWindowViewModel : ViewModelBase
     public ReactiveCommand<Unit, Unit> CreateDerivedSignalCommand { get; }
     public ReactiveCommand<string, Unit> EditDerivedSignalCommand { get; }
     public ReactiveCommand<string, Unit> RemoveDerivedSignalCommand { get; }
+    public ReactiveCommand<ITabFactory, Unit> AddTabCommand { get; }
     public ReactiveCommand<Unit, Unit> AddEmptyPlotCommand { get; }
     public ReactiveCommand<TabViewModelBase, Unit> RemoveTabCommand { get; }
     public ReactiveCommand<Unit, bool> OpenSettingsCommand { get; }
@@ -428,6 +430,9 @@ public class MainWindowViewModel : ViewModelBase
         string pluginsDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Plugins");
         _pluginLoader.LoadPlugins(pluginsDir);
 
+        // Register default factories
+        AvailableTabFactories.Add(new PlotTabFactory());
+
         if (!Design.IsDesignMode) { 
             RefreshRecentFiles(); 
             AddPlot("Untitled");
@@ -458,6 +463,7 @@ public class MainWindowViewModel : ViewModelBase
         EditDerivedSignalCommand = ReactiveCommand.CreateFromTask<string>(EditDerivedSignalAsync);
         RemoveDerivedSignalCommand = ReactiveCommand.CreateFromTask<string>(RemoveDerivedSignalAsync);
         
+        AddTabCommand = ReactiveCommand.Create<ITabFactory>(AddTab);
         AddEmptyPlotCommand = ReactiveCommand.Create(() => AddPlot());
         RemoveTabCommand = ReactiveCommand.Create<TabViewModelBase>(RemoveTab);
 
@@ -499,6 +505,17 @@ public class MainWindowViewModel : ViewModelBase
                 });
             }
         }
+    }
+
+    private void AddTab(ITabFactory factory)
+    {
+        var tab = factory.CreateTab();
+        if (tab is TabViewModelBase tabVm)
+        {
+            Tabs.Add(tabVm);
+            SelectedTab = tabVm;
+        }
+        this.RaisePropertyChanged(nameof(CanAddPlot));
     }
 
     private void AddPlot(string? name = null, string? telemetryPath = null, PacketSchema? schema = null)

@@ -5,6 +5,8 @@ namespace SignalBench.ViewModels;
 
 public abstract class TabViewModelBase : ViewModelBase, ITabViewModel
 {
+    public abstract string TabTypeId { get; }
+
     private string _name = "Untitled";
     public string Name
     {
@@ -21,6 +23,9 @@ public abstract class TabViewModelBase : ViewModelBase, ITabViewModel
 
     public virtual string ConnectionInfo => "";
     public virtual string ConnectionIcon => "InformationOutline";
+
+    public virtual Dictionary<string, object> GetSettings() => [];
+    public virtual void LoadSettings(Dictionary<string, object> settings) { }
 
     public abstract void Dispose();
 }

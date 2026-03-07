@@ -18,11 +18,19 @@ public class CsvSettings
 public class TabSession
 {
     public string Name { get; set; } = "New Plot";
+    public string TabTypeId { get; set; } = "SignalBench.Plot";
+    
+    // Generic settings for plugins
+    public Dictionary<string, object> Settings { get; set; } = [];
+
+    // Legacy/Core Plot settings - Kept for compatibility with existing logic
     public string SourceType { get; set; } = "None"; // None, File, Serial, Network
     public string? TelemetryPath { get; set; }
     public string? SchemaYaml { get; set; } // Embedded schema content
     public List<string> SelectedSignalNames { get; set; } = [];
     public List<DerivedSignalDefinition> DerivedSignals { get; set; } = [];
+    
+    // Core settings objects
     public SerialSettings? SerialSettings { get; set; }
     public NetworkSettings? NetworkSettings { get; set; }
     public CsvSettings? CsvSettings { get; set; }
