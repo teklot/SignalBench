@@ -419,7 +419,7 @@
         <!-- 3. Tab Area (New Position) -->
         <Border DockPanel.Dock="Top" Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}" BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}" BorderThickness="0,0,0,1">
             <StackPanel Orientation="Horizontal" Margin="10,0">
-                <TabStrip ItemsSource="{Binding Plots}" SelectedItem="{Binding SelectedPlot}" BorderThickness="0">
+                <TabStrip ItemsSource="{Binding Tabs}" SelectedItem="{Binding SelectedTab}" BorderThickness="0">
                     <TabStrip.ItemsPanel>
                         <ItemsPanelTemplate>
                             <WrapPanel Orientation="Horizontal"/>
@@ -430,7 +430,7 @@
                             <StackPanel Orientation="Horizontal" Spacing="8">
                                 <TextBlock Text="{Binding Name}" VerticalAlignment="Center" FontSize="12"/>
                                 <Button Classes="tab-close"
-                                        Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).RemovePlotCommand}" 
+                                        Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).RemoveTabCommand}" 
                                         CommandParameter="{Binding}"
                                         Background="Transparent" BorderThickness="0"
                                         ToolTip.Tip="Close Tab">
@@ -464,11 +464,12 @@
                     <TextBlock Text="{Binding StatusText}" FontSize="11" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" VerticalAlignment="Center" FontWeight="SemiBold"/>
                     
                     <!-- Dynamic Connection Info -->
-                    <Border Width="1" Height="14" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" Margin="8,0" IsVisible="{Binding SelectedPlot.ConnectionInfo, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
-                    <StackPanel Orientation="Horizontal" Spacing="5" IsVisible="{Binding SelectedPlot.ConnectionInfo, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-                        <mi:MaterialIcon Kind="{Binding SelectedPlot.ConnectionIcon}" Width="14" Height="14" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
-                        <TextBlock Text="{Binding SelectedPlot.ConnectionInfo}" FontSize="11" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" VerticalAlignment="Center" FontWeight="SemiBold"/>
-                    </StackPanel>                </StackPanel>
+                    <Border Width="1" Height="14" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" Margin="8,0" IsVisible="{Binding SelectedTab.ConnectionInfo, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                    <StackPanel Orientation="Horizontal" Spacing="5" IsVisible="{Binding SelectedTab.ConnectionInfo, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                        <mi:MaterialIcon Kind="{Binding SelectedTab.ConnectionIcon}" Width="14" Height="14" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                        <TextBlock Text="{Binding SelectedTab.ConnectionInfo}" FontSize="11" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                    </StackPanel>
+                </StackPanel>
                 
                 <!-- Progress bar shown during loading -->
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Spacing="8" IsVisible="{Binding IsLoading}">
@@ -479,128 +480,6 @@
         </Border>
 
         <!-- 5. Main Content Area (Workspaces) -->
-        <ContentControl Content="{Binding SelectedPlot}">
-            <ContentControl.ContentTemplate>
-                <DataTemplate x:DataType="vm:PlotViewModel">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <!-- Sidebar collapse handling -->
-                            <ColumnDefinition Width="{Binding SignalsPaneColumnWidth, Mode=TwoWay}" MinWidth="0" MaxWidth="600"/>
-                            <ColumnDefinition Width="Auto"/> <!-- Splitter -->
-                            <ColumnDefinition Width="*"/>    <!-- Plot -->
-                        </Grid.ColumnDefinitions>
-
-                        <!-- Closed Signals Sidebar Strip -->
-                        <Border Grid.Column="0" Width="24" 
-                                Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}" 
-                                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}" 
-                                BorderThickness="0,0,1,0" 
-                                IsVisible="{Binding !IsSignalsPaneOpen}"
-                                HorizontalAlignment="Left">
-                            <Button Command="{Binding ToggleSignalsPaneCommand}" 
-                                    Background="Transparent" BorderThickness="0" Padding="0" 
-                                    VerticalAlignment="Top" Margin="0,20,0,0"
-                                    HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
-                                    Width="24" Height="100">
-                                <LayoutTransformControl>
-                                    <LayoutTransformControl.LayoutTransform>
-                                        <RotateTransform Angle="-90"/>
-                                    </LayoutTransformControl.LayoutTransform>
-                                    <TextBlock Text="SIGNALS" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource SystemAccentColor}"/>
-                                </LayoutTransformControl>
-                            </Button>
-                        </Border>
-
-                        <!-- Open Signals Sidebar -->
-                        <Border Grid.Column="0" 
-                                HorizontalAlignment="Stretch"
-                                Background="{DynamicResource SystemRegionBrush}" BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}" BorderThickness="0,0,1,0" 
-                                IsVisible="{Binding IsSignalsPaneOpen}">
-                            <Grid RowDefinitions="Auto, *">
-                                <Border Grid.Row="0" Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}" Height="32" Padding="10,0">
-                                    <Grid ColumnDefinitions="*, Auto">
-                                        <TextBlock Grid.Column="0" Text="SIGNALS" VerticalAlignment="Center" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource SystemAccentColor}"/>
-                                        <Button Grid.Column="1" Command="{Binding ToggleSignalsPaneCommand}" Background="Transparent" BorderThickness="0" Padding="4" ToolTip.Tip="Collapse">
-                                            <mi:MaterialIcon Kind="ChevronLeft" Width="14" Height="14" Foreground="{DynamicResource SystemAccentColor}"/>
-                                        </Button>
-                                    </Grid>
-                                </Border>
-                                <views:SignalsView Grid.Row="1" />
-                            </Grid>
-                        </Border>
-
-                        <!-- GridSplitter -->
-                        <GridSplitter Grid.Column="1" Width="4" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" IsVisible="{Binding IsSignalsPaneOpen}"/>
-
-                        <!-- Plot Area -->
-                        <Border Grid.Column="2" Padding="15">
-                            <Grid RowDefinitions="*, Auto">
-                                <!-- Plot Content -->
-                                <views:PlotView Grid.Row="0" />
-                                
-                                <!-- Replay Controls - Bottom of Plot -->
-                                <Border Grid.Row="1" 
-                                        Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}" 
-                                        CornerRadius="4" 
-                                        Padding="8,3" 
-                                        Margin="0,5,0,0"
-                                        IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsPlaybackBarVisible}">
-                                    <Grid ColumnDefinitions="Auto, Auto, Auto, Auto, Auto, Auto, Auto, *, Auto">
-                                        <!-- Fast Backward (1%) -->
-                                        <Button Grid.Column="0" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).FastBackwardCommand}" ToolTip.Tip="Fast Backward (1%)" Background="Transparent" BorderThickness="0" Width="32" Height="32" IsEnabled="{Binding !$parent[Window].((vm:MainWindowViewModel)DataContext).IsStreaming}">
-                                            <mi:MaterialIcon Kind="SkipBackward" Width="18" Height="18" Foreground="#107c10"/>
-                                        </Button>
-
-                                        <!-- Step Back -->
-                                        <Button Grid.Column="1" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).StepBackwardCommand}" ToolTip.Tip="Step Back" Background="Transparent" BorderThickness="0" Width="32" Height="32" IsEnabled="{Binding !$parent[Window].((vm:MainWindowViewModel)DataContext).IsStreaming}">
-                                            <mi:MaterialIcon Kind="ChevronLeft" Width="18" Height="18" Foreground="#107c10"/>
-                                        </Button>
-                                        
-                                        <!-- Play/Pause -->
-                                        <Button Grid.Column="2" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).PlayPauseCommand}" ToolTip.Tip="Play/Pause" Background="Transparent" BorderThickness="0" Width="32" Height="32" IsEnabled="{Binding !$parent[Window].((vm:MainWindowViewModel)DataContext).IsStreaming}">
-                                            <mi:MaterialIcon Kind="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsPlaying, Converter={x:Static converters:BoolToPlayIconConverter.Instance}}" Width="18" Height="18" Foreground="#107c10"/>
-                                        </Button>
-                                        
-                                        <!-- Step Forward -->
-                                        <Button Grid.Column="3" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).StepForwardCommand}" ToolTip.Tip="Step Forward" Background="Transparent" BorderThickness="0" Width="32" Height="32" IsEnabled="{Binding !$parent[Window].((vm:MainWindowViewModel)DataContext).IsStreaming}">
-                                            <mi:MaterialIcon Kind="ChevronRight" Width="18" Height="18" Foreground="#107c10"/>
-                                        </Button>
-
-                                        <!-- Fast Forward (1%) -->
-                                        <Button Grid.Column="4" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).FastForwardCommand}" ToolTip.Tip="Fast Forward (1%)" Background="Transparent" BorderThickness="0" Width="32" Height="32" IsEnabled="{Binding !$parent[Window].((vm:MainWindowViewModel)DataContext).IsStreaming}">
-                                            <mi:MaterialIcon Kind="SkipForward" Width="18" Height="18" Foreground="#107c10"/>
-                                        </Button>
-
-                                        <!-- Timestamp Display -->
-                                        <TextBlock Grid.Column="5" 
-                                                   Text="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).FormattedPlaybackTime}" 
-                                                   FontFamily="Consolas, Courier New, monospace" 
-                                                   FontSize="11.5" 
-                                                   LineHeight="14"
-                                                   VerticalAlignment="Center"
-                                                   Margin="10,0"
-                                                   HorizontalAlignment="Center"
-                                                   TextAlignment="Center"
-                                                   Foreground="{DynamicResource SystemAccentColor}"
-                                                   FontWeight="SemiBold"/>
-
-                                        <!-- Restart -->
-                                        <Button Grid.Column="6" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).RestartCommand}" ToolTip.Tip="Restart" Background="Transparent" BorderThickness="0" Width="32" Height="32" Margin="0,0,15,0" IsEnabled="{Binding !$parent[Window].((vm:MainWindowViewModel)DataContext).IsStreaming}">
-                                            <mi:MaterialIcon Kind="Replay" Width="18" Height="18" Foreground="#107c10"/>
-                                        </Button>
-                                        
-                                        <!-- Timeline Slider -->
-                                        <Slider Grid.Column="7" Value="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).PlaybackProgress}" Minimum="0" Maximum="100" VerticalAlignment="Center" IsEnabled="{Binding !$parent[Window].((vm:MainWindowViewModel)DataContext).IsStreaming}"/>
-                                        
-                                        <!-- Speed -->
-                                        <ComboBox Grid.Column="8" ItemsSource="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).PlaybackSpeeds}" SelectedItem="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).PlaybackSpeed, Converter={x:Static converters:DoubleToStringConverter.Instance}}" Width="90" Margin="10,0,0,0" VerticalAlignment="Center" IsEnabled="{Binding !$parent[Window].((vm:MainWindowViewModel)DataContext).IsStreaming}"/>
-                                    </Grid>
-                                </Border>
-                            </Grid>
-                        </Border>
-                    </Grid>
-                </DataTemplate>
-            </ContentControl.ContentTemplate>
-        </ContentControl>
+        <ContentControl Content="{Binding SelectedTab}" />
     </DockPanel>
 </Window>

@@ -10,15 +10,8 @@ namespace SignalBench.ViewModels;
 
 public enum PlotSourceType { None, File, Serial, Network }
 
-public sealed class PlotViewModel : ViewModelBase
+public sealed class PlotViewModel : TabViewModelBase
 {
-    private string _name;
-    public string Name
-    {
-        get => _name;
-        set => this.RaiseAndSetIfChanged(ref _name, value);
-    }
-
     private PlotSourceType _sourceType = PlotSourceType.None;
     public PlotSourceType SourceType
     {
@@ -95,13 +88,6 @@ public sealed class PlotViewModel : ViewModelBase
 
     public IStreamingSource? ActiveSource { get; set; }
 
-    private string _statusMessage = "Ready";
-    public string StatusMessage
-    {
-        get => _statusMessage;
-        set => this.RaiseAndSetIfChanged(ref _statusMessage, value);
-    }
-
     public SerialSettings SerialSettings { get; } = new();
     public NetworkSettings NetworkSettings { get; } = new();
     public CsvSettings CsvSettings { get; set; } = new();
@@ -109,7 +95,7 @@ public sealed class PlotViewModel : ViewModelBase
     public bool IsSerialConfigured => !string.IsNullOrEmpty(SerialSettings.Port);
     public bool IsNetworkConfigured => !string.IsNullOrEmpty(NetworkSettings.IpAddress) && NetworkSettings.Port > 0;
 
-    public string ConnectionInfo
+    public override string ConnectionInfo
     {
         get
         {
@@ -123,7 +109,7 @@ public sealed class PlotViewModel : ViewModelBase
         }
     }
 
-    public string ConnectionIcon
+    public override string ConnectionIcon
     {
         get
         {
@@ -214,7 +200,7 @@ public sealed class PlotViewModel : ViewModelBase
 
     public PlotViewModel(string name, IDataStore dataStore)
     {
-        _name = name;
+        Name = name;
         DataStore = dataStore;
         ToggleSignalsPaneCommand = ReactiveCommand.Create(() => { IsSignalsPaneOpen = !IsSignalsPaneOpen; });
     }
@@ -233,7 +219,7 @@ public sealed class PlotViewModel : ViewModelBase
 
     public bool IsSignalSelected(string signalName) => SelectedSignalNames.Contains(signalName);
 
-    public void Dispose()
+    public override void Dispose()
     {
         if (ActiveSource != null)
         {

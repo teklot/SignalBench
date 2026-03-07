@@ -77,13 +77,14 @@ public class MainWindowViewModel : ViewModelBase
     {
         get
         {
-            if (Plots.Count == 0) return true;
-            var lastPlot = Plots.Last();
+            if (Tabs.Count == 0) return true;
+            var lastPlot = Tabs.Last() as PlotViewModel;
+            if (lastPlot == null) return true;
             // A plot is "empty" if it has no telemetry path, no signals, and is not streaming
             bool isEmpty = string.IsNullOrEmpty(lastPlot.TelemetryPath) && 
                            lastPlot.AvailableSignals.Count == 0 && 
                            !lastPlot.IsStreaming;
-            return !isEmpty && Plots.Count < 10;
+            return !isEmpty && Tabs.Count < 10;
         }
     }
 
@@ -144,31 +145,32 @@ public class MainWindowViewModel : ViewModelBase
     }
 
     public ObservableCollection<RecentFileViewModel> RecentFiles { get; } = [];
-    public ObservableCollection<PlotViewModel> Plots { get; } = [];
+    public ObservableCollection<TabViewModelBase> Tabs { get; } = [];
 
-    private PlotViewModel? _selectedPlot;
-    public PlotViewModel? SelectedPlot
+    private TabViewModelBase? _selectedTab;
+    public TabViewModelBase? SelectedTab
     {
-        get => _selectedPlot;
+        get => _selectedTab;
         set {
-            this.RaiseAndSetIfChanged(ref _selectedPlot, value);
+            this.RaiseAndSetIfChanged(ref _selectedTab, value);
+            this.RaisePropertyChanged(nameof(SelectedPlot));
             
-            if (value != null)
+            if (value is PlotViewModel plot)
             {
-                _currentPlaybackIndex = value.CurrentPlaybackIndex;
-                _savedElapsedSeconds = value.SavedElapsedSeconds;
-                _fullDuration = value.FullDuration;
-                _playbackTimestamps = value.PlaybackTimestamps;
-                _playbackSignalData = value.PlaybackSignalData;
-                _totalRecords = value.TotalRecords;
+                _currentPlaybackIndex = plot.CurrentPlaybackIndex;
+                _savedElapsedSeconds = plot.SavedElapsedSeconds;
+                _fullDuration = plot.FullDuration;
+                _playbackTimestamps = plot.PlaybackTimestamps;
+                _playbackSignalData = plot.PlaybackSignalData;
+                _totalRecords = plot.TotalRecords;
                 _playbackProgressValue = _totalRecords > 1 ? (double)_currentPlaybackIndex / (_totalRecords - 1) * 100 : 0;
                 
                 // Sync Status
-                _statusText = value.StatusMessage;
+                _statusText = plot.StatusMessage;
                 this.RaisePropertyChanged(nameof(StatusText));
                 
-                value.RaisePropertyChanged(nameof(PlotViewModel.ConnectionInfo));
-                value.RaisePropertyChanged(nameof(PlotViewModel.ConnectionIcon));
+                plot.RaisePropertyChanged(nameof(PlotViewModel.ConnectionInfo));
+                plot.RaisePropertyChanged(nameof(PlotViewModel.ConnectionIcon));
             }
 
             this.RaisePropertyChanged(nameof(SelectedSchema));
@@ -189,14 +191,16 @@ public class MainWindowViewModel : ViewModelBase
             
             if (value != null)
             {
-                value.RaisePropertyChanged(nameof(PlotViewModel.ConnectionInfo));
-                value.RaisePropertyChanged(nameof(PlotViewModel.ConnectionIcon));
+                value.RaisePropertyChanged(nameof(TabViewModelBase.ConnectionInfo));
+                value.RaisePropertyChanged(nameof(TabViewModelBase.ConnectionIcon));
             }
 
             SyncSignalCheckboxes();
-            if (value != null) UpdatePlot(value);
+            if (value is PlotViewModel p) UpdatePlot(p);
         }
     }
+
+    public PlotViewModel? SelectedPlot => SelectedTab as PlotViewModel;
 
     public bool IsStreaming
     {
@@ -393,7 +397,7 @@ public class MainWindowViewModel : ViewModelBase
     public ReactiveCommand<string, Unit> EditDerivedSignalCommand { get; }
     public ReactiveCommand<string, Unit> RemoveDerivedSignalCommand { get; }
     public ReactiveCommand<Unit, Unit> AddEmptyPlotCommand { get; }
-    public ReactiveCommand<PlotViewModel, Unit> RemovePlotCommand { get; }
+    public ReactiveCommand<TabViewModelBase, Unit> RemoveTabCommand { get; }
     public ReactiveCommand<Unit, bool> OpenSettingsCommand { get; }
     public ReactiveCommand<Unit, Unit> OpenAboutCommand { get; }
     public ReactiveCommand<Unit, Unit> ExitCommand { get; }
@@ -455,7 +459,7 @@ public class MainWindowViewModel : ViewModelBase
         RemoveDerivedSignalCommand = ReactiveCommand.CreateFromTask<string>(RemoveDerivedSignalAsync);
         
         AddEmptyPlotCommand = ReactiveCommand.Create(() => AddPlot());
-        RemovePlotCommand = ReactiveCommand.Create<PlotViewModel>(RemovePlot);
+        RemoveTabCommand = ReactiveCommand.Create<TabViewModelBase>(RemoveTab);
 
         OpenSettingsCommand = ReactiveCommand.CreateFromTask(OpenSettingsAsync);
         OpenAboutCommand = ReactiveCommand.CreateFromTask(OpenAboutAsync);
@@ -528,10 +532,10 @@ public class MainWindowViewModel : ViewModelBase
         // If trying to add a new empty plot, but one already exists, just select it
         if (name == null && telemetryPath == null && schema == null)
         {
-            var existingEmpty = Plots.FirstOrDefault(p => string.IsNullOrEmpty(p.TelemetryPath) && p.AvailableSignals.Count == 0 && !p.IsStreaming);
+            var existingEmpty = Tabs.OfType<PlotViewModel>().FirstOrDefault(p => string.IsNullOrEmpty(p.TelemetryPath) && p.AvailableSignals.Count == 0 && !p.IsStreaming);
             if (existingEmpty != null)
             {
-                SelectedPlot = existingEmpty;
+                SelectedTab = existingEmpty;
                 return;
             }
         }
@@ -548,24 +552,24 @@ public class MainWindowViewModel : ViewModelBase
         var plot = new PlotViewModel(plotName, store);
         plot.TelemetryPath = telemetryPath;
         plot.Schema = schema;
-        Plots.Add(plot);
+        Tabs.Add(plot);
         this.RaisePropertyChanged(nameof(HasData));
         this.RaisePropertyChanged(nameof(IsPlaybackBarVisible));
         this.RaisePropertyChanged(nameof(CanAddPlot));
-        SelectedPlot = plot;
+        SelectedTab = plot;
     }
 
-    private void RemovePlot(PlotViewModel plot)
+    private void RemoveTab(TabViewModelBase tab)
     {
-        Plots.Remove(plot);
-        plot.Dispose();
-        if (Plots.Count == 0)
+        Tabs.Remove(tab);
+        tab.Dispose();
+        if (Tabs.Count == 0)
         {
             AddPlot("Untitled"); // Always keep at least one tab
         }
-        else if (SelectedPlot == plot)
+        else if (SelectedTab == tab)
         {
-            SelectedPlot = Plots.LastOrDefault();
+            SelectedTab = Tabs.LastOrDefault();
         }
         this.RaisePropertyChanged(nameof(HasData));
         this.RaisePropertyChanged(nameof(IsPlaybackBarVisible));
@@ -610,8 +614,8 @@ public class MainWindowViewModel : ViewModelBase
         _playbackTimer?.Dispose();
         _playbackTimer = null;
         
-        foreach(var p in Plots) p.Dispose();
-        Plots.Clear();
+        foreach(var p in Tabs) p.Dispose();
+        Tabs.Clear();
         AddPlot("Untitled"); // Re-initialize with an empty tab
         
         IsRecording = false;
@@ -1786,42 +1790,45 @@ public class MainWindowViewModel : ViewModelBase
                 FileTypeChoices = [new Avalonia.Platform.Storage.FilePickerFileType("SignalBench Session") { Patterns = ["*.sbs"] }]
             });
             if (file != null) {
-                var tabs = new List<TabSession>();
-                foreach (var p in Plots)
+                var tabSessions = new List<TabSession>();
+                foreach (var t in Tabs)
                 {
-                    var tab = new TabSession {
-                        Name = p.Name,
-                        SourceType = p.SourceType.ToString(),
-                        TelemetryPath = p.TelemetryPath,
-                        SelectedSignalNames = [.. p.SelectedSignalNames],
-                        DerivedSignals = [.. p.DerivedSignals]
-                    };
-
-                    // Embed schema YAML if available
-                    if (p.Schema != null)
+                    if (t is PlotViewModel p)
                     {
-                        try { tab.SchemaYaml = new SchemaLoader().Save(p.Schema); } catch { }
-                    }
-
-                    // Only save settings relevant to the source type
-                    if (p.SourceType == PlotSourceType.Serial) tab.SerialSettings = p.SerialSettings;
-                    if (p.SourceType == PlotSourceType.Network) tab.NetworkSettings = p.NetworkSettings;
-                    if (p.SourceType == PlotSourceType.File && p.Schema?.Type == SchemaType.Csv)
-                    {
-                        tab.CsvSettings = new CsvSettings
-                        {
-                            Delimiter = p.CsvSettings.Delimiter,
-                            TimestampColumn = p.CsvSettings.TimestampColumn,
-                            HasHeader = p.CsvSettings.HasHeader
+                        var tab = new TabSession {
+                            Name = p.Name,
+                            SourceType = p.SourceType.ToString(),
+                            TelemetryPath = p.TelemetryPath,
+                            SelectedSignalNames = [.. p.SelectedSignalNames],
+                            DerivedSignals = [.. p.DerivedSignals]
                         };
-                    }
 
-                    tabs.Add(tab);
+                        // Embed schema YAML if available
+                        if (p.Schema != null)
+                        {
+                            try { tab.SchemaYaml = new SchemaLoader().Save(p.Schema); } catch { }
+                        }
+
+                        // Only save settings relevant to the source type
+                        if (p.SourceType == PlotSourceType.Serial) tab.SerialSettings = p.SerialSettings;
+                        if (p.SourceType == PlotSourceType.Network) tab.NetworkSettings = p.NetworkSettings;
+                        if (p.SourceType == PlotSourceType.File && p.Schema?.Type == SchemaType.Csv)
+                        {
+                            tab.CsvSettings = new CsvSettings
+                            {
+                                Delimiter = p.CsvSettings.Delimiter,
+                                TimestampColumn = p.CsvSettings.TimestampColumn,
+                                HasHeader = p.CsvSettings.HasHeader
+                            };
+                        }
+
+                        tabSessions.Add(tab);
+                    }
                 }
 
                 var session = new ProjectSession {
-                    SelectedTabIndex = SelectedPlot != null ? Plots.IndexOf(SelectedPlot) : 0,
-                    Tabs = tabs
+                    SelectedTabIndex = SelectedTab != null ? Tabs.IndexOf(SelectedTab) : 0,
+                    Tabs = tabSessions
                 };
                 
                 _sessionManager.SaveSession(file.Path.LocalPath, session);
@@ -1835,10 +1842,10 @@ public class MainWindowViewModel : ViewModelBase
         try {
             var session = _sessionManager.LoadSession(path);
             
-            // Clear existing plots
+            // Clear existing tabs
             if (IsStreaming) await StopStreamingAsync();
-            foreach(var p in Plots) p.Dispose();
-            Plots.Clear();
+            foreach(var t in Tabs) t.Dispose();
+            Tabs.Clear();
             
             foreach (var tab in session.Tabs)
             {
@@ -1882,8 +1889,8 @@ public class MainWindowViewModel : ViewModelBase
                     plot.Schema = schema;
                 }
 
-                Plots.Add(plot);
-                SelectedPlot = plot;
+                Tabs.Add(plot);
+                SelectedTab = plot;
 
                 // Load data if it was a file
                 if (plot.SourceType == PlotSourceType.File && !string.IsNullOrEmpty(tab.TelemetryPath) && File.Exists(tab.TelemetryPath))
@@ -1901,19 +1908,22 @@ public class MainWindowViewModel : ViewModelBase
                     await StartNetworkStreamingAsync();
                 }
                 
-                var targetPlot = Plots.Last();
-                targetPlot.SelectedSignalNames.Clear();
-                foreach (var sName in tab.SelectedSignalNames) targetPlot.SelectedSignalNames.Add(sName);
-                
-                foreach (var ds in tab.DerivedSignals)
+                var targetPlot = Tabs.Last() as PlotViewModel;
+                if (targetPlot != null)
                 {
-                    if (!targetPlot.DerivedSignals.Any(d => d.Name == ds.Name))
-                        targetPlot.DerivedSignals.Add(ds);
+                    targetPlot.SelectedSignalNames.Clear();
+                    foreach (var sName in tab.SelectedSignalNames) targetPlot.SelectedSignalNames.Add(sName);
+                    
+                    foreach (var ds in tab.DerivedSignals)
+                    {
+                        if (!targetPlot.DerivedSignals.Any(d => d.Name == ds.Name))
+                            targetPlot.DerivedSignals.Add(ds);
+                    }
                 }
             }
 
-            if (session.SelectedTabIndex >= 0 && session.SelectedTabIndex < Plots.Count)
-                SelectedPlot = Plots[session.SelectedTabIndex];
+            if (session.SelectedTabIndex >= 0 && session.SelectedTabIndex < Tabs.Count)
+                SelectedTab = Tabs[session.SelectedTabIndex];
             
             StatusText = $"Session loaded: {Path.GetFileName(path)}";
             
@@ -1936,10 +1946,10 @@ public class MainWindowViewModel : ViewModelBase
             if (files.Count > 0) {
                 var session = _sessionManager.LoadSession(files[0].Path.LocalPath);
                 
-                // Clear existing plots
+                // Clear existing tabs
                 if (IsStreaming) await StopStreamingAsync();
-                foreach(var p in Plots) p.Dispose();
-                Plots.Clear();
+                foreach(var t in Tabs) t.Dispose();
+                Tabs.Clear();
                 
                 foreach (var tab in session.Tabs)
                 {
@@ -1983,8 +1993,8 @@ public class MainWindowViewModel : ViewModelBase
                         plot.Schema = schema;
                     }
 
-                    Plots.Add(plot);
-                    SelectedPlot = plot;
+                    Tabs.Add(plot);
+                    SelectedTab = plot;
 
                     // Load data if it was a file
                     if (plot.SourceType == PlotSourceType.File && !string.IsNullOrEmpty(tab.TelemetryPath) && File.Exists(tab.TelemetryPath))
@@ -2002,19 +2012,22 @@ public class MainWindowViewModel : ViewModelBase
                         await StartNetworkStreamingAsync();
                     }
                     
-                    var targetPlot = Plots.Last();
-                    targetPlot.SelectedSignalNames.Clear();
-                    foreach (var sName in tab.SelectedSignalNames) targetPlot.SelectedSignalNames.Add(sName);
-                    
-                    foreach (var ds in tab.DerivedSignals)
+                    var targetPlot = Tabs.Last() as PlotViewModel;
+                    if (targetPlot != null)
                     {
-                        if (!targetPlot.DerivedSignals.Any(d => d.Name == ds.Name))
-                            targetPlot.DerivedSignals.Add(ds);
+                        targetPlot.SelectedSignalNames.Clear();
+                        foreach (var sName in tab.SelectedSignalNames) targetPlot.SelectedSignalNames.Add(sName);
+                        
+                        foreach (var ds in tab.DerivedSignals)
+                        {
+                            if (!targetPlot.DerivedSignals.Any(d => d.Name == ds.Name))
+                                targetPlot.DerivedSignals.Add(ds);
+                        }
                     }
                 }
 
-                if (session.SelectedTabIndex >= 0 && session.SelectedTabIndex < Plots.Count)
-                    SelectedPlot = Plots[session.SelectedTabIndex];
+                if (session.SelectedTabIndex >= 0 && session.SelectedTabIndex < Tabs.Count)
+                    SelectedTab = Tabs[session.SelectedTabIndex];
                 
                 StatusText = "Session loaded.";
             }
@@ -2026,18 +2039,21 @@ public class MainWindowViewModel : ViewModelBase
             string autoSavePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SignalBench", "autosave.sbs");
             Directory.CreateDirectory(Path.GetDirectoryName(autoSavePath)!);
 
-            var tabs = new List<TabSession>();
-            foreach (var p in Plots) {
-                var tab = new TabSession {
-                    Name = p.Name, SourceType = p.SourceType.ToString(), TelemetryPath = p.TelemetryPath,
-                    SelectedSignalNames = [.. p.SelectedSignalNames], DerivedSignals = [.. p.DerivedSignals],
-                    SerialSettings = p.SerialSettings, NetworkSettings = p.NetworkSettings, CsvSettings = p.CsvSettings
-                };
-                if (p.Schema != null) { try { tab.SchemaYaml = new SchemaLoader().Save(p.Schema); } catch { } }
-                tabs.Add(tab);
+            var tabSessions = new List<TabSession>();
+            foreach (var t in Tabs) {
+                if (t is PlotViewModel p)
+                {
+                    var tab = new TabSession {
+                        Name = p.Name, SourceType = p.SourceType.ToString(), TelemetryPath = p.TelemetryPath,
+                        SelectedSignalNames = [.. p.SelectedSignalNames], DerivedSignals = [.. p.DerivedSignals],
+                        SerialSettings = p.SerialSettings, NetworkSettings = p.NetworkSettings, CsvSettings = p.CsvSettings
+                    };
+                    if (p.Schema != null) { try { tab.SchemaYaml = new SchemaLoader().Save(p.Schema); } catch { } }
+                    tabSessions.Add(tab);
+                }
             }
 
-            var session = new ProjectSession { SelectedTabIndex = SelectedPlot != null ? Plots.IndexOf(SelectedPlot) : 0, Tabs = tabs };
+            var session = new ProjectSession { SelectedTabIndex = SelectedTab != null ? Tabs.IndexOf(SelectedTab) : 0, Tabs = tabSessions };
             _sessionManager.SaveSession(autoSavePath, session);
             
             _settingsService.Current.LastSessionPath = autoSavePath;
@@ -2084,13 +2100,16 @@ public class MainWindowViewModel : ViewModelBase
 
     private async Task StopStreamingAsync()
     {
-        foreach (var p in Plots) {
-            p.IsStreaming = false;
-            p.IsPaused = false;
-            if (p.ActiveSource != null)
+        foreach (var t in Tabs) {
+            if (t is PlotViewModel p)
             {
-                var s = p.ActiveSource; p.ActiveSource = null;
-                await Task.Run(() => s.Stop());
+                p.IsStreaming = false;
+                p.IsPaused = false;
+                if (p.ActiveSource != null)
+                {
+                    var s = p.ActiveSource; p.ActiveSource = null;
+                    await Task.Run(() => s.Stop());
+                }
             }
         }
         
