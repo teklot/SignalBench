@@ -375,6 +375,7 @@ public class MainWindowViewModel : ViewModelBase
     public ISettingsService SettingsService => _settingsService;
     private readonly SessionManager _sessionManager = new();
     private readonly Core.DerivedSignals.FormulaEngine _formulaEngine = new();
+    private readonly PluginLoader _pluginLoader;
 
     public ReactiveCommand<Unit, Unit> OpenCsvCommand { get; }
     public ReactiveCommand<Unit, Unit> OpenBinaryCommand { get; }
@@ -418,6 +419,10 @@ public class MainWindowViewModel : ViewModelBase
         _logger = logger;
         _loggerFactory = loggerFactory;
         _settingsService = settingsService;
+        
+        _pluginLoader = new PluginLoader(_loggerFactory.CreateLogger<PluginLoader>());
+        string pluginsDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Plugins");
+        _pluginLoader.LoadPlugins(pluginsDir);
 
         if (!Design.IsDesignMode) { 
             RefreshRecentFiles(); 
