@@ -4,6 +4,23 @@
 
 SignalBench is a high-performance, engineer-grade telemetry workbench designed for mission-critical test campaigns. It supports everything from CubeSat missions to complex flight test systems, providing robust decoding for CSV, binary logs, and live network or serial streams. Decode, visualize, and analyze telemetry without the need for custom scripting.
 
+## 🏗️ Project Structure
+
+The SignalBench ecosystem is split into four main projects:
+
+- **SignalBench**: The main Avalonia UI application.
+- **SignalBench.Core**: The engine responsible for data storage, ingestion, and session management.
+- **SignalBench.SDK**: The public bridge for plugin developers. Contains all core interfaces (`ITelemetrySource`, `IPlugin`, `ITabViewModel`).
+- **SignalBench.Tests**: Unit and integration tests for decoding and streaming.
+
+## 🛠️ Recent Project Evolution
+
+The project has recently undergone a major architectural overhaul to support a "Core vs. Community" plugin strategy:
+
+- **SDK Extraction**: Extracted `SignalBench.SDK` into a standalone project. Moved all core interfaces (`IPlugin`, `ITelemetrySource`, `IDataStore`) to the SDK to allow third-party developers to build plugins without needing the full source code.
+- **Plugin Infrastructure**: Implemented a robust `PluginLoader` service in the Core. The app now dynamically scans a `Plugins/` directory on startup, loading any DLL that implements the `IPlugin` interface.
+- **Visualization Refactor**: Refactored the internal "Tab" system to be entirely generic. The UI no longer assumes every tab is a `PlotView`. By implementing `ITabViewModel` and `ITabFactory`, developers can now add entirely new view types (e.g., 3D Models, Maps, Gauges) via plugins.
+
 ## 🚀 Features
 
 - **Workspace-Centric UI**: Top-level tabbed architecture. Each tab is a complete workspace with its own independent data source (File, Serial, or Network), signal selection sidebar, and plot configuration.
