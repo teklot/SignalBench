@@ -1,0 +1,54 @@
+name: Publish Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            runtime: win-x64
+            artifact_name: SignalBench-Windows-x64
+          - os: ubuntu-latest
+            runtime: linux-x64
+            artifact_name: SignalBench-Linux-x64
+          - os: macos-latest
+            runtime: osx-x64
+            artifact_name: SignalBench-macOS-x64
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 9.0.x
+
+    - name: Publish App
+      run: dotnet publish SignalBench/SignalBench.csproj -c Release -r ${{ matrix.runtime }} --self-contained true -p:PublishSingleFile=true -o ./publish/${{ matrix.runtime }}
+
+    - name: Create Plugins Directory
+      shell: bash
+      run: mkdir -p ./publish/${{ matrix.runtime }}/Plugins
+
+    - name: Zip Artifact (Windows)
+      if: matrix.os == 'windows-latest'
+      run: Compress-Archive -Path ./publish/${{ matrix.runtime }}/* -DestinationPath ./${{ matrix.artifact_name }}.zip
+
+    - name: Zip Artifact (Unix)
+      if: matrix.os != 'windows-latest'
+      run: |
+        cd ./publish/${{ matrix.runtime }}
+        zip -r ../../${{ matrix.artifact_name }}.zip .
+
+    - name: Upload Release Asset
+      uses: softprops/action-gh-release@v2
+      with:
+        files: ${{ matrix.artifact_name }}.zip
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

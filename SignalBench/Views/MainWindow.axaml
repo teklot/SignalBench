@@ -10,6 +10,7 @@
         xmlns:sdk="using:SignalBench.SDK.Interfaces"
         mc:Ignorable="d" d:DesignWidth="1280" d:DesignHeight="850"
         x:Class="SignalBench.Views.MainWindow"
+        x:Name="RootWindow"
         x:DataType="vm:MainWindowViewModel"
         Title="{Binding AppTitle}"
 
@@ -130,6 +131,23 @@
         <!-- 1. Top Menu Bar -->
         <Menu DockPanel.Dock="Top" BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}" BorderThickness="0,0,0,1">
             <MenuItem Header="_File">
+                <MenuItem Header="_New..." ItemsSource="{Binding AvailableTabFactories}" IsEnabled="{Binding CanAddPlot}">
+                    <MenuItem.Icon>
+                        <mi:MaterialIcon Kind="Plus" Width="20" Height="20"/>
+                    </MenuItem.Icon>
+                    <MenuItem.ItemTemplate>
+                        <DataTemplate x:DataType="sdk:ITabFactory">
+                            <MenuItem Header="{Binding DisplayName}" 
+                                      Command="{Binding #RootWindow.((vm:MainWindowViewModel)DataContext).AddTabCommand}"
+                                      CommandParameter="{Binding}">
+                                <MenuItem.Icon>
+                                    <mi:MaterialIcon Kind="{Binding Icon}" Width="16" Height="16"/>
+                                </MenuItem.Icon>
+                            </MenuItem>
+                        </DataTemplate>
+                    </MenuItem.ItemTemplate>
+                </MenuItem>
+                <Separator/>
                 <MenuItem Header="Open _CSV..." Command="{Binding OpenCsvCommand}">
                     <MenuItem.Icon>
                         <mi:MaterialIcon Kind="FileTableOutline" Width="20" Height="20"/>
@@ -157,7 +175,7 @@
                             <Button Content="{Binding DisplayName}"
                                     Background="Transparent"
                                     BorderThickness="0"
-                                    Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).OpenRecentFileCommand}"
+                                    Command="{Binding #RootWindow.((vm:MainWindowViewModel)DataContext).OpenRecentFileCommand}"
                                     CommandParameter="{Binding Path}"
                                     Padding="0"/>
                         </DataTemplate>
@@ -458,7 +476,7 @@
                             <MenuFlyout.ItemTemplate>
                                 <DataTemplate x:DataType="sdk:ITabFactory">
                                     <MenuItem Header="{Binding DisplayName}" 
-                                              Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).AddTabCommand}"
+                                              Command="{Binding #RootWindow.((vm:MainWindowViewModel)DataContext).AddTabCommand}"
                                               CommandParameter="{Binding}">
                                         <MenuItem.Icon>
                                             <mi:MaterialIcon Kind="{Binding Icon}" Width="16" Height="16"/>

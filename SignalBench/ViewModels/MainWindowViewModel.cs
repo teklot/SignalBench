@@ -83,20 +83,7 @@ public class MainWindowViewModel : ViewModelBase
 
     public bool HasData => SelectedPlot != null && (SelectedPlot.AvailableSignals.Count > 0 || !string.IsNullOrEmpty(SelectedPlot.TelemetryPath));
 
-    public bool CanAddPlot
-    {
-        get
-        {
-            if (Tabs.Count == 0) return true;
-            var lastPlot = Tabs.Last() as PlotViewModel;
-            if (lastPlot == null) return true;
-            // A plot is "empty" if it has no telemetry path, no signals, and is not streaming
-            bool isEmpty = string.IsNullOrEmpty(lastPlot.TelemetryPath) && 
-                           lastPlot.AvailableSignals.Count == 0 && 
-                           !lastPlot.IsStreaming;
-            return !isEmpty && Tabs.Count < 10;
-        }
-    }
+    public bool CanAddPlot => Tabs.Count < 10;
 
     public bool IsPlaybackBarVisible => HasData && (SelectedPlot == null || !SelectedPlot.IsStreaming);
 
@@ -471,8 +458,10 @@ public class MainWindowViewModel : ViewModelBase
         EditDerivedSignalCommand = ReactiveCommand.CreateFromTask<string>(EditDerivedSignalAsync);
         RemoveDerivedSignalCommand = ReactiveCommand.CreateFromTask<string>(RemoveDerivedSignalAsync);
         
-        AddTabCommand = ReactiveCommand.Create<ITabFactory>(AddTab);
-        AddEmptyPlotCommand = ReactiveCommand.Create(() => AddPlot());
+        var canAddPlotObs = this.WhenAnyValue(x => x.Tabs.Count, count => count < 10);
+        
+        AddTabCommand = ReactiveCommand.Create<ITabFactory>(AddTab, canAddPlotObs);
+        AddEmptyPlotCommand = ReactiveCommand.Create(() => AddPlot(), canAddPlotObs);
         RemoveTabCommand = ReactiveCommand.Create<TabViewModelBase>(RemoveTab);
 
         OpenSettingsCommand = ReactiveCommand.CreateFromTask(OpenSettingsAsync);
@@ -1563,6 +1552,7 @@ public class MainWindowViewModel : ViewModelBase
                                 this.RaisePropertyChanged(nameof(CurrentPlaybackIndex)); this.RaisePropertyChanged(nameof(CurrentPlaybackTime));
                                 this.RaisePropertyChanged(nameof(FormattedPlaybackTime)); this.RaisePropertyChanged(nameof(PlaybackProgress));
                                 this.RaisePropertyChanged(nameof(IsPlaybackBarVisible));
+                                this.RaisePropertyChanged(nameof(CanAddPlot));
                                 
                                 SyncSignalCheckboxes();
                             }

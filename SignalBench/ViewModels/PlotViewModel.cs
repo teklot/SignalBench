@@ -181,7 +181,7 @@ public sealed class PlotViewModel : TabViewModelBase
     private Avalonia.Controls.GridLength _signalsPaneColumnWidth = new(200);
     public Avalonia.Controls.GridLength SignalsPaneColumnWidth
     {
-        get => IsSignalsPaneOpen ? _signalsPaneColumnWidth : new Avalonia.Controls.GridLength(0);
+        get => IsSignalsPaneOpen ? _signalsPaneColumnWidth : new Avalonia.Controls.GridLength(24);
         set {
             if (IsSignalsPaneOpen && value.IsAbsolute)
             {
