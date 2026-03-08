@@ -62,6 +62,23 @@ public partial class App : Application
         });
 
         services.AddSingleton<ISettingsService, SettingsService>();
+
+        // Load Plugins to check for FeatureService overrides
+        var tempProvider = services.BuildServiceProvider();
+        var pluginLoader = new PluginLoader(tempProvider.GetRequiredService<ILogger<PluginLoader>>());
+        string pluginsDir = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Plugins");
+        pluginLoader.LoadPlugins(pluginsDir);
+        services.AddSingleton(pluginLoader);
+
+        if (pluginLoader.FeatureServiceImplementation != null)
+        {
+            services.AddSingleton<SignalBench.SDK.Interfaces.IFeatureService>(pluginLoader.FeatureServiceImplementation);
+        }
+        else
+        {
+            services.AddSingleton<SignalBench.SDK.Interfaces.IFeatureService, DefaultFeatureService>();
+        }
+
         services.AddSingleton<IDataStore>(sp => 
         {
             var settings = sp.GetRequiredService<ISettingsService>();

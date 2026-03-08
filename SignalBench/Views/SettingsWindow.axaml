@@ -71,6 +71,31 @@
                             <ToggleSwitch Grid.Row="2" Grid.Column="1" IsChecked="{Binding AutoLoadLastSession}" Margin="0,20,0,0" OnContent="" OffContent=""/>
                         </Grid>
                     </StackPanel>
+
+                    <Separator Height="1" Margin="0,5"/>
+
+                    <!-- License Section -->
+                    <StackPanel Spacing="15">
+                        <TextBlock Text="LICENSE" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                        
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="LICENSE KEY" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                            <Grid ColumnDefinitions="*, Auto">
+                                <TextBox Text="{Binding LicenseKey}" PasswordChar="*" Watermark="Enter your Pro license key..."/>
+                                <Button Grid.Column="1" Command="{Binding ValidateLicenseCommand}" Margin="5,0,0,0" Classes="accent">
+                                    <StackPanel Orientation="Horizontal" Spacing="5">
+                                        <mi:MaterialIcon Kind="Check" Width="14" Height="14"/>
+                                        <TextBlock Text="Validate" VerticalAlignment="Center" FontSize="11"/>
+                                    </StackPanel>
+                                </Button>
+                            </Grid>
+                        </StackPanel>
+
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="STATUS" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                            <TextBlock Text="{Binding LicenseStatus}" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource SystemAccentColor}"/>
+                        </StackPanel>
+                    </StackPanel>
                 </StackPanel>
             </Border>
         </ScrollViewer>

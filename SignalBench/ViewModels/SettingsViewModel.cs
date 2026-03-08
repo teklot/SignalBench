@@ -9,12 +9,27 @@ namespace SignalBench.ViewModels;
 public class SettingsViewModel : ViewModelBase
 {
     private readonly ISettingsService _settingsService;
+    private readonly SignalBench.SDK.Interfaces.IFeatureService _featureService;
 
     private string _defaultTelemetryPath;
     public string DefaultTelemetryPath
     {
         get => _defaultTelemetryPath;
         set => this.RaiseAndSetIfChanged(ref _defaultTelemetryPath, value);
+    }
+
+    private string _licenseKey;
+    public string LicenseKey
+    {
+        get => _licenseKey;
+        set => this.RaiseAndSetIfChanged(ref _licenseKey, value);
+    }
+
+    private string _licenseStatus;
+    public string LicenseStatus
+    {
+        get => _licenseStatus;
+        set => this.RaiseAndSetIfChanged(ref _licenseStatus, value);
     }
 
     private string _defaultSchemaPath;
@@ -66,10 +81,12 @@ public class SettingsViewModel : ViewModelBase
     public ReactiveCommand<Unit, bool> SaveCommand { get; }
     public ReactiveCommand<Unit, Unit> CancelCommand { get; }
     public ReactiveCommand<string, Unit> BrowsePathCommand { get; }
+    public ReactiveCommand<Unit, Unit> ValidateLicenseCommand { get; }
 
-    public SettingsViewModel(ISettingsService settingsService)
+    public SettingsViewModel(ISettingsService settingsService, SignalBench.SDK.Interfaces.IFeatureService featureService)
     {
         _settingsService = settingsService;
+        _featureService = featureService;
         
         var current = _settingsService.Current;
         _defaultTelemetryPath = current.DefaultTelemetryPath;
@@ -77,10 +94,20 @@ public class SettingsViewModel : ViewModelBase
         _theme = current.Theme;
         _storageMode = current.StorageMode;
         _autoLoadLastSession = current.AutoLoadLastSession;
+        _licenseKey = current.LicenseKey;
+        _licenseStatus = _featureService.CurrentStatus.ToString();
 
         SaveCommand = ReactiveCommand.Create(Save);
         CancelCommand = ReactiveCommand.Create(() => { });
         BrowsePathCommand = ReactiveCommand.CreateFromTask<string>(BrowsePathAsync);
+        ValidateLicenseCommand = ReactiveCommand.CreateFromTask(ValidateLicenseAsync);
+    }
+
+    private async Task ValidateLicenseAsync()
+    {
+        LicenseStatus = "Validating...";
+        var status = await _featureService.ValidateLicenseAsync(LicenseKey);
+        LicenseStatus = status.ToString();
     }
 
     private async Task ShowError(string title, string message)
@@ -108,6 +135,7 @@ public class SettingsViewModel : ViewModelBase
         current.Theme = Theme;
         current.StorageMode = StorageMode;
         current.AutoLoadLastSession = AutoLoadLastSession;
+        current.LicenseKey = LicenseKey;
 
         _settingsService.Save();
         return true;

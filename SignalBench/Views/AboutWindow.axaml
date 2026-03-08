@@ -49,6 +49,11 @@
             <!-- App Name -->
             <TextBlock Text="SignalBench" FontSize="28" FontWeight="Bold" HorizontalAlignment="Center" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
             
+            <!-- License -->
+            <Border Background="{DynamicResource SystemAccentColor}" CornerRadius="4" Padding="12,4" HorizontalAlignment="Center" Margin="0,5">
+                <TextBlock x:Name="LicenseStatusText" FontSize="12" FontWeight="Bold" Foreground="White"/>
+            </Border>
+
             <!-- Version -->
             <TextBlock x:Name="VersionText" FontSize="15" HorizontalAlignment="Center" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
             

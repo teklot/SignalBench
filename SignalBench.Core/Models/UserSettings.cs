@@ -18,4 +18,6 @@ public class UserSettings
     public string WindowState { get; set; } = "Normal"; // Normal, Maximized
     public int? WindowX { get; set; }
     public int? WindowY { get; set; }
+
+    public string LicenseKey { get; set; } = string.Empty;
 }

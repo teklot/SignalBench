@@ -24,7 +24,17 @@ public class RecentFileViewModel
 
 public class MainWindowViewModel : ViewModelBase
 {
-    public string AppTitle => $"{AppInfo.Name} v{AppInfo.Version}";
+    private readonly IFeatureService _featureService;
+    public string AppTitle => $"{AppInfo.Name} v{AppInfo.Version} - {LicenseStatusText}";
+
+    public string LicenseStatusText => _featureService.CurrentStatus switch
+    {
+        LicenseStatus.Pro => "PRO Edition",
+        LicenseStatus.Free => "Community Edition",
+        LicenseStatus.Expired => "Trial Expired",
+        LicenseStatus.Invalid => "Invalid License",
+        _ => "Community Edition"
+    };
 
     private string _statusText = "Ready";
     public string StatusText
@@ -418,17 +428,15 @@ public class MainWindowViewModel : ViewModelBase
     public ReactiveCommand<Unit, bool> OpenSerialSettingsCommand { get; }
     public ReactiveCommand<Unit, bool> OpenNetworkSettingsCommand { get; }
 
-    public MainWindowViewModel() : this(null!, null!, null!, null!) { }
+    public MainWindowViewModel() : this(null!, null!, null!, null!, null!, null!) { }
 
-    public MainWindowViewModel(IDataStore dataStore, ILogger<MainWindowViewModel> logger, ILoggerFactory loggerFactory, ISettingsService settingsService)
+    public MainWindowViewModel(IDataStore dataStore, ILogger<MainWindowViewModel> logger, ILoggerFactory loggerFactory, ISettingsService settingsService, IFeatureService featureService, PluginLoader pluginLoader)
     {
         _logger = logger;
         _loggerFactory = loggerFactory;
         _settingsService = settingsService;
-        
-        _pluginLoader = new PluginLoader(_loggerFactory.CreateLogger<PluginLoader>());
-        string pluginsDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Plugins");
-        _pluginLoader.LoadPlugins(pluginsDir);
+        _featureService = featureService;
+        _pluginLoader = pluginLoader;
 
         // Register default factories
         AvailableTabFactories.Add(new PlotTabFactory());
@@ -729,7 +737,8 @@ public class MainWindowViewModel : ViewModelBase
         try {
             var topLevel = (App.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)?.MainWindow;
             if (topLevel == null) return false;
-            var settingsVm = new SettingsViewModel(_settingsService);
+
+            var settingsVm = new SettingsViewModel(_settingsService, _featureService);
             var dialog = new SignalBench.Views.SettingsWindow { DataContext = settingsVm };
             var saved = await dialog.ShowDialog<bool>(topLevel);
             return saved;

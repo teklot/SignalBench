@@ -8,8 +8,10 @@ namespace SignalBench.Core.Services;
 public class PluginLoader(ILogger<PluginLoader> logger)
 {
     private readonly List<IPlugin> _loadedPlugins = [];
+    private IFeatureService? _featureServiceImplementation;
 
     public IEnumerable<IPlugin> Plugins => _loadedPlugins;
+    public IFeatureService? FeatureServiceImplementation => _featureServiceImplementation;
 
     public void LoadPlugins(string pluginDirectory)
     {
@@ -47,6 +49,15 @@ public class PluginLoader(ILogger<PluginLoader> logger)
                     plugin.Initialize();
                     _loadedPlugins.Add(plugin);
                     logger.LogInformation("Loaded plugin: {Name} v{Version}", plugin.Name, plugin.Version);
+                }
+            }
+
+            if (typeof(IFeatureService).IsAssignableFrom(type) && !type.IsInterface && !type.IsAbstract)
+            {
+                if (Activator.CreateInstance(type) is IFeatureService service)
+                {
+                    _featureServiceImplementation = service;
+                    logger.LogInformation("Found service implementation for IFeatureService in {Assembly}", assembly.FullName);
                 }
             }
         }
