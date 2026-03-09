@@ -103,7 +103,7 @@
                                    FontSize="11.5" 
                                    LineHeight="14"
                                    VerticalAlignment="Center"
-                                   Margin="10,0"
+                                   Margin="8,0"
                                    HorizontalAlignment="Center"
                                    TextAlignment="Center"
                                    Foreground="{DynamicResource SystemAccentColor}"

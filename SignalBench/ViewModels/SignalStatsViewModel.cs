@@ -60,10 +60,7 @@ public partial class SignalStatsViewModel : ViewModelBase
     {
         _lastMinX = minX;
         _lastMaxX = maxX;
-        if (UseSelectedWindow)
-        {
-            Calculate();
-        }
+        Calculate();
     }
 
     private void Calculate()

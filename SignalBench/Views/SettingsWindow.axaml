@@ -83,7 +83,7 @@
                             <Grid ColumnDefinitions="*, Auto">
                                 <TextBox Text="{Binding LicenseKey}" PasswordChar="*" Watermark="Enter your Pro license key..."/>
                                 <Button Grid.Column="1" Command="{Binding ValidateLicenseCommand}" Margin="5,0,0,0" Classes="accent">
-                                    <StackPanel Orientation="Horizontal" Spacing="5">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
                                         <mi:MaterialIcon Kind="Check" Width="14" Height="14"/>
                                         <TextBlock Text="Validate" VerticalAlignment="Center" FontSize="11"/>
                                     </StackPanel>

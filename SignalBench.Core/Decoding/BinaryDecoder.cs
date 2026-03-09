@@ -17,7 +17,7 @@ public sealed class BinaryDecoder
 
             if (byteOffset >= data.Length) continue;
 
-            int neededBytes = GetTypeSize(field.Type);
+            int neededBytes = GetTypeSize(field.Type, field.BitLength);
             if (byteOffset + neededBytes > data.Length) continue;
 
             object value = field.Type switch
@@ -35,12 +35,16 @@ public sealed class BinaryDecoder
                 FieldType.Int32 => (object)(schema.Endianness == Endianness.Little
                     ? BinaryPrimitives.ReadInt32LittleEndian(data.Slice(byteOffset, 4))
                     : BinaryPrimitives.ReadInt32BigEndian(data.Slice(byteOffset, 4))),
+                FieldType.Int64 => (object)(schema.Endianness == Endianness.Little
+                    ? BinaryPrimitives.ReadInt64LittleEndian(data.Slice(byteOffset, 8))
+                    : BinaryPrimitives.ReadInt64BigEndian(data.Slice(byteOffset, 8))),
                 FieldType.Float32 => (object)(schema.Endianness == Endianness.Little
                     ? BinaryPrimitives.ReadSingleLittleEndian(data.Slice(byteOffset, 4))
                     : BinaryPrimitives.ReadSingleBigEndian(data.Slice(byteOffset, 4))),
                 FieldType.Float64 => (object)(schema.Endianness == Endianness.Little
                     ? BinaryPrimitives.ReadDoubleLittleEndian(data.Slice(byteOffset, 8))
                     : BinaryPrimitives.ReadDoubleBigEndian(data.Slice(byteOffset, 8))),
+                FieldType.Bool => (object)(data[byteOffset] != 0),
                 _ => (object)0
             };
 
@@ -83,12 +87,12 @@ public sealed class BinaryDecoder
         return val;
     }
 
-    private int GetTypeSize(FieldType type) => type switch
+    private int GetTypeSize(FieldType type, int bitLength) => type switch
     {
-        FieldType.Uint8 or FieldType.Int8 => 1,
+        FieldType.Uint8 or FieldType.Int8 or FieldType.Bool => 1,
         FieldType.Uint16 or FieldType.Int16 => 2,
         FieldType.Uint32 or FieldType.Int32 or FieldType.Float32 => 4,
-        FieldType.Uint64 or FieldType.Float64 => 8,
+        FieldType.Uint64 or FieldType.Int64 or FieldType.Float64 => 8,
         _ => 0
     };
 }

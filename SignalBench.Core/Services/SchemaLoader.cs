@@ -60,10 +60,10 @@ public class SchemaLoader
 
     private int GetTypeBitCount(FieldType type) => type switch
     {
-        FieldType.Uint8 or FieldType.Int8 => 8,
+        FieldType.Uint8 or FieldType.Int8 or FieldType.Bool => 8,
         FieldType.Uint16 or FieldType.Int16 => 16,
         FieldType.Uint32 or FieldType.Int32 or FieldType.Float32 => 32,
-        FieldType.Uint64 or FieldType.Float64 => 64,
+        FieldType.Uint64 or FieldType.Int64 or FieldType.Float64 => 64,
         _ => 0
     };
 

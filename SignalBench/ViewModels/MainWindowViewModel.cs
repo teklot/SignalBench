@@ -457,7 +457,7 @@ public partial class MainWindowViewModel : ViewModelBase
         
         SaveSessionCommand = new AsyncRelayCommand(SaveSessionAsync, () => HasData);
         OpenSessionCommand = new AsyncRelayCommand(OpenSessionAsync);
-        CloseAllCommand = new AsyncRelayCommand(CloseAllAsync, () => HasData);
+        CloseAllCommand = new AsyncRelayCommand(CloseAllAsync);
         
         ExportCsvCommand = new AsyncRelayCommand(ExportCsv, () => HasData);
         ToggleSignalsPaneCommand = new RelayCommand(() => { IsSignalsPaneOpen = !IsSignalsPaneOpen; });
