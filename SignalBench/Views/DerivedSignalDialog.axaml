@@ -14,20 +14,17 @@
     <Grid RowDefinitions="*, Auto">
         <Border Grid.Row="0" Padding="20">
             <StackPanel Spacing="15">
-                <TextBlock Text="DERIVED SIGNAL"
-                           FontWeight="Bold"
-                           FontSize="11"
-                           Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" />
+                <TextBlock Text="DERIVED SIGNAL" Classes="SectionHeader" Margin="0,0,0,5"/>
 
                 <StackPanel Spacing="5">
-                    <TextBlock Text="SIGNAL NAME" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                    <TextBlock Text="SIGNAL NAME" Classes="InputLabel"/>
                     <TextBox Text="{Binding Name}"
                              Watermark="e.g., power_consumption"
                              HorizontalAlignment="Stretch" />
                 </StackPanel>
 
                 <StackPanel Spacing="5">
-                    <TextBlock Text="FORMULA" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                    <TextBlock Text="FORMULA" Classes="InputLabel"/>
                     <TextBox Text="{Binding Formula}"
                              Watermark="e.g., battery_voltage * battery_current"
                              HorizontalAlignment="Stretch" />

@@ -198,12 +198,15 @@ public sealed class PlotViewModel : TabViewModelBase
         }
     }
 
+    public SignalStatsViewModel Statistics { get; }
+
     public ReactiveCommand<System.Reactive.Unit, System.Reactive.Unit> ToggleSignalsPaneCommand { get; }
 
     public PlotViewModel(string name, IDataStore dataStore)
     {
         Name = name;
         DataStore = dataStore;
+        Statistics = new SignalStatsViewModel(dataStore);
         ToggleSignalsPaneCommand = ReactiveCommand.Create(() => { IsSignalsPaneOpen = !IsSignalsPaneOpen; });
     }
 

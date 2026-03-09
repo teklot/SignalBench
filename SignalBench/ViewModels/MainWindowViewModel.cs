@@ -3,7 +3,6 @@ using Microsoft.Extensions.Logging;
 using ReactiveUI;
 using SignalBench.Core;
 using SignalBench.Core.Data;
-using SignalBench.Core.Decoding;
 using SignalBench.Core.Models.Schema;
 using SignalBench.Core.Services;
 using SignalBench.Core.Session;
@@ -349,6 +348,7 @@ public class MainWindowViewModel : ViewModelBase
                 this.RaisePropertyChanged(nameof(CurrentPlaybackTime));
                 this.RaisePropertyChanged(nameof(FormattedPlaybackTime));
                 UpdateCursorPosition();
+                RefreshCurrentValues();
             }
         }
     }
@@ -770,7 +770,28 @@ public class MainWindowViewModel : ViewModelBase
                 plotData[signalName] = plot.DataStore.GetSignalData(signalName, shouldDownsample ? maxPlotPoints : null);
             
             plot.RequestPlotUpdate?.Invoke(timestamps, plotData, null, null, null);
+            
+            // Update current values for the signals pane
+            if (plot == SelectedPlot) RefreshCurrentValues();
         } catch (Exception ex) { _logger.LogError(ex, "Plot Error"); StatusText = $"Plot Error: {ex.Message}"; }
+    }
+
+    private void RefreshCurrentValues()
+    {
+        if (SelectedPlot == null) return;
+        var rowCount = SelectedPlot.TotalRecords;
+        if (rowCount == 0) return;
+
+        var index = Math.Clamp(_currentPlaybackIndex, 0, rowCount - 1);
+        
+        foreach (var signal in SelectedPlot.AvailableSignals)
+        {
+            var data = SelectedPlot.DataStore.GetSignalData(signal.Name, index, 1);
+            if (data.Count > 0)
+            {
+                signal.CurrentValue = data[0];
+            }
+        }
     }
 
     private void PlayPause() { if (IsPlaying) StopPlayback(); else StartPlayback(); }
@@ -866,6 +887,7 @@ public class MainWindowViewModel : ViewModelBase
                 this.RaisePropertyChanged(nameof(FormattedPlaybackTime));
                 this.RaisePropertyChanged(nameof(PlaybackProgress));
                 UpdateCursorPosition();
+                RefreshCurrentValues();
             });
             
             if (_currentPlaybackIndex >= TotalRecords - 1) {
@@ -1290,6 +1312,10 @@ public class MainWindowViewModel : ViewModelBase
                     this.RaisePropertyChanged(nameof(HasData));
                     this.RaisePropertyChanged(nameof(IsPlaybackBarVisible));
                 }
+                
+                // Update CurrentPlaybackIndex to latest during streaming
+                CurrentPlaybackIndex = rowCount - 1;
+                RefreshCurrentValues();
             }
 
             // Determine rolling window in seconds

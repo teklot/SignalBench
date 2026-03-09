@@ -1,0 +1,58 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SignalBench.ViewModels"
+             xmlns:views="using:SignalBench.Views"
+             xmlns:converters="using:SignalBench.Converters"
+             x:Class="SignalBench.Views.SignalStatsView"
+             x:DataType="vm:SignalStatsViewModel">
+    <StackPanel Margin="10,5,5,5" Spacing="10">
+        <!-- Signal Selection -->
+        <StackPanel Spacing="5">
+            <TextBlock Text="SELECT SIGNAL" Classes="InputLabel"/>
+            <ComboBox ItemsSource="{Binding $parent[views:PlotView].((vm:PlotViewModel)DataContext).AvailableSignals}"
+                      SelectedItem="{Binding SelectedSignal}"
+                      HorizontalAlignment="Stretch"
+                      Height="28">
+                <ComboBox.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding Name}" FontSize="12"/>
+                    </DataTemplate>
+                </ComboBox.ItemTemplate>
+            </ComboBox>
+            <CheckBox IsChecked="{Binding UseSelectedWindow}" 
+                      Content="Use Current Window"
+                      FontSize="11"
+                      Margin="0,0,0,0"/>
+        </StackPanel>
+
+        <Border Height="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}"/>
+
+        <!-- Results -->
+        <StackPanel Spacing="4">
+            <Grid ColumnDefinitions="*, Auto">
+                <TextBlock Text="Min" FontSize="12" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                <TextBlock Grid.Column="1" Text="{Binding Min, StringFormat={}{0:G5}}" FontSize="12" FontWeight="SemiBold"/>
+            </Grid>
+            <Grid ColumnDefinitions="*, Auto">
+                <TextBlock Text="Max" FontSize="12" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                <TextBlock Grid.Column="1" Text="{Binding Max, StringFormat={}{0:G5}}" FontSize="12" FontWeight="SemiBold"/>
+            </Grid>
+            <Grid ColumnDefinitions="*, Auto">
+                <TextBlock Text="Mean" FontSize="12" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                <TextBlock Grid.Column="1" Text="{Binding Mean, StringFormat={}{0:G5}}" FontSize="12" FontWeight="SemiBold"/>
+            </Grid>
+            <Grid ColumnDefinitions="*, Auto">
+                <TextBlock Text="Std" FontSize="12" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                <TextBlock Grid.Column="1" Text="{Binding StdDev, StringFormat={}{0:G5}}" FontSize="12" FontWeight="SemiBold"/>
+            </Grid>
+            <Grid ColumnDefinitions="*, Auto">
+                <TextBlock Text="RMS" FontSize="12" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                <TextBlock Grid.Column="1" Text="{Binding RMS, StringFormat={}{0:G5}}" FontSize="12" FontWeight="SemiBold"/>
+            </Grid>
+            <Grid ColumnDefinitions="*, Auto">
+                <TextBlock Text="P2P" FontSize="12" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                <TextBlock Grid.Column="1" Text="{Binding P2P, StringFormat={}{0:G5}}" FontSize="12" FontWeight="SemiBold"/>
+            </Grid>
+        </StackPanel>
+    </StackPanel>
+</UserControl>

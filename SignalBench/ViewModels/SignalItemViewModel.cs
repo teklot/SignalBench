@@ -31,4 +31,11 @@ public class SignalItemViewModel : ViewModelBase
         get => _colorIndex;
         set => this.RaiseAndSetIfChanged(ref _colorIndex, value);
     }
+
+    private double _currentValue;
+    public double CurrentValue
+    {
+        get => _currentValue;
+        set => this.RaiseAndSetIfChanged(ref _currentValue, value);
+    }
 }

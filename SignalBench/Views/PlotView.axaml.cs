@@ -191,6 +191,11 @@ public partial class PlotView : UserControl
             AddOrUpdateCursor(mainPlot, cursorPosition.Value);
         }
 
+        if (DataContext is PlotViewModel statsVm && statsVm.Statistics.UseSelectedWindow)
+        {
+            statsVm.Statistics.SetWindow(mainPlot.Plot.Axes.Bottom.Min, mainPlot.Plot.Axes.Bottom.Max);
+        }
+
         mainPlot.Refresh();
     }
 

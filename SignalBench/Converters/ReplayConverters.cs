@@ -182,3 +182,21 @@ public class StreamingStateToIndicatorColorConverter : IMultiValueConverter
         return Avalonia.Media.Brushes.Transparent;
     }
 }
+
+public class SignalItemToNameConverter : IValueConverter
+{
+    public static readonly SignalItemToNameConverter Instance = new();
+
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        if (value is string s) return s;
+        if (value is SignalBench.ViewModels.SignalItemViewModel item) return item.Name;
+        return null;
+    }
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        if (value is SignalBench.ViewModels.SignalItemViewModel item) return item.Name;
+        return value?.ToString();
+    }
+}
