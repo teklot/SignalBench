@@ -15,7 +15,7 @@
                       Height="28">
                 <ComboBox.ItemTemplate>
                     <DataTemplate>
-                        <TextBlock Text="{Binding Name}" FontSize="12"/>
+                        <TextBlock x:DataType="vm:SignalItemViewModel" Text="{Binding Name}" FontSize="12"/>
                     </DataTemplate>
                 </ComboBox.ItemTemplate>
             </ComboBox>
@@ -31,27 +31,27 @@
         <StackPanel Spacing="4">
             <Grid ColumnDefinitions="*, Auto">
                 <TextBlock Text="Min" FontSize="12" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
-                <TextBlock Grid.Column="1" Text="{Binding Min, StringFormat={}{0:G5}}" FontSize="12" FontWeight="SemiBold"/>
+                <TextBlock Grid.Column="1" Text="{Binding Min, StringFormat={}{0:G5}, TargetNullValue='n/a'}" FontSize="12" FontWeight="SemiBold"/>
             </Grid>
             <Grid ColumnDefinitions="*, Auto">
                 <TextBlock Text="Max" FontSize="12" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
-                <TextBlock Grid.Column="1" Text="{Binding Max, StringFormat={}{0:G5}}" FontSize="12" FontWeight="SemiBold"/>
+                <TextBlock Grid.Column="1" Text="{Binding Max, StringFormat={}{0:G5}, TargetNullValue='n/a'}" FontSize="12" FontWeight="SemiBold"/>
             </Grid>
             <Grid ColumnDefinitions="*, Auto">
                 <TextBlock Text="Mean" FontSize="12" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
-                <TextBlock Grid.Column="1" Text="{Binding Mean, StringFormat={}{0:G5}}" FontSize="12" FontWeight="SemiBold"/>
+                <TextBlock Grid.Column="1" Text="{Binding Mean, StringFormat={}{0:G5}, TargetNullValue='n/a'}" FontSize="12" FontWeight="SemiBold"/>
             </Grid>
             <Grid ColumnDefinitions="*, Auto">
                 <TextBlock Text="Std" FontSize="12" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
-                <TextBlock Grid.Column="1" Text="{Binding StdDev, StringFormat={}{0:G5}}" FontSize="12" FontWeight="SemiBold"/>
+                <TextBlock Grid.Column="1" Text="{Binding Std, StringFormat={}{0:G5}, TargetNullValue='n/a'}" FontSize="12" FontWeight="SemiBold"/>
             </Grid>
             <Grid ColumnDefinitions="*, Auto">
                 <TextBlock Text="RMS" FontSize="12" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
-                <TextBlock Grid.Column="1" Text="{Binding RMS, StringFormat={}{0:G5}}" FontSize="12" FontWeight="SemiBold"/>
+                <TextBlock Grid.Column="1" Text="{Binding Rms, StringFormat={}{0:G5}, TargetNullValue='n/a'}" FontSize="12" FontWeight="SemiBold"/>
             </Grid>
             <Grid ColumnDefinitions="*, Auto">
                 <TextBlock Text="P2P" FontSize="12" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
-                <TextBlock Grid.Column="1" Text="{Binding P2P, StringFormat={}{0:G5}}" FontSize="12" FontWeight="SemiBold"/>
+                <TextBlock Grid.Column="1" Text="{Binding P2p, StringFormat={}{0:G5}, TargetNullValue='n/a'}" FontSize="12" FontWeight="SemiBold"/>
             </Grid>
         </StackPanel>
     </StackPanel>

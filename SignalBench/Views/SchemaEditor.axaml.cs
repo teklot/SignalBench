@@ -1,22 +1,22 @@
-using ReactiveUI.Avalonia;
-using ReactiveUI;
+using Avalonia.Controls;
 using SignalBench.ViewModels;
 
 namespace SignalBench.Views;
 
-public partial class SchemaEditor : ReactiveWindow<SchemaEditorViewModel>
+public partial class SchemaEditor : Window
 {
+    public SchemaEditorViewModel? ViewModel => DataContext as SchemaEditorViewModel;
+
     public SchemaEditor()
     {
         InitializeComponent();
         
-        this.WhenActivated(d =>
+        DataContextChanged += (s, e) =>
         {
             if (ViewModel != null)
             {
-                ViewModel.SaveCommand.Subscribe(result => Close(result));
-                ViewModel.CancelCommand.Subscribe(result => Close(result));
+                ViewModel.RequestClose += result => Close(result);
             }
-        });
+        };
     }
 }

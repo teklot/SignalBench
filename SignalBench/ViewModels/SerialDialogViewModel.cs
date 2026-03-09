@@ -1,6 +1,6 @@
-using ReactiveUI;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using SignalBench.Core.Models;
-using System.Reactive;
 using System.Threading.Tasks;
 using System;
 using System.Collections.Generic;
@@ -8,138 +8,70 @@ using Avalonia;
 
 namespace SignalBench.ViewModels;
 
-public class SerialDialogViewModel : ViewModelBase
+public partial class SerialDialogViewModel : ViewModelBase
 {
-    private string _selectedPort;
-    public string SelectedPort
-    {
-        get => _selectedPort;
-        set => this.RaiseAndSetIfChanged(ref _selectedPort, value);
-    }
+    [ObservableProperty]
+    private string _selectedPort = string.Empty;
 
-    private int _selectedBaudRate;
-    public int SelectedBaudRate
-    {
-        get => _selectedBaudRate;
-        set => this.RaiseAndSetIfChanged(ref _selectedBaudRate, value);
-    }
+    [ObservableProperty]
+    private int _selectedBaudRate = 115200;
 
-    private string _parity;
-    public string Parity
-    {
-        get => _parity;
-        set => this.RaiseAndSetIfChanged(ref _parity, value);
-    }
+    [ObservableProperty]
+    private string _parity = "None";
 
-    private int _dataBits;
-    public int DataBits
-    {
-        get => _dataBits;
-        set => this.RaiseAndSetIfChanged(ref _dataBits, value);
-    }
+    [ObservableProperty]
+    private int _dataBits = 8;
 
-    private string _stopBits;
-    public string StopBits
-    {
-        get => _stopBits;
-        set => this.RaiseAndSetIfChanged(ref _stopBits, value);
-    }
+    [ObservableProperty]
+    private string _stopBits = "One";
 
-    private int _rollingWindowSeconds;
-    public int RollingWindowSeconds
-    {
-        get => _rollingWindowSeconds;
-        set => this.RaiseAndSetIfChanged(ref _rollingWindowSeconds, value);
-    }
+    [ObservableProperty]
+    private int _rollingWindowSeconds = 10;
 
+    [ObservableProperty]
     private string? _loadedSchemaPath;
-    public string? LoadedSchemaPath
-    {
-        get => _loadedSchemaPath;
-        set => this.RaiseAndSetIfChanged(ref _loadedSchemaPath, value);
-    }
 
-    public string[] AvailablePorts { get; set; } = [];
+    [ObservableProperty]
+    private string[] _availablePorts = [];
+
     public int[] AvailableBaudRates { get; } = [9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600];
     public string[] ParityOptions { get; } = ["None", "Odd", "Even", "Mark", "Space"];
     public string[] StopBitsOptions { get; } = ["None", "One", "Two", "OnePointFive"];
 
-    public ReactiveCommand<Unit, bool> SaveCommand { get; }
-    public ReactiveCommand<Unit, Unit> CancelCommand { get; }
-    public ReactiveCommand<Unit, Unit> RefreshPortsCommand { get; }
-    public ReactiveCommand<Unit, Unit> OpenSchemaCommand { get; }
+    public event Action<bool>? RequestClose;
 
-    public SerialDialogViewModel(SerialSettings settings, string? currentSchemaPath)
+    [RelayCommand]
+    private async Task Save()
     {
-        _selectedPort = settings.Port;
-        _selectedBaudRate = settings.BaudRate;
-        _parity = settings.Parity;
-        _dataBits = settings.DataBits;
-        _stopBits = settings.StopBits;
-        _rollingWindowSeconds = settings.RollingWindowSeconds;
-        _loadedSchemaPath = currentSchemaPath;
+        if (string.IsNullOrWhiteSpace(SelectedPort))
+        {
+            await ShowError("Validation Error", "Please select a COM port.");
+            return;
+        }
 
-        SaveCommand = ReactiveCommand.Create(Save);
-        CancelCommand = ReactiveCommand.Create(() => { });
-        RefreshPortsCommand = ReactiveCommand.Create(RefreshPorts);
-        OpenSchemaCommand = ReactiveCommand.CreateFromTask(OpenSchemaAsync);
+        if (string.IsNullOrWhiteSpace(LoadedSchemaPath))
+        {
+            await ShowError("Validation Error", "Please select a Schema File for Serial streaming.");
+            return;
+        }
 
-        RefreshPorts();
+        RequestClose?.Invoke(true);
     }
 
+    [RelayCommand]
+    private void Cancel() => RequestClose?.Invoke(false);
+
+    [RelayCommand]
     private void RefreshPorts()
     {
         AvailablePorts = System.IO.Ports.SerialPort.GetPortNames();
-        this.RaisePropertyChanged(nameof(AvailablePorts));
         if (string.IsNullOrEmpty(SelectedPort) && AvailablePorts.Length > 0)
         {
             SelectedPort = AvailablePorts[0];
         }
     }
 
-    private async Task ShowError(string title, string message)
-    {
-        var box = MsBox.Avalonia.MessageBoxManager.GetMessageBoxStandard(title, message);
-        var topLevel = (App.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)?.MainWindow;
-        if (topLevel != null)
-        {
-            await box.ShowWindowDialogAsync(topLevel);
-        }
-    }
-
-    private bool Validate()
-    {
-        if (string.IsNullOrWhiteSpace(SelectedPort))
-        {
-            _ = ShowError("Validation Error", "Please select a COM port.");
-            return false;
-        }
-
-        if (string.IsNullOrWhiteSpace(LoadedSchemaPath))
-        {
-            _ = ShowError("Validation Error", "Please select a Schema File for Serial streaming.");
-            return false;
-        }
-
-        return true;
-    }
-
-    private bool Save()
-    {
-        if (!Validate()) return false;
-        return true;
-    }
-
-    public void ApplyTo(SerialSettings settings)
-    {
-        settings.Port = SelectedPort;
-        settings.BaudRate = SelectedBaudRate;
-        settings.Parity = Parity;
-        settings.DataBits = DataBits;
-        settings.StopBits = StopBits;
-        settings.RollingWindowSeconds = RollingWindowSeconds;
-    }
-
+    [RelayCommand]
     private async Task OpenSchemaAsync()
     {
         try
@@ -160,5 +92,38 @@ public class SerialDialogViewModel : ViewModelBase
             }
         }
         catch { }
+    }
+
+    public SerialDialogViewModel(SerialSettings settings, string? currentSchemaPath)
+    {
+        _selectedPort = settings.Port;
+        _selectedBaudRate = settings.BaudRate;
+        _parity = settings.Parity;
+        _dataBits = settings.DataBits;
+        _stopBits = settings.StopBits;
+        _rollingWindowSeconds = settings.RollingWindowSeconds;
+        _loadedSchemaPath = currentSchemaPath;
+
+        RefreshPorts();
+    }
+
+    private async Task ShowError(string title, string message)
+    {
+        var box = MsBox.Avalonia.MessageBoxManager.GetMessageBoxStandard(title, message);
+        var topLevel = (App.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)?.MainWindow;
+        if (topLevel != null)
+        {
+            await box.ShowWindowDialogAsync(topLevel);
+        }
+    }
+
+    public void ApplyTo(SerialSettings settings)
+    {
+        settings.Port = SelectedPort;
+        settings.BaudRate = SelectedBaudRate;
+        settings.Parity = Parity;
+        settings.DataBits = DataBits;
+        settings.StopBits = StopBits;
+        settings.RollingWindowSeconds = RollingWindowSeconds;
     }
 }

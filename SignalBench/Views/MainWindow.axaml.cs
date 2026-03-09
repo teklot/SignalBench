@@ -1,11 +1,13 @@
 using Avalonia.Controls;
-using ReactiveUI.Avalonia;
 using SignalBench.ViewModels;
+using System;
 
 namespace SignalBench.Views;
 
-public partial class MainWindow : ReactiveWindow<MainWindowViewModel>
+public partial class MainWindow : Window
 {
+    public MainWindowViewModel? ViewModel => DataContext as MainWindowViewModel;
+
     public MainWindow()
     {
         InitializeComponent();

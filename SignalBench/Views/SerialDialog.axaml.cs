@@ -1,23 +1,22 @@
-using ReactiveUI.Avalonia;
-using ReactiveUI;
+using Avalonia.Controls;
 using SignalBench.ViewModels;
-using System;
 
 namespace SignalBench.Views;
 
-public partial class SerialDialog : ReactiveWindow<SerialDialogViewModel>
+public partial class SerialDialog : Window
 {
+    public SerialDialogViewModel? ViewModel => DataContext as SerialDialogViewModel;
+
     public SerialDialog()
     {
         InitializeComponent();
         
-        this.WhenActivated(d =>
+        DataContextChanged += (s, e) =>
         {
             if (ViewModel != null)
             {
-                ViewModel.SaveCommand.Subscribe(success => { if (success) Close(true); });
-                ViewModel.CancelCommand.Subscribe(_ => Close(false));
+                ViewModel.RequestClose += result => Close(result);
             }
-        });
+        };
     }
 }

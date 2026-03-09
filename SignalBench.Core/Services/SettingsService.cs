@@ -31,7 +31,7 @@ public class SettingsService : ISettingsService
             if (File.Exists(_settingsPath))
             {
                 var json = File.ReadAllText(_settingsPath);
-                Current = JsonSerializer.Deserialize<UserSettings>(json) ?? new UserSettings();
+                Current = JsonSerializer.Deserialize(json, SignalBenchJsonContext.Default.UserSettings) ?? new UserSettings();
             }
             else
             {
@@ -48,7 +48,7 @@ public class SettingsService : ISettingsService
     {
         try
         {
-            var json = JsonSerializer.Serialize(Current, new JsonSerializerOptions { WriteIndented = true });
+            var json = JsonSerializer.Serialize(Current, SignalBenchJsonContext.Default.UserSettings);
             File.WriteAllText(_settingsPath, json);
         }
         catch (Exception ex)

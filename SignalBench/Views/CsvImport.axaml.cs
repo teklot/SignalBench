@@ -1,58 +1,47 @@
 using Avalonia.Controls;
 using Avalonia.Data;
-using ReactiveUI.Avalonia;
-using ReactiveUI;
 using SignalBench.ViewModels;
-using System.Collections.Specialized;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace SignalBench.Views;
 
-public partial class CsvImport : ReactiveWindow<CsvImportViewModel>
+public partial class CsvImport : Window
 {
+    public CsvImportViewModel? ViewModel => DataContext as CsvImportViewModel;
+
     public CsvImport()
     {
         InitializeComponent();
         
-        this.WhenActivated(d =>
+        DataContextChanged += (s, e) =>
         {
             if (ViewModel != null)
             {
-                ViewModel.ImportCommand.Subscribe(result => Close(result));
-                ViewModel.CancelCommand.Subscribe(result => Close(result));
-                ViewModel.PreviewRecords.CollectionChanged += OnPreviewRecordsChanged;
+                ViewModel.RequestClose += result => Close(result);
                 
-                // Initial update if already loaded
-                if (ViewModel.PreviewRecords.Count > 0)
-                    UpdateColumns();
+                // Initial sync
+                UpdateColumns(ViewModel.AvailableColumns);
+
+                // Subscribe to future changes
+                ViewModel.AvailableColumns.CollectionChanged += (s, args) => UpdateColumns(ViewModel.AvailableColumns);
             }
-        });
+        };
     }
 
-    private void OnPreviewRecordsChanged(object? sender, NotifyCollectionChangedEventArgs e)
-    {
-        if (e.Action == NotifyCollectionChangedAction.Reset || (e.Action == NotifyCollectionChangedAction.Add && ViewModel?.PreviewRecords.Count == 1))
-        {
-            UpdateColumns();
-        }
-    }
-
-    private void UpdateColumns()
+    private void UpdateColumns(IEnumerable<string> columns)
     {
         var grid = this.FindControl<DataGrid>("PreviewGrid");
-        if (grid == null || ViewModel == null) return;
+        if (grid == null) return;
 
         grid.Columns.Clear();
-        if (ViewModel.PreviewRecords.Count > 0)
+        foreach (var col in columns)
         {
-            var firstRecord = ViewModel.PreviewRecords[0];
-            foreach (var key in firstRecord.Keys)
+            grid.Columns.Add(new DataGridTextColumn
             {
-                grid.Columns.Add(new DataGridTextColumn
-                {
-                    Header = key,
-                    Binding = new Binding($"[{key}]")
-                });
-            }
+                Header = col,
+                Binding = new Binding($"[{col}]")
+            });
         }
     }
 }

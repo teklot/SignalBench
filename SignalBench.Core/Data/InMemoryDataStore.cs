@@ -138,6 +138,25 @@ public sealed class InMemoryDataStore : IDataStore
         return [.. data.Where((d, i) => i % step == 0)];
     }
 
+    public (int start, int end) GetIndices(DateTime startTime, DateTime endTime)
+    {
+        lock (_lock)
+        {
+            if (_timestamps.Count == 0) return (-1, -1);
+            
+            // Find the index of the first timestamp >= startTime
+            int start = _timestamps.FindIndex(t => t >= startTime);
+            if (start < 0) return (-1, -1);
+            
+            // Find the index of the last timestamp <= endTime
+            int end = _timestamps.FindLastIndex(t => t <= endTime);
+            
+            if (end < start) return (-1, -1);
+            
+            return (start, end);
+        }
+    }
+
     public int GetRowCount() => _timestamps.Count;
 
     public void Reset(string dbPath)

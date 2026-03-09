@@ -1,53 +1,33 @@
-using ReactiveUI;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using SignalBench.Core.Services;
-using System.Reactive;
 using System.Threading.Tasks;
+using System;
 using Avalonia;
 
 namespace SignalBench.ViewModels;
 
-public class SettingsViewModel : ViewModelBase
+public partial class SettingsViewModel : ViewModelBase
 {
     private readonly ISettingsService _settingsService;
     private readonly SignalBench.SDK.Interfaces.IFeatureService _featureService;
 
-    private string _defaultTelemetryPath;
-    public string DefaultTelemetryPath
-    {
-        get => _defaultTelemetryPath;
-        set => this.RaiseAndSetIfChanged(ref _defaultTelemetryPath, value);
-    }
+    [ObservableProperty]
+    private string _defaultTelemetryPath = string.Empty;
 
-    private string _licenseKey;
-    public string LicenseKey
-    {
-        get => _licenseKey;
-        set => this.RaiseAndSetIfChanged(ref _licenseKey, value);
-    }
+    [ObservableProperty]
+    private string _licenseKey = string.Empty;
 
-    private string _licenseStatus;
-    public string LicenseStatus
-    {
-        get => _licenseStatus;
-        set => this.RaiseAndSetIfChanged(ref _licenseStatus, value);
-    }
+    [ObservableProperty]
+    private string _licenseStatus = string.Empty;
 
-    private string _defaultSchemaPath;
-    public string DefaultSchemaPath
-    {
-        get => _defaultSchemaPath;
-        set => this.RaiseAndSetIfChanged(ref _defaultSchemaPath, value);
-    }
+    [ObservableProperty]
+    private string _defaultSchemaPath = string.Empty;
 
-    private string _theme;
-    public string Theme
-    {
-        get => _theme;
-        set {
-            this.RaiseAndSetIfChanged(ref _theme, value);
-            ApplyTheme(value);
-        }
-    }
+    [ObservableProperty]
+    private string _theme = "System";
+
+    partial void OnThemeChanged(string value) => ApplyTheme(value);
 
     private void ApplyTheme(string themeName)
     {
@@ -61,74 +41,20 @@ public class SettingsViewModel : ViewModelBase
         };
     }
 
-    private string _storageMode;
-    public string StorageMode
-    {
-        get => _storageMode;
-        set => this.RaiseAndSetIfChanged(ref _storageMode, value);
-    }
+    [ObservableProperty]
+    private string _storageMode = "InMemory";
 
+    [ObservableProperty]
     private bool _autoLoadLastSession;
-    public bool AutoLoadLastSession
-    {
-        get => _autoLoadLastSession;
-        set => this.RaiseAndSetIfChanged(ref _autoLoadLastSession, value);
-    }
 
     public string[] Themes { get; } = ["System", "Light", "Dark"];
     public string[] StorageModes { get; } = ["InMemory", "Sqlite"];
 
-    public ReactiveCommand<Unit, bool> SaveCommand { get; }
-    public ReactiveCommand<Unit, Unit> CancelCommand { get; }
-    public ReactiveCommand<string, Unit> BrowsePathCommand { get; }
-    public ReactiveCommand<Unit, Unit> ValidateLicenseCommand { get; }
+    public event Action<bool>? RequestClose;
 
-    public SettingsViewModel(ISettingsService settingsService, SignalBench.SDK.Interfaces.IFeatureService featureService)
+    [RelayCommand]
+    private void Save()
     {
-        _settingsService = settingsService;
-        _featureService = featureService;
-        
-        var current = _settingsService.Current;
-        _defaultTelemetryPath = current.DefaultTelemetryPath;
-        _defaultSchemaPath = current.DefaultSchemaPath;
-        _theme = current.Theme;
-        _storageMode = current.StorageMode;
-        _autoLoadLastSession = current.AutoLoadLastSession;
-        _licenseKey = current.LicenseKey;
-        _licenseStatus = _featureService.CurrentStatus.ToString();
-
-        SaveCommand = ReactiveCommand.Create(Save);
-        CancelCommand = ReactiveCommand.Create(() => { });
-        BrowsePathCommand = ReactiveCommand.CreateFromTask<string>(BrowsePathAsync);
-        ValidateLicenseCommand = ReactiveCommand.CreateFromTask(ValidateLicenseAsync);
-    }
-
-    private async Task ValidateLicenseAsync()
-    {
-        LicenseStatus = "Validating...";
-        var status = await _featureService.ValidateLicenseAsync(LicenseKey);
-        LicenseStatus = status.ToString();
-    }
-
-    private async Task ShowError(string title, string message)
-    {
-        var box = MsBox.Avalonia.MessageBoxManager.GetMessageBoxStandard(title, message);
-        var topLevel = (App.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)?.MainWindow;
-        if (topLevel != null)
-        {
-            await box.ShowWindowDialogAsync(topLevel);
-        }
-    }
-
-    private bool Validate()
-    {
-        return true;
-    }
-
-    private bool Save()
-    {
-        if (!Validate()) return false;
-
         var current = _settingsService.Current;
         current.DefaultTelemetryPath = DefaultTelemetryPath;
         current.DefaultSchemaPath = DefaultSchemaPath;
@@ -138,9 +64,13 @@ public class SettingsViewModel : ViewModelBase
         current.LicenseKey = LicenseKey;
 
         _settingsService.Save();
-        return true;
+        RequestClose?.Invoke(true);
     }
 
+    [RelayCommand]
+    private void Cancel() => RequestClose?.Invoke(false);
+
+    [RelayCommand]
     private async Task BrowsePathAsync(string target)
     {
         var topLevel = (App.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)?.MainWindow;
@@ -158,5 +88,28 @@ public class SettingsViewModel : ViewModelBase
             if (target == "Telemetry") DefaultTelemetryPath = path;
             else if (target == "Schema") DefaultSchemaPath = path;
         }
+    }
+
+    [RelayCommand]
+    private async Task ValidateLicenseAsync()
+    {
+        LicenseStatus = "Validating...";
+        var status = await _featureService.ValidateLicenseAsync(LicenseKey);
+        LicenseStatus = status.ToString();
+    }
+
+    public SettingsViewModel(ISettingsService settingsService, SignalBench.SDK.Interfaces.IFeatureService featureService)
+    {
+        _settingsService = settingsService;
+        _featureService = featureService;
+        
+        var current = _settingsService.Current;
+        _defaultTelemetryPath = current.DefaultTelemetryPath;
+        _defaultSchemaPath = current.DefaultSchemaPath;
+        _theme = current.Theme;
+        _storageMode = current.StorageMode;
+        _autoLoadLastSession = current.AutoLoadLastSession;
+        _licenseKey = current.LicenseKey;
+        _licenseStatus = _featureService.CurrentStatus.ToString();
     }
 }

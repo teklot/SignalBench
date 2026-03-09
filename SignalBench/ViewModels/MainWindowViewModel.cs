@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Microsoft.Extensions.Logging;
-using ReactiveUI;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using SignalBench.Core;
 using SignalBench.Core.Data;
 using SignalBench.Core.Models.Schema;
@@ -9,7 +10,6 @@ using SignalBench.Core.Session;
 using SignalBench.SDK.Interfaces;
 using SignalBench.SDK.Models;
 using System.Collections.ObjectModel;
-using System.Reactive;
 using System.Timers;
 
 namespace SignalBench.ViewModels;
@@ -21,7 +21,7 @@ public class RecentFileViewModel
     public string DisplayName => $"{Index}. {Path}";
 }
 
-public class MainWindowViewModel : ViewModelBase
+public partial class MainWindowViewModel : ViewModelBase
 {
     private readonly IFeatureService _featureService;
     public string AppTitle => $"{AppInfo.Name} v{AppInfo.Version} - {LicenseStatusText}";
@@ -40,7 +40,7 @@ public class MainWindowViewModel : ViewModelBase
     {
         get => _statusText;
         set {
-            this.RaiseAndSetIfChanged(ref _statusText, value);
+            SetProperty(ref _statusText, value);
             if (SelectedPlot != null) SelectedPlot.StatusMessage = value;
         }
     }
@@ -49,21 +49,21 @@ public class MainWindowViewModel : ViewModelBase
     public bool IsLoading
     {
         get => _isLoading;
-        set => this.RaiseAndSetIfChanged(ref _isLoading, value);
+        set => SetProperty(ref _isLoading, value);
     }
 
     private double _loadProgress;
     public double LoadProgress
     {
         get => _loadProgress;
-        set => this.RaiseAndSetIfChanged(ref _loadProgress, value);
+        set => SetProperty(ref _loadProgress, value);
     }
 
     private string _loadElapsed = "";
     public string LoadElapsed
     {
         get => _loadElapsed;
-        set => this.RaiseAndSetIfChanged(ref _loadElapsed, value);
+        set => SetProperty(ref _loadElapsed, value);
     }
 
     private PacketSchema? _selectedSchema;
@@ -73,18 +73,20 @@ public class MainWindowViewModel : ViewModelBase
         set {
             if (SelectedPlot != null) {
                 SelectedPlot.Schema = value;
-                this.RaisePropertyChanged(nameof(SelectedSchema));
+                OnPropertyChanged(nameof(SelectedSchema));
             }
-            else this.RaiseAndSetIfChanged(ref _selectedSchema, value);
-            this.RaisePropertyChanged(nameof(SerialInfo));
+            else SetProperty(ref _selectedSchema, value);
+            OnPropertyChanged(nameof(SerialInfo));
         }
     }
 
     public bool HasData => SelectedPlot != null && (SelectedPlot.AvailableSignals.Count > 0 || !string.IsNullOrEmpty(SelectedPlot.TelemetryPath));
 
+    public bool CanPlayback => HasData && (SelectedPlot == null || !SelectedPlot.IsStreaming || SelectedPlot.IsPaused);
+
     public bool CanAddPlot => Tabs.Count < 10;
 
-    public bool IsPlaybackBarVisible => HasData && (SelectedPlot == null || !SelectedPlot.IsStreaming);
+    public bool IsPlaybackBarVisible => HasData && (SelectedPlot == null || !SelectedPlot.IsStreaming || SelectedPlot.IsPaused);
 
     public string SerialInfo
     {
@@ -119,8 +121,8 @@ public class MainWindowViewModel : ViewModelBase
         get => SelectedPlot?.IsSignalsPaneOpen ?? true;
         set {
             if (SelectedPlot != null) SelectedPlot.IsSignalsPaneOpen = value;
-            this.RaisePropertyChanged(nameof(IsSignalsPaneOpen));
-            this.RaisePropertyChanged(nameof(SignalsPaneColumnWidth));
+            OnPropertyChanged(nameof(IsSignalsPaneOpen));
+            OnPropertyChanged(nameof(SignalsPaneColumnWidth));
         }
     }
 
@@ -129,7 +131,7 @@ public class MainWindowViewModel : ViewModelBase
         get => SelectedPlot?.SignalsPaneColumnWidth ?? new GridLength(200);
         set {
             if (SelectedPlot != null) SelectedPlot.SignalsPaneColumnWidth = value;
-            this.RaisePropertyChanged(nameof(SignalsPaneColumnWidth));
+            OnPropertyChanged(nameof(SignalsPaneColumnWidth));
         }
     }
 
@@ -137,7 +139,7 @@ public class MainWindowViewModel : ViewModelBase
     public bool IsToolbarVisible
     {
         get => _isToolbarVisible;
-        set => this.RaiseAndSetIfChanged(ref _isToolbarVisible, value);
+        set => SetProperty(ref _isToolbarVisible, value);
     }
 
     public ObservableCollection<RecentFileViewModel> RecentFiles { get; } = [];
@@ -149,11 +151,20 @@ public class MainWindowViewModel : ViewModelBase
     {
         get => _selectedTab;
         set {
-            this.RaiseAndSetIfChanged(ref _selectedTab, value);
-            this.RaisePropertyChanged(nameof(SelectedPlot));
+            if (_selectedTab is PlotViewModel oldPlot)
+            {
+                oldPlot.SourceStateChanged -= NotifySourceStateChanged;
+            }
+
+            SetProperty(ref _selectedTab, value);
+            OnPropertyChanged(nameof(SelectedPlot));
+            OnPropertyChanged(nameof(CanPlayback));
+            NotifyPlaybackCommands();
             
             if (value is PlotViewModel plot)
             {
+                plot.SourceStateChanged += NotifySourceStateChanged;
+                
                 _currentPlaybackIndex = plot.CurrentPlaybackIndex;
                 _savedElapsedSeconds = plot.SavedElapsedSeconds;
                 _fullDuration = plot.FullDuration;
@@ -164,27 +175,27 @@ public class MainWindowViewModel : ViewModelBase
                 
                 // Sync Status
                 _statusText = plot.StatusMessage;
-                this.RaisePropertyChanged(nameof(StatusText));
+                OnPropertyChanged(nameof(StatusText));
                 
                 plot.RaisePropertyChanged(nameof(PlotViewModel.ConnectionInfo));
                 plot.RaisePropertyChanged(nameof(PlotViewModel.ConnectionIcon));
             }
 
-            this.RaisePropertyChanged(nameof(SelectedSchema));
-            this.RaisePropertyChanged(nameof(HasData));
-            this.RaisePropertyChanged(nameof(IsPlaybackBarVisible));
-            this.RaisePropertyChanged(nameof(IsStreaming));
-            this.RaisePropertyChanged(nameof(IsRecording));
-            this.RaisePropertyChanged(nameof(IsSerialStreaming));
-            this.RaisePropertyChanged(nameof(IsNetworkStreaming));
-            this.RaisePropertyChanged(nameof(IsSerialPaused));
-            this.RaisePropertyChanged(nameof(IsNetworkPaused));
-            this.RaisePropertyChanged(nameof(TotalRecords));
-            this.RaisePropertyChanged(nameof(PlaybackProgress));
-            this.RaisePropertyChanged(nameof(CurrentPlaybackTime));
-            this.RaisePropertyChanged(nameof(FormattedPlaybackTime));
-            this.RaisePropertyChanged(nameof(IsSignalsPaneOpen));
-            this.RaisePropertyChanged(nameof(SignalsPaneColumnWidth));
+            OnPropertyChanged(nameof(SelectedSchema));
+            OnPropertyChanged(nameof(HasData));
+            OnPropertyChanged(nameof(IsPlaybackBarVisible));
+            OnPropertyChanged(nameof(IsStreaming));
+            OnPropertyChanged(nameof(IsRecording));
+            OnPropertyChanged(nameof(IsSerialStreaming));
+            OnPropertyChanged(nameof(IsNetworkStreaming));
+            OnPropertyChanged(nameof(IsSerialPaused));
+            OnPropertyChanged(nameof(IsNetworkPaused));
+            OnPropertyChanged(nameof(TotalRecords));
+            OnPropertyChanged(nameof(PlaybackProgress));
+            OnPropertyChanged(nameof(CurrentPlaybackTime));
+            OnPropertyChanged(nameof(FormattedPlaybackTime));
+            OnPropertyChanged(nameof(IsSignalsPaneOpen));
+            OnPropertyChanged(nameof(SignalsPaneColumnWidth));
             
             if (value != null)
             {
@@ -204,11 +215,11 @@ public class MainWindowViewModel : ViewModelBase
         get => SelectedPlot?.IsStreaming ?? false;
         set {
             if (SelectedPlot != null) SelectedPlot.IsStreaming = value;
-            this.RaisePropertyChanged(nameof(IsStreaming));
-            this.RaisePropertyChanged(nameof(IsPlaybackBarVisible));
-            this.RaisePropertyChanged(nameof(CanAddPlot));
-            this.RaisePropertyChanged(nameof(IsSerialStreaming));
-            this.RaisePropertyChanged(nameof(IsNetworkStreaming));
+            OnPropertyChanged(nameof(IsStreaming));
+            OnPropertyChanged(nameof(IsPlaybackBarVisible));
+            OnPropertyChanged(nameof(CanAddPlot));
+            OnPropertyChanged(nameof(IsSerialStreaming));
+            OnPropertyChanged(nameof(IsNetworkStreaming));
         }
     }
 
@@ -217,9 +228,9 @@ public class MainWindowViewModel : ViewModelBase
         get => SelectedPlot?.IsPaused ?? false;
         set {
             if (SelectedPlot != null) SelectedPlot.IsPaused = value;
-            this.RaisePropertyChanged(nameof(IsPaused));
-            this.RaisePropertyChanged(nameof(IsSerialPaused));
-            this.RaisePropertyChanged(nameof(IsNetworkPaused));
+            OnPropertyChanged(nameof(IsPaused));
+            OnPropertyChanged(nameof(IsSerialPaused));
+            OnPropertyChanged(nameof(IsNetworkPaused));
         }
     }
 
@@ -234,19 +245,31 @@ public class MainWindowViewModel : ViewModelBase
 
     public void NotifySourceStateChanged()
     {
-        this.RaisePropertyChanged(nameof(IsFileSource));
-        this.RaisePropertyChanged(nameof(IsSerialSource));
-        this.RaisePropertyChanged(nameof(IsNetworkSource));
-        this.RaisePropertyChanged(nameof(IsStreaming));
-        this.RaisePropertyChanged(nameof(IsPaused));
-        this.RaisePropertyChanged(nameof(IsSerialStreaming));
-        this.RaisePropertyChanged(nameof(IsNetworkStreaming));
-        this.RaisePropertyChanged(nameof(IsSerialPaused));
-        this.RaisePropertyChanged(nameof(IsNetworkPaused));
-        this.RaisePropertyChanged(nameof(HasData));
-        this.RaisePropertyChanged(nameof(IsPlaybackBarVisible));
-        this.RaisePropertyChanged(nameof(IsRecording));
-        this.RaisePropertyChanged(nameof(CanAddPlot));
+        OnPropertyChanged(nameof(IsFileSource));
+        OnPropertyChanged(nameof(IsSerialSource));
+        OnPropertyChanged(nameof(IsNetworkSource));
+        OnPropertyChanged(nameof(IsStreaming));
+        OnPropertyChanged(nameof(IsPaused));
+        OnPropertyChanged(nameof(IsSerialStreaming));
+        OnPropertyChanged(nameof(IsNetworkStreaming));
+        OnPropertyChanged(nameof(IsSerialPaused));
+        OnPropertyChanged(nameof(IsNetworkPaused));
+        OnPropertyChanged(nameof(HasData));
+        OnPropertyChanged(nameof(IsPlaybackBarVisible));
+        OnPropertyChanged(nameof(CanPlayback));
+        OnPropertyChanged(nameof(IsRecording));
+        OnPropertyChanged(nameof(CanAddPlot));
+        NotifyPlaybackCommands();
+    }
+
+    private void NotifyPlaybackCommands()
+    {
+        PlayPauseCommand?.NotifyCanExecuteChanged();
+        StepForwardCommand?.NotifyCanExecuteChanged();
+        StepBackwardCommand?.NotifyCanExecuteChanged();
+        FastForwardCommand?.NotifyCanExecuteChanged();
+        FastBackwardCommand?.NotifyCanExecuteChanged();
+        RestartCommand?.NotifyCanExecuteChanged();
     }
 
     public bool IsRecording
@@ -254,7 +277,7 @@ public class MainWindowViewModel : ViewModelBase
         get => SelectedPlot?.IsRecording ?? false;
         set {
             if (SelectedPlot != null) SelectedPlot.IsRecording = value;
-            this.RaisePropertyChanged(nameof(IsRecording));
+            OnPropertyChanged(nameof(IsRecording));
         }
     }
 
@@ -262,14 +285,14 @@ public class MainWindowViewModel : ViewModelBase
     public bool IsPlaying
     {
         get => _isPlaying;
-        set => this.RaiseAndSetIfChanged(ref _isPlaying, value);
+        set => SetProperty(ref _isPlaying, value);
     }
 
     private double _playbackSpeed = 1.0;
     public double PlaybackSpeed
     {
         get => _playbackSpeed;
-        set => this.RaiseAndSetIfChanged(ref _playbackSpeed, value);
+        set => SetProperty(ref _playbackSpeed, value);
     }
 
     public string[] PlaybackSpeeds { get; } = ["0.5x", "1x", "2x", "5x", "10x", "100x", "1000x"];
@@ -280,12 +303,12 @@ public class MainWindowViewModel : ViewModelBase
         get => _currentPlaybackIndex;
         set
         {
-            this.RaiseAndSetIfChanged(ref _currentPlaybackIndex, value);
+            SetProperty(ref _currentPlaybackIndex, value);
             if (SelectedPlot != null) SelectedPlot.CurrentPlaybackIndex = value;
-            this.RaisePropertyChanged(nameof(CurrentPlaybackTime));
-            this.RaisePropertyChanged(nameof(FormattedPlaybackTime));
+            OnPropertyChanged(nameof(CurrentPlaybackTime));
+            OnPropertyChanged(nameof(FormattedPlaybackTime));
             _playbackProgressValue = TotalRecords > 1 ? (double)value / (TotalRecords - 1) * 100 : 0;
-            this.RaisePropertyChanged(nameof(PlaybackProgress));
+            OnPropertyChanged(nameof(PlaybackProgress));
         }
     }
 
@@ -318,7 +341,7 @@ public class MainWindowViewModel : ViewModelBase
         {
             if (Math.Abs(_playbackProgressValue - value) < 0.1) return;
             _playbackProgressValue = value;
-            this.RaisePropertyChanged();
+            OnPropertyChanged();
             
             if (TotalRecords > 0)
             {
@@ -344,9 +367,9 @@ public class MainWindowViewModel : ViewModelBase
                     _playbackStopwatch.Restart();
                 }
 
-                this.RaisePropertyChanged(nameof(CurrentPlaybackIndex));
-                this.RaisePropertyChanged(nameof(CurrentPlaybackTime));
-                this.RaisePropertyChanged(nameof(FormattedPlaybackTime));
+                OnPropertyChanged(nameof(CurrentPlaybackIndex));
+                OnPropertyChanged(nameof(CurrentPlaybackTime));
+                OnPropertyChanged(nameof(FormattedPlaybackTime));
                 UpdateCursorPosition();
                 RefreshCurrentValues();
             }
@@ -357,7 +380,7 @@ public class MainWindowViewModel : ViewModelBase
     public DateTime? CursorPosition
     {
         get => _cursorPosition;
-        set => this.RaiseAndSetIfChanged(ref _cursorPosition, value);
+        set => SetProperty(ref _cursorPosition, value);
     }
 
     private System.Timers.Timer? _playbackTimer;
@@ -379,41 +402,41 @@ public class MainWindowViewModel : ViewModelBase
     private readonly Core.DerivedSignals.FormulaEngine _formulaEngine = new();
     private readonly PluginLoader _pluginLoader;
 
-    public ReactiveCommand<Unit, Unit> OpenCsvCommand { get; }
-    public ReactiveCommand<Unit, Unit> OpenBinaryCommand { get; }
-    public ReactiveCommand<string, Unit> OpenRecentFileCommand { get; }
-    public ReactiveCommand<Unit, Unit> SaveSessionCommand { get; }
-    public ReactiveCommand<Unit, Unit> OpenSessionCommand { get; }
-    public ReactiveCommand<Unit, Unit> CloseAllCommand { get; }
-    public ReactiveCommand<Unit, Unit> ExportCsvCommand { get; }
-    public ReactiveCommand<Unit, Unit> ToggleSignalsPaneCommand { get; }
-    public ReactiveCommand<Unit, Unit> ToggleToolbarCommand { get; }
-    public ReactiveCommand<Unit, Unit> CreateSchemaCommand { get; }
-    public ReactiveCommand<Unit, Unit> OpenSchemaCommand { get; }
-    public ReactiveCommand<Unit, Unit> EditSchemaCommand { get; }
-    public ReactiveCommand<Unit, Unit> CreateDerivedSignalCommand { get; }
-    public ReactiveCommand<string, Unit> EditDerivedSignalCommand { get; }
-    public ReactiveCommand<string, Unit> RemoveDerivedSignalCommand { get; }
-    public ReactiveCommand<ITabFactory, Unit> AddTabCommand { get; }
-    public ReactiveCommand<Unit, Unit> AddEmptyPlotCommand { get; }
-    public ReactiveCommand<TabViewModelBase, Unit> RemoveTabCommand { get; }
-    public ReactiveCommand<Unit, bool> OpenSettingsCommand { get; }
-    public ReactiveCommand<Unit, Unit> OpenAboutCommand { get; }
-    public ReactiveCommand<Unit, Unit> ExitCommand { get; }
-    public ReactiveCommand<Unit, Unit> PlayPauseCommand { get; }
-    public ReactiveCommand<string, Unit> SetSpeedCommand { get; }
-    public ReactiveCommand<double, Unit> SeekCommand { get; }
-    public ReactiveCommand<Unit, Unit> StepForwardCommand { get; }
-    public ReactiveCommand<Unit, Unit> StepBackwardCommand { get; }
-    public ReactiveCommand<Unit, Unit> FastForwardCommand { get; }
-    public ReactiveCommand<Unit, Unit> FastBackwardCommand { get; }
-    public ReactiveCommand<Unit, Unit> RestartCommand { get; }
-    public ReactiveCommand<Unit, Unit> ToggleStreamingCommand { get; }
-    public ReactiveCommand<Unit, Unit> ToggleUdpStreamingCommand { get; }
-    public ReactiveCommand<Unit, Unit> ToggleRecordingCommand { get; }
-    public ReactiveCommand<Unit, Unit> RefreshPortsCommand { get; }
-    public ReactiveCommand<Unit, bool> OpenSerialSettingsCommand { get; }
-    public ReactiveCommand<Unit, bool> OpenNetworkSettingsCommand { get; }
+    public IAsyncRelayCommand OpenCsvCommand { get; }
+    public IAsyncRelayCommand OpenBinaryCommand { get; }
+    public IAsyncRelayCommand<string> OpenRecentFileCommand { get; }
+    public IAsyncRelayCommand SaveSessionCommand { get; }
+    public IAsyncRelayCommand OpenSessionCommand { get; }
+    public IAsyncRelayCommand CloseAllCommand { get; }
+    public IAsyncRelayCommand ExportCsvCommand { get; }
+    public IRelayCommand ToggleSignalsPaneCommand { get; }
+    public IRelayCommand ToggleToolbarCommand { get; }
+    public IAsyncRelayCommand CreateSchemaCommand { get; }
+    public IAsyncRelayCommand OpenSchemaCommand { get; }
+    public IAsyncRelayCommand EditSchemaCommand { get; }
+    public IAsyncRelayCommand CreateDerivedSignalCommand { get; }
+    public IAsyncRelayCommand<string> EditDerivedSignalCommand { get; }
+    public IAsyncRelayCommand<string> RemoveDerivedSignalCommand { get; }
+    public IRelayCommand<ITabFactory> AddTabCommand { get; }
+    public IRelayCommand AddEmptyPlotCommand { get; }
+    public IRelayCommand<TabViewModelBase> RemoveTabCommand { get; }
+    public IAsyncRelayCommand OpenSettingsCommand { get; }
+    public IAsyncRelayCommand OpenAboutCommand { get; }
+    public IRelayCommand ExitCommand { get; }
+    public IRelayCommand PlayPauseCommand { get; }
+    public IRelayCommand<string> SetSpeedCommand { get; }
+    public IRelayCommand<double> SeekCommand { get; }
+    public IRelayCommand StepForwardCommand { get; }
+    public IRelayCommand StepBackwardCommand { get; }
+    public IRelayCommand FastForwardCommand { get; }
+    public IRelayCommand FastBackwardCommand { get; }
+    public IRelayCommand RestartCommand { get; }
+    public IAsyncRelayCommand ToggleStreamingCommand { get; }
+    public IAsyncRelayCommand ToggleUdpStreamingCommand { get; }
+    public IAsyncRelayCommand ToggleRecordingCommand { get; }
+    public IRelayCommand RefreshPortsCommand { get; }
+    public IAsyncRelayCommand OpenSerialSettingsCommand { get; }
+    public IAsyncRelayCommand OpenNetworkSettingsCommand { get; }
 
     public MainWindowViewModel() : this(null!, null!, null!, null!, null!, null!) { }
 
@@ -428,67 +451,61 @@ public class MainWindowViewModel : ViewModelBase
         // Register default factories
         AvailableTabFactories.Add(new PlotTabFactory());
 
-        if (!Design.IsDesignMode) { 
-            RefreshRecentFiles(); 
-            AddPlot("Untitled");
-        }
+        OpenCsvCommand = new AsyncRelayCommand(OpenCsvAsync);
+        OpenBinaryCommand = new AsyncRelayCommand(OpenBinaryAsync);
+        OpenRecentFileCommand = new AsyncRelayCommand<string>(path => LoadTelemetryFileAsync(path!));
+        
+        SaveSessionCommand = new AsyncRelayCommand(SaveSessionAsync, () => HasData);
+        OpenSessionCommand = new AsyncRelayCommand(OpenSessionAsync);
+        CloseAllCommand = new AsyncRelayCommand(CloseAllAsync, () => HasData);
+        
+        ExportCsvCommand = new AsyncRelayCommand(ExportCsv, () => HasData);
+        ToggleSignalsPaneCommand = new RelayCommand(() => { IsSignalsPaneOpen = !IsSignalsPaneOpen; });
+        ToggleToolbarCommand = new RelayCommand(() => { IsToolbarVisible = !IsToolbarVisible; });
+        
+        CreateSchemaCommand = new AsyncRelayCommand(CreateSchemaAsync);
+        OpenSchemaCommand = new AsyncRelayCommand(OpenSchemaAsync);
+        
+        EditSchemaCommand = new AsyncRelayCommand(EditSchemaAsync, () => SelectedSchema != null);
+        
+        CreateDerivedSignalCommand = new AsyncRelayCommand(CreateDerivedSignalAsync, () => SelectedPlot != null && SelectedPlot.AvailableSignals.Count > 0);
+        
+        EditDerivedSignalCommand = new AsyncRelayCommand<string>(EditDerivedSignalAsync!);
+        RemoveDerivedSignalCommand = new AsyncRelayCommand<string>(RemoveDerivedSignalAsync!);
+        
+        AddTabCommand = new RelayCommand<ITabFactory>(f => AddTab(f!), _ => Tabs.Count < 10);
+        AddEmptyPlotCommand = new RelayCommand(() => AddPlot(), () => Tabs.Count < 10);
+        RemoveTabCommand = new RelayCommand<TabViewModelBase>(t => RemoveTab(t!));
 
-        OpenCsvCommand = ReactiveCommand.CreateFromTask(OpenCsvAsync);
-        OpenBinaryCommand = ReactiveCommand.CreateFromTask(OpenBinaryAsync);
-        OpenRecentFileCommand = ReactiveCommand.CreateFromTask<string>(path => LoadTelemetryFileAsync(path));
-        
-        var canExecuteSession = this.WhenAnyValue(x => x.HasData);
-        SaveSessionCommand = ReactiveCommand.CreateFromTask(SaveSessionAsync, canExecuteSession);
-        OpenSessionCommand = ReactiveCommand.CreateFromTask(OpenSessionAsync);
-        CloseAllCommand = ReactiveCommand.CreateFromTask(CloseAllAsync, canExecuteSession);
-        
-        ExportCsvCommand = ReactiveCommand.CreateFromTask(ExportCsv, canExecuteSession);
-        ToggleSignalsPaneCommand = ReactiveCommand.Create(() => { IsSignalsPaneOpen = !IsSignalsPaneOpen; });
-        ToggleToolbarCommand = ReactiveCommand.Create(() => { IsToolbarVisible = !IsToolbarVisible; });
-        
-        CreateSchemaCommand = ReactiveCommand.CreateFromTask(CreateSchemaAsync);
-        OpenSchemaCommand = ReactiveCommand.CreateFromTask(OpenSchemaAsync);
-        
-        var canEditSchema = this.WhenAnyValue(x => x.SelectedSchema, (PacketSchema? s) => s != null);
-        EditSchemaCommand = ReactiveCommand.CreateFromTask(EditSchemaAsync, canEditSchema);
-        
-        var canCreateDerived = this.WhenAnyValue(x => x.SelectedPlot, p => p != null && p.AvailableSignals.Count > 0);
-        CreateDerivedSignalCommand = ReactiveCommand.CreateFromTask(CreateDerivedSignalAsync, canCreateDerived);
-        
-        EditDerivedSignalCommand = ReactiveCommand.CreateFromTask<string>(EditDerivedSignalAsync);
-        RemoveDerivedSignalCommand = ReactiveCommand.CreateFromTask<string>(RemoveDerivedSignalAsync);
-        
-        var canAddPlotObs = this.WhenAnyValue(x => x.Tabs.Count, count => count < 10);
-        
-        AddTabCommand = ReactiveCommand.Create<ITabFactory>(AddTab, canAddPlotObs);
-        AddEmptyPlotCommand = ReactiveCommand.Create(() => AddPlot(), canAddPlotObs);
-        RemoveTabCommand = ReactiveCommand.Create<TabViewModelBase>(RemoveTab);
-
-        OpenSettingsCommand = ReactiveCommand.CreateFromTask(OpenSettingsAsync);
-        OpenAboutCommand = ReactiveCommand.CreateFromTask(OpenAboutAsync);
-        ExitCommand = ReactiveCommand.Create(() => {
+        OpenSettingsCommand = new AsyncRelayCommand(OpenSettingsAsync);
+        OpenAboutCommand = new AsyncRelayCommand(OpenAboutAsync);
+        ExitCommand = new RelayCommand(() => {
             if (App.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop)
                 desktop.Shutdown();
         });
 
-        var canPlay = this.WhenAnyValue(x => x.HasData);
-        PlayPauseCommand = ReactiveCommand.Create(PlayPause, canPlay);
-        SetSpeedCommand = ReactiveCommand.Create<string>(SetSpeed);
-        SeekCommand = ReactiveCommand.Create<double>(Seek);
-        StepForwardCommand = ReactiveCommand.Create(StepForward, canPlay);
-        StepBackwardCommand = ReactiveCommand.Create(StepBackward, canPlay);
-        FastForwardCommand = ReactiveCommand.Create(FastForward, canPlay);
-        FastBackwardCommand = ReactiveCommand.Create(FastBackward, canPlay);
-        RestartCommand = ReactiveCommand.Create(Restart, canPlay);
+        PlayPauseCommand = new RelayCommand(PlayPause, () => CanPlayback);
+        SetSpeedCommand = new RelayCommand<string>(s => SetSpeed(s!));
+        SeekCommand = new RelayCommand<double>(Seek);
+        StepForwardCommand = new RelayCommand(StepForward, () => CanPlayback);
+        StepBackwardCommand = new RelayCommand(StepBackward, () => CanPlayback);
+        FastForwardCommand = new RelayCommand(FastForward, () => CanPlayback);
+        FastBackwardCommand = new RelayCommand(FastBackward, () => CanPlayback);
+        RestartCommand = new RelayCommand(Restart, () => CanPlayback);
 
-        ToggleStreamingCommand = ReactiveCommand.CreateFromTask(ToggleStreamingAsync);
-        ToggleUdpStreamingCommand = ReactiveCommand.CreateFromTask(ToggleUdpStreamingAsync);
-        ToggleRecordingCommand = ReactiveCommand.CreateFromTask(ToggleRecording, this.WhenAnyValue(x => x.IsStreaming));
-        RefreshPortsCommand = ReactiveCommand.Create(RefreshPorts);
-        OpenSerialSettingsCommand = ReactiveCommand.CreateFromTask(OpenSerialSettingsAsync);
-        OpenNetworkSettingsCommand = ReactiveCommand.CreateFromTask(OpenNetworkSettingsAsync);
+        ToggleStreamingCommand = new AsyncRelayCommand(ToggleStreamingAsync);
+        ToggleUdpStreamingCommand = new AsyncRelayCommand(ToggleUdpStreamingAsync);
+        ToggleRecordingCommand = new AsyncRelayCommand(ToggleRecording, () => IsStreaming);
+        RefreshPortsCommand = new RelayCommand(RefreshPorts);
+        OpenSerialSettingsCommand = new AsyncRelayCommand(OpenSerialSettingsAsync);
+        OpenNetworkSettingsCommand = new AsyncRelayCommand(OpenNetworkSettingsAsync);
 
         RefreshPorts();
+
+        if (!Design.IsDesignMode) { 
+            RefreshRecentFiles(); 
+            AddPlot("Untitled");
+        }
 
         if (!Design.IsDesignMode && _settingsService.Current.AutoLoadLastSession && !string.IsNullOrEmpty(_settingsService.Current.LastSessionPath))
         {
@@ -512,7 +529,7 @@ public class MainWindowViewModel : ViewModelBase
             Tabs.Add(tabVm);
             SelectedTab = tabVm;
         }
-        this.RaisePropertyChanged(nameof(CanAddPlot));
+        OnPropertyChanged(nameof(CanAddPlot));
     }
 
     private void AddPlot(string? name = null, string? telemetryPath = null, PacketSchema? schema = null)
@@ -537,9 +554,9 @@ public class MainWindowViewModel : ViewModelBase
             p.IsStreaming = false;
             p.RequestPlotClear?.Invoke();
 
-            this.RaisePropertyChanged(nameof(HasData));
-            this.RaisePropertyChanged(nameof(IsPlaybackBarVisible));
-            this.RaisePropertyChanged(nameof(CanAddPlot));
+            OnPropertyChanged(nameof(HasData));
+            OnPropertyChanged(nameof(IsPlaybackBarVisible));
+            OnPropertyChanged(nameof(CanAddPlot));
             return;
         }
 
@@ -567,9 +584,9 @@ public class MainWindowViewModel : ViewModelBase
         plot.TelemetryPath = telemetryPath;
         plot.Schema = schema;
         Tabs.Add(plot);
-        this.RaisePropertyChanged(nameof(HasData));
-        this.RaisePropertyChanged(nameof(IsPlaybackBarVisible));
-        this.RaisePropertyChanged(nameof(CanAddPlot));
+        OnPropertyChanged(nameof(HasData));
+        OnPropertyChanged(nameof(IsPlaybackBarVisible));
+        OnPropertyChanged(nameof(CanAddPlot));
         SelectedTab = plot;
     }
 
@@ -585,9 +602,9 @@ public class MainWindowViewModel : ViewModelBase
         {
             SelectedTab = Tabs.LastOrDefault();
         }
-        this.RaisePropertyChanged(nameof(HasData));
-        this.RaisePropertyChanged(nameof(IsPlaybackBarVisible));
-        this.RaisePropertyChanged(nameof(CanAddPlot));
+        OnPropertyChanged(nameof(HasData));
+        OnPropertyChanged(nameof(IsPlaybackBarVisible));
+        OnPropertyChanged(nameof(CanAddPlot));
     }
 
     private void SyncSignalCheckboxes()
@@ -634,14 +651,14 @@ public class MainWindowViewModel : ViewModelBase
         
         IsRecording = false;
         StatusText = "Ready";
-        this.RaisePropertyChanged(nameof(HasData));
-        this.RaisePropertyChanged(nameof(IsPlaybackBarVisible));
-        this.RaisePropertyChanged(nameof(TotalRecords));
-        this.RaisePropertyChanged(nameof(CurrentPlaybackTime));
-        this.RaisePropertyChanged(nameof(FormattedPlaybackTime));
-        this.RaisePropertyChanged(nameof(PlaybackProgress));
-        this.RaisePropertyChanged(nameof(IsStreaming));
-        this.RaisePropertyChanged(nameof(IsRecording));
+        OnPropertyChanged(nameof(HasData));
+        OnPropertyChanged(nameof(IsPlaybackBarVisible));
+        OnPropertyChanged(nameof(TotalRecords));
+        OnPropertyChanged(nameof(CurrentPlaybackTime));
+        OnPropertyChanged(nameof(FormattedPlaybackTime));
+        OnPropertyChanged(nameof(PlaybackProgress));
+        OnPropertyChanged(nameof(IsStreaming));
+        OnPropertyChanged(nameof(IsRecording));
     }
 
     private async Task ShowError(string title, string message, Exception? ex = null)
@@ -676,13 +693,13 @@ public class MainWindowViewModel : ViewModelBase
                     {
                         schema.Type = SchemaType.Streaming;
                         SelectedPlot.Schema = schema;
-                        this.RaisePropertyChanged(nameof(SelectedSchema));
+                        OnPropertyChanged(nameof(SelectedSchema));
                         StatusText = $"Schema loaded: {schema.Name}";
                     }
                 }
             }
             
-            this.RaisePropertyChanged(nameof(SerialInfo));
+            OnPropertyChanged(nameof(SerialInfo));
             return saved;
         } catch (Exception ex) { await ShowError("Serial Settings Error", "Failed to open serial settings.", ex); return false; }
     }
@@ -710,13 +727,13 @@ public class MainWindowViewModel : ViewModelBase
                     {
                         schema.Type = SchemaType.Streaming;
                         SelectedPlot.Schema = schema;
-                        this.RaisePropertyChanged(nameof(SelectedSchema));
+                        OnPropertyChanged(nameof(SelectedSchema));
                         StatusText = $"Schema loaded: {schema.Name}";
                     }
                 }
             }
             
-            this.RaisePropertyChanged(nameof(NetworkInfo));
+            OnPropertyChanged(nameof(NetworkInfo));
             return saved;
         } catch (Exception ex) { await ShowError("Network Settings Error", "Failed to open network settings.", ex); return false; }
     }
@@ -758,7 +775,7 @@ public class MainWindowViewModel : ViewModelBase
             if (plot == SelectedPlot)
             {
                 _totalRecords = rowCount;
-                this.RaisePropertyChanged(nameof(TotalRecords));
+                OnPropertyChanged(nameof(TotalRecords));
             }
             
             var maxPlotPoints = 10000;
@@ -810,10 +827,10 @@ public class MainWindowViewModel : ViewModelBase
 
             if (_currentPlaybackIndex >= TotalRecords - 1) {
                 _currentPlaybackIndex = 0; _savedElapsedSeconds = 0; _playbackProgressValue = 0;
-                this.RaisePropertyChanged(nameof(CurrentPlaybackIndex));
-                this.RaisePropertyChanged(nameof(CurrentPlaybackTime));
-                this.RaisePropertyChanged(nameof(FormattedPlaybackTime));
-                this.RaisePropertyChanged(nameof(PlaybackProgress));
+                OnPropertyChanged(nameof(CurrentPlaybackIndex));
+                OnPropertyChanged(nameof(CurrentPlaybackTime));
+                OnPropertyChanged(nameof(FormattedPlaybackTime));
+                OnPropertyChanged(nameof(PlaybackProgress));
             }
 
             if (_playbackTimestamps.Count == 0) {
@@ -860,10 +877,10 @@ public class MainWindowViewModel : ViewModelBase
                 _currentPlaybackIndex = TotalRecords - 1; _playbackTimestamps = []; _playbackSignalData = []; _savedElapsedSeconds = 0; _fullDuration = 0;
                 StopPlayback(); _playbackProgressValue = 100;
                 Avalonia.Threading.Dispatcher.UIThread.Post(() => {
-                    this.RaisePropertyChanged(nameof(CurrentPlaybackIndex));
-                    this.RaisePropertyChanged(nameof(CurrentPlaybackTime));
-                    this.RaisePropertyChanged(nameof(FormattedPlaybackTime));
-                    this.RaisePropertyChanged(nameof(PlaybackProgress));
+                    OnPropertyChanged(nameof(CurrentPlaybackIndex));
+                    OnPropertyChanged(nameof(CurrentPlaybackTime));
+                    OnPropertyChanged(nameof(FormattedPlaybackTime));
+                    OnPropertyChanged(nameof(PlaybackProgress));
                     UpdatePlaybackView();
                 });
                 return;
@@ -882,10 +899,10 @@ public class MainWindowViewModel : ViewModelBase
             _playbackStopwatch.Restart();
 
             Avalonia.Threading.Dispatcher.UIThread.Post(() => {
-                this.RaisePropertyChanged(nameof(CurrentPlaybackIndex));
-                this.RaisePropertyChanged(nameof(CurrentPlaybackTime));
-                this.RaisePropertyChanged(nameof(FormattedPlaybackTime));
-                this.RaisePropertyChanged(nameof(PlaybackProgress));
+                OnPropertyChanged(nameof(CurrentPlaybackIndex));
+                OnPropertyChanged(nameof(CurrentPlaybackTime));
+                OnPropertyChanged(nameof(FormattedPlaybackTime));
+                OnPropertyChanged(nameof(PlaybackProgress));
                 UpdateCursorPosition();
                 RefreshCurrentValues();
             });
@@ -893,10 +910,10 @@ public class MainWindowViewModel : ViewModelBase
             if (_currentPlaybackIndex >= TotalRecords - 1) {
                 StopPlayback();
                 Avalonia.Threading.Dispatcher.UIThread.Post(() => {
-                    this.RaisePropertyChanged(nameof(CurrentPlaybackIndex));
-                    this.RaisePropertyChanged(nameof(CurrentPlaybackTime));
-                    this.RaisePropertyChanged(nameof(FormattedPlaybackTime));
-                    this.RaisePropertyChanged(nameof(PlaybackProgress));
+                    OnPropertyChanged(nameof(CurrentPlaybackIndex));
+                    OnPropertyChanged(nameof(CurrentPlaybackTime));
+                    OnPropertyChanged(nameof(FormattedPlaybackTime));
+                    OnPropertyChanged(nameof(PlaybackProgress));
                     UpdatePlaybackView();
                 });
             }
@@ -954,8 +971,8 @@ public class MainWindowViewModel : ViewModelBase
                 _playbackStopwatch.Restart();
             }
             PlaybackSpeed = newSpeed;
-            this.RaisePropertyChanged(nameof(CurrentPlaybackTime));
-            this.RaisePropertyChanged(nameof(FormattedPlaybackTime));
+            OnPropertyChanged(nameof(CurrentPlaybackTime));
+            OnPropertyChanged(nameof(FormattedPlaybackTime));
         }
     }
 
@@ -1104,7 +1121,7 @@ public class MainWindowViewModel : ViewModelBase
             targetPlot.TelemetryPath = null;
             _playbackTimestamps = [];
             _playbackSignalData = [];
-            this.RaisePropertyChanged(nameof(TotalRecords));
+            OnPropertyChanged(nameof(TotalRecords));
 
             // CRITICAL: Clear old signals so new ones from schema can be added
             targetPlot.AvailableSignals.Clear();
@@ -1134,8 +1151,8 @@ public class MainWindowViewModel : ViewModelBase
             if (targetPlot == SelectedPlot)
             {
                 SyncSignalCheckboxes();
-                this.RaisePropertyChanged(nameof(HasData));
-                this.RaisePropertyChanged(nameof(IsPlaybackBarVisible));
+                OnPropertyChanged(nameof(HasData));
+                OnPropertyChanged(nameof(IsPlaybackBarVisible));
             }
 
             var source = new SignalBench.Core.Ingestion.NetworkTelemetrySource(settings.IpAddress, settings.Port, schema, protocol);
@@ -1197,7 +1214,7 @@ public class MainWindowViewModel : ViewModelBase
             targetPlot.TelemetryPath = null;
             _playbackTimestamps = [];
             _playbackSignalData = [];
-            this.RaisePropertyChanged(nameof(TotalRecords));
+            OnPropertyChanged(nameof(TotalRecords));
 
             // CRITICAL: Clear old signals so new ones from schema can be added
             targetPlot.AvailableSignals.Clear();
@@ -1227,8 +1244,8 @@ public class MainWindowViewModel : ViewModelBase
             if (targetPlot == SelectedPlot)
             {
                 SyncSignalCheckboxes();
-                this.RaisePropertyChanged(nameof(HasData));
-                this.RaisePropertyChanged(nameof(IsPlaybackBarVisible));
+                OnPropertyChanged(nameof(HasData));
+                OnPropertyChanged(nameof(IsPlaybackBarVisible));
             }
 
             var parity = Enum.Parse<System.IO.Ports.Parity>(settings.Parity);
@@ -1304,13 +1321,13 @@ public class MainWindowViewModel : ViewModelBase
             if (targetPlot == SelectedPlot)
             {
                 _totalRecords = rowCount;
-                this.RaisePropertyChanged(nameof(TotalRecords));
-                this.RaisePropertyChanged(nameof(CurrentPlaybackTime));
-                this.RaisePropertyChanged(nameof(FormattedPlaybackTime));
+                OnPropertyChanged(nameof(TotalRecords));
+                OnPropertyChanged(nameof(CurrentPlaybackTime));
+                OnPropertyChanged(nameof(FormattedPlaybackTime));
                 if (wasEmpty)
                 {
-                    this.RaisePropertyChanged(nameof(HasData));
-                    this.RaisePropertyChanged(nameof(IsPlaybackBarVisible));
+                    OnPropertyChanged(nameof(HasData));
+                    OnPropertyChanged(nameof(IsPlaybackBarVisible));
                 }
                 
                 // Update CurrentPlaybackIndex to latest during streaming
@@ -1354,10 +1371,10 @@ public class MainWindowViewModel : ViewModelBase
             if (IsPlaying && _playbackStopwatch != null) _playbackStopwatch.Restart();
         }
 
-        this.RaisePropertyChanged(nameof(CurrentPlaybackIndex));
-        this.RaisePropertyChanged(nameof(CurrentPlaybackTime));
-        this.RaisePropertyChanged(nameof(FormattedPlaybackTime));
-        this.RaisePropertyChanged(nameof(PlaybackProgress));
+        OnPropertyChanged(nameof(CurrentPlaybackIndex));
+        OnPropertyChanged(nameof(CurrentPlaybackTime));
+        OnPropertyChanged(nameof(FormattedPlaybackTime));
+        OnPropertyChanged(nameof(PlaybackProgress));
         UpdateCursorPosition();
     }
 
@@ -1373,10 +1390,10 @@ public class MainWindowViewModel : ViewModelBase
             if (SelectedPlot != null) SelectedPlot.SavedElapsedSeconds = _savedElapsedSeconds;
             if (IsPlaying && _playbackStopwatch != null) _playbackStopwatch.Restart();
         }
-        this.RaisePropertyChanged(nameof(CurrentPlaybackIndex));
-        this.RaisePropertyChanged(nameof(CurrentPlaybackTime));
-        this.RaisePropertyChanged(nameof(FormattedPlaybackTime));
-        this.RaisePropertyChanged(nameof(PlaybackProgress));
+        OnPropertyChanged(nameof(CurrentPlaybackIndex));
+        OnPropertyChanged(nameof(CurrentPlaybackTime));
+        OnPropertyChanged(nameof(FormattedPlaybackTime));
+        OnPropertyChanged(nameof(PlaybackProgress));
         UpdateCursorPosition();
     }
 
@@ -1392,10 +1409,10 @@ public class MainWindowViewModel : ViewModelBase
             if (SelectedPlot != null) SelectedPlot.SavedElapsedSeconds = _savedElapsedSeconds;
             if (IsPlaying && _playbackStopwatch != null) _playbackStopwatch.Restart();
         }
-        this.RaisePropertyChanged(nameof(CurrentPlaybackIndex));
-        this.RaisePropertyChanged(nameof(CurrentPlaybackTime));
-        this.RaisePropertyChanged(nameof(FormattedPlaybackTime));
-        this.RaisePropertyChanged(nameof(PlaybackProgress));
+        OnPropertyChanged(nameof(CurrentPlaybackIndex));
+        OnPropertyChanged(nameof(CurrentPlaybackTime));
+        OnPropertyChanged(nameof(FormattedPlaybackTime));
+        OnPropertyChanged(nameof(PlaybackProgress));
         UpdateCursorPosition();
     }
 
@@ -1411,10 +1428,10 @@ public class MainWindowViewModel : ViewModelBase
             if (SelectedPlot != null) SelectedPlot.SavedElapsedSeconds = _savedElapsedSeconds;
             if (IsPlaying && _playbackStopwatch != null) _playbackStopwatch.Restart();
         }
-        this.RaisePropertyChanged(nameof(CurrentPlaybackIndex));
-        this.RaisePropertyChanged(nameof(CurrentPlaybackTime));
-        this.RaisePropertyChanged(nameof(FormattedPlaybackTime));
-        this.RaisePropertyChanged(nameof(PlaybackProgress));
+        OnPropertyChanged(nameof(CurrentPlaybackIndex));
+        OnPropertyChanged(nameof(CurrentPlaybackTime));
+        OnPropertyChanged(nameof(FormattedPlaybackTime));
+        OnPropertyChanged(nameof(PlaybackProgress));
         UpdateCursorPosition();
     }
 
@@ -1431,10 +1448,10 @@ public class MainWindowViewModel : ViewModelBase
             if (SelectedPlot != null) SelectedPlot.SavedElapsedSeconds = _savedElapsedSeconds;
             if (IsPlaying && _playbackStopwatch != null) _playbackStopwatch.Restart();
         }
-        this.RaisePropertyChanged(nameof(CurrentPlaybackIndex));
-        this.RaisePropertyChanged(nameof(CurrentPlaybackTime));
-        this.RaisePropertyChanged(nameof(FormattedPlaybackTime));
-        this.RaisePropertyChanged(nameof(PlaybackProgress));
+        OnPropertyChanged(nameof(CurrentPlaybackIndex));
+        OnPropertyChanged(nameof(CurrentPlaybackTime));
+        OnPropertyChanged(nameof(FormattedPlaybackTime));
+        OnPropertyChanged(nameof(PlaybackProgress));
         UpdateCursorPosition();
     }
 
@@ -1458,10 +1475,10 @@ public class MainWindowViewModel : ViewModelBase
             if (data.Count == _playbackTimestamps.Count) _playbackSignalData[signalName] = data;
         }
         
-        this.RaisePropertyChanged(nameof(CurrentPlaybackIndex));
-        this.RaisePropertyChanged(nameof(CurrentPlaybackTime));
-        this.RaisePropertyChanged(nameof(FormattedPlaybackTime));
-        this.RaisePropertyChanged(nameof(PlaybackProgress));
+        OnPropertyChanged(nameof(CurrentPlaybackIndex));
+        OnPropertyChanged(nameof(CurrentPlaybackTime));
+        OnPropertyChanged(nameof(FormattedPlaybackTime));
+        OnPropertyChanged(nameof(PlaybackProgress));
         UpdatePlaybackView();
     }
 
@@ -1504,7 +1521,7 @@ public class MainWindowViewModel : ViewModelBase
             await StopStreamingAsync();
         }
 
-        _statusText = $"Loading {path}..."; this.RaisePropertyChanged(nameof(StatusText));
+        _statusText = $"Loading {path}..."; OnPropertyChanged(nameof(StatusText));
         var startTime = DateTime.Now;
         
         if (path.EndsWith(".csv")) {
@@ -1573,12 +1590,12 @@ public class MainWindowViewModel : ViewModelBase
 
                             if (targetPlot == SelectedPlot)
                             {
-                                this.RaisePropertyChanged(nameof(HasData));
+                                OnPropertyChanged(nameof(HasData));
                                 AddToRecentFiles(path); UpdatePlot(targetPlot);
-                                this.RaisePropertyChanged(nameof(CurrentPlaybackIndex)); this.RaisePropertyChanged(nameof(CurrentPlaybackTime));
-                                this.RaisePropertyChanged(nameof(FormattedPlaybackTime)); this.RaisePropertyChanged(nameof(PlaybackProgress));
-                                this.RaisePropertyChanged(nameof(IsPlaybackBarVisible));
-                                this.RaisePropertyChanged(nameof(CanAddPlot));
+                                OnPropertyChanged(nameof(CurrentPlaybackIndex)); OnPropertyChanged(nameof(CurrentPlaybackTime));
+                                OnPropertyChanged(nameof(FormattedPlaybackTime)); OnPropertyChanged(nameof(PlaybackProgress));
+                                OnPropertyChanged(nameof(IsPlaybackBarVisible));
+                                OnPropertyChanged(nameof(CanAddPlot));
                                 
                                 SyncSignalCheckboxes();
                             }
@@ -1647,11 +1664,11 @@ public class MainWindowViewModel : ViewModelBase
                         }
 
                         if (SelectedPlot == targetPlot) {
-                            this.RaisePropertyChanged(nameof(HasData));
+                            OnPropertyChanged(nameof(HasData));
                             AddToRecentFiles(path); UpdatePlot(targetPlot);
-                            this.RaisePropertyChanged(nameof(CurrentPlaybackIndex)); this.RaisePropertyChanged(nameof(CurrentPlaybackTime));
-                            this.RaisePropertyChanged(nameof(FormattedPlaybackTime)); this.RaisePropertyChanged(nameof(PlaybackProgress));
-                            this.RaisePropertyChanged(nameof(IsPlaybackBarVisible));
+                            OnPropertyChanged(nameof(CurrentPlaybackIndex)); OnPropertyChanged(nameof(CurrentPlaybackTime));
+                            OnPropertyChanged(nameof(FormattedPlaybackTime)); OnPropertyChanged(nameof(PlaybackProgress));
+                            OnPropertyChanged(nameof(IsPlaybackBarVisible));
                             
                             SyncSignalCheckboxes();
                         }

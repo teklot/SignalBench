@@ -1,25 +1,18 @@
-using ReactiveUI;
+using CommunityToolkit.Mvvm.ComponentModel;
 using SignalBench.SDK.Interfaces;
+using System.Collections.Generic;
 
 namespace SignalBench.ViewModels;
 
-public abstract class TabViewModelBase : ViewModelBase, ITabViewModel
+public abstract partial class TabViewModelBase : ViewModelBase, ITabViewModel
 {
     public abstract string TabTypeId { get; }
 
+    [ObservableProperty]
     private string _name = "Untitled";
-    public string Name
-    {
-        get => _name;
-        set => this.RaiseAndSetIfChanged(ref _name, value);
-    }
 
+    [ObservableProperty]
     private string _statusMessage = "Ready";
-    public string StatusMessage
-    {
-        get => _statusMessage;
-        set => this.RaiseAndSetIfChanged(ref _statusMessage, value);
-    }
 
     public virtual string ConnectionInfo => "";
     public virtual string ConnectionIcon => "InformationOutline";

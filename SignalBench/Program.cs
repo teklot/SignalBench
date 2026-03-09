@@ -1,5 +1,4 @@
 using Avalonia;
-using ReactiveUI.Avalonia;
 
 namespace SignalBench;
 
@@ -19,6 +18,5 @@ sealed class Program
         => AppBuilder.Configure<App>()
             .UsePlatformDetect()
             .WithInterFont()
-            .LogToTrace()
-            .UseReactiveUI(_ => { });
+            .LogToTrace();
 }

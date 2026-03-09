@@ -6,7 +6,6 @@ public class FieldDefinition
     public FieldType Type { get; set; }
     public int BitOffset { get; set; }
     public int BitLength { get; set; }
-    // For V1, we might just use Type to determine size, but bitfields are mentioned.
 }
 
 public enum Endianness

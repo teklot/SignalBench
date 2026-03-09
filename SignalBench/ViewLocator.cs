@@ -1,26 +1,31 @@
 using Avalonia.Controls;
 using Avalonia.Controls.Templates;
 using SignalBench.ViewModels;
+using SignalBench.Views;
 
 namespace SignalBench;
 
 public class ViewLocator : IDataTemplate
 {
-
-    public Control? Build(object? param)
+    public Control? Build(object? data)
     {
-        if (param is null)
+        if (data is null)
             return null;
 
-        var name = param.GetType().FullName!.Replace("ViewModel", "View", StringComparison.Ordinal);
-        var type = Type.GetType(name);
-
-        if (type != null)
+        return data switch
         {
-            return (Control)Activator.CreateInstance(type)!;
-        }
-
-        return new TextBlock { Text = "Not Found: " + name };
+            MainWindowViewModel => new MainWindow(),
+            PlotViewModel => new PlotView(),
+            BinaryImportViewModel => new BinaryImport(),
+            CsvImportViewModel => new CsvImport(),
+            DerivedSignalViewModel => new DerivedSignalDialog(),
+            NetworkDialogViewModel => new NetworkDialog(),
+            SchemaEditorViewModel => new SchemaEditor(),
+            SerialDialogViewModel => new SerialDialog(),
+            SettingsViewModel => new SettingsWindow(),
+            SignalStatsViewModel => new SignalStatsView(),
+            _ => new TextBlock { Text = "Not Found: " + data.GetType().Name }
+        };
     }
 
     public bool Match(object? data)

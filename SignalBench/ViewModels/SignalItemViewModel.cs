@@ -1,41 +1,21 @@
-using ReactiveUI;
+using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace SignalBench.ViewModels;
 
-public class SignalItemViewModel : ViewModelBase
+public partial class SignalItemViewModel : ViewModelBase
 {
+    [ObservableProperty]
     private string _name = string.Empty;
-    public string Name
-    {
-        get => _name;
-        set => this.RaiseAndSetIfChanged(ref _name, value);
-    }
 
+    [ObservableProperty]
     private bool _isSelected;
-    public bool IsSelected
-    {
-        get => _isSelected;
-        set => this.RaiseAndSetIfChanged(ref _isSelected, value);
-    }
 
+    [ObservableProperty]
     private bool _isDerived;
-    public bool IsDerived
-    {
-        get => _isDerived;
-        set => this.RaiseAndSetIfChanged(ref _isDerived, value);
-    }
 
+    [ObservableProperty]
     private int _colorIndex;
-    public int ColorIndex
-    {
-        get => _colorIndex;
-        set => this.RaiseAndSetIfChanged(ref _colorIndex, value);
-    }
 
+    [ObservableProperty]
     private double _currentValue;
-    public double CurrentValue
-    {
-        get => _currentValue;
-        set => this.RaiseAndSetIfChanged(ref _currentValue, value);
-    }
 }

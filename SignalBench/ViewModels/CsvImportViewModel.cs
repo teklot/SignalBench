@@ -1,34 +1,26 @@
-using ReactiveUI;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using SignalBench.Core.Ingestion;
 using SignalBench.SDK.Models;
 using System.Collections.ObjectModel;
-using System.Reactive;
+using System.Collections.Generic;
+using System;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace SignalBench.ViewModels;
 
-public class CsvImportViewModel : ViewModelBase
+public partial class CsvImportViewModel : ViewModelBase
 {
-    private string _delimiter = ",";
-    public string Delimiter
-    {
-        get => _delimiter;
-        set
-        {
-            this.RaiseAndSetIfChanged(ref _delimiter, value);
-            LoadPreview();
-        }
-    }
+    [ObservableProperty]
+    private string _delimiter = "Comma (,)";
 
+    partial void OnDelimiterChanged(string value) => LoadPreview();
+
+    [ObservableProperty]
     private bool _hasHeader = true;
-    public bool HasHeader
-    {
-        get => _hasHeader;
-        set
-        {
-            this.RaiseAndSetIfChanged(ref _hasHeader, value);
-            LoadPreview();
-        }
-    }
+
+    partial void OnHasHeaderChanged(bool value) => LoadPreview();
 
     private string GetActualDelimiter()
     {
@@ -44,59 +36,44 @@ public class CsvImportViewModel : ViewModelBase
 
     public string[] Delimiters { get; } = ["Comma (,)", "Semicolon (;)", "Pipe (|)", "Tab"];
 
+    [ObservableProperty]
     private string? _timestampColumn;
-    public string? TimestampColumn
-    {
-        get => _timestampColumn;
-        set => this.RaiseAndSetIfChanged(ref _timestampColumn, value);
-    }
 
     public ObservableCollection<string> AvailableColumns { get; } = [];
     public ObservableCollection<string> TimestampColumnOptions { get; } = [];
 
     public ObservableCollection<IDictionary<string, object>> PreviewRecords { get; } = [];
 
+    [ObservableProperty]
     private bool _isPreviewLoaded;
-    public bool IsPreviewLoaded
-    {
-        get => _isPreviewLoaded;
-        set => this.RaiseAndSetIfChanged(ref _isPreviewLoaded, value);
-    }
 
+    [ObservableProperty]
     private string? _filePath;
-    public string? FilePath
+
+    partial void OnFilePathChanged(string? value) => LoadPreview();
+
+    public event Action<CsvImportResult?>? RequestClose;
+
+    public CsvImportViewModel() { }
+
+    public CsvImportViewModel(string? filePath)
     {
-        get => _filePath;
-        set
-        {
-            this.RaiseAndSetIfChanged(ref _filePath, value);
-            LoadPreview();
-        }
+        FilePath = filePath;
     }
 
-    public ReactiveCommand<Unit, CsvImportResult?> ImportCommand { get; }
-    public ReactiveCommand<Unit, CsvImportResult?> CancelCommand { get; }
-    public ReactiveCommand<Unit, Unit> BrowseCommand { get; }
-
-    public CsvImportViewModel(string? filePath = null)
+    [RelayCommand(CanExecute = nameof(IsPreviewLoaded))]
+    private void Import() => RequestClose?.Invoke(new CsvImportResult
     {
-        _filePath = filePath;
-        _delimiter = "Comma (,)";
-        _hasHeader = true;
-        ImportCommand = ReactiveCommand.Create(() => (CsvImportResult?)new CsvImportResult
-        {
-            FilePath = FilePath ?? string.Empty,
-            Delimiter = GetActualDelimiter(),
-            TimestampColumn = TimestampColumn,
-            HasHeader = HasHeader
-        }, this.WhenAnyValue(x => x.IsPreviewLoaded));
-        
-        CancelCommand = ReactiveCommand.Create(() => (CsvImportResult?)null);
-        BrowseCommand = ReactiveCommand.CreateFromTask(BrowseAsync);
+        FilePath = FilePath ?? string.Empty,
+        Delimiter = GetActualDelimiter(),
+        TimestampColumn = TimestampColumn,
+        HasHeader = HasHeader
+    });
 
-        if (!string.IsNullOrEmpty(_filePath)) LoadPreview();
-    }
+    [RelayCommand]
+    private void Cancel() => RequestClose?.Invoke(null);
 
+    [RelayCommand]
     private async Task BrowseAsync()
     {
         try
@@ -171,6 +148,7 @@ public class CsvImportViewModel : ViewModelBase
             AvailableColumns.Clear();
             System.Diagnostics.Debug.WriteLine($"CSV Preview Error: {ex.Message} (File: {FilePath}, Delimiter: {GetActualDelimiter()})");
         }
+        ImportCommand.NotifyCanExecuteChanged();
     }
 }
 

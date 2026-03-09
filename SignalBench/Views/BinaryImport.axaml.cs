@@ -1,24 +1,24 @@
 using Avalonia.Controls;
 using Avalonia.Data;
-using ReactiveUI.Avalonia;
-using ReactiveUI;
 using SignalBench.ViewModels;
-using System.Collections.Specialized;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace SignalBench.Views;
 
-public partial class BinaryImport : ReactiveWindow<BinaryImportViewModel>
+public partial class BinaryImport : Window
 {
+    public BinaryImportViewModel? ViewModel => DataContext as BinaryImportViewModel;
+
     public BinaryImport()
     {
         InitializeComponent();
         
-        this.WhenActivated(d =>
+        DataContextChanged += (s, e) =>
         {
             if (ViewModel != null)
             {
-                ViewModel.ImportCommand.Subscribe(result => Close(result));
-                ViewModel.CancelCommand.Subscribe(result => Close(result));
+                ViewModel.RequestClose += result => Close(result);
                 
                 // Initial sync
                 UpdateColumns(ViewModel.AvailableColumns);
@@ -26,7 +26,7 @@ public partial class BinaryImport : ReactiveWindow<BinaryImportViewModel>
                 // Subscribe to future changes
                 ViewModel.AvailableColumns.CollectionChanged += (s, args) => UpdateColumns(ViewModel.AvailableColumns);
             }
-        });
+        };
     }
 
     private void UpdateColumns(IEnumerable<string> columns)

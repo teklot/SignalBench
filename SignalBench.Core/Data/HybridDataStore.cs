@@ -105,6 +105,13 @@ public sealed class HybridDataStore(StorageMode mode = StorageMode.InMemory) : I
             : _inMemory.GetSignalData(fieldName, maxPoints);
     }
 
+    public (int start, int end) GetIndices(DateTime startTime, DateTime endTime)
+    {
+        return mode == StorageMode.Sqlite
+            ? _sqlite?.GetIndices(startTime, endTime) ?? (-1, -1)
+            : _inMemory.GetIndices(startTime, endTime);
+    }
+
     public int GetRowCount()
     {
         return mode == StorageMode.Sqlite 

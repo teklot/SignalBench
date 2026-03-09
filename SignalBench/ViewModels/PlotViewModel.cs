@@ -1,57 +1,39 @@
-using ReactiveUI;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using SignalBench.Core.Data;
 using SignalBench.Core.Models;
 using SignalBench.Core.Models.Schema;
 using SignalBench.Core.Session;
 using SignalBench.SDK.Interfaces;
+using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Linq;
 
 namespace SignalBench.ViewModels;
 
 public enum PlotSourceType { None, File, Serial, Network }
 
-public sealed class PlotViewModel : TabViewModelBase
+public sealed partial class PlotViewModel : TabViewModelBase
 {
     public override string TabTypeId => "SignalBench.Plot";
 
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ConnectionInfo))]
+    [NotifyPropertyChangedFor(nameof(ConnectionIcon))]
     private PlotSourceType _sourceType = PlotSourceType.None;
-    public PlotSourceType SourceType
-    {
-        get => _sourceType;
-        set {
-            this.RaiseAndSetIfChanged(ref _sourceType, value);
-            this.RaisePropertyChanged(nameof(ConnectionInfo));
-            this.RaisePropertyChanged(nameof(ConnectionIcon));
-        }
-    }
 
+    [ObservableProperty]
     private string? _telemetryPath;
-    public string? TelemetryPath
-    {
-        get => _telemetryPath;
-        set => this.RaiseAndSetIfChanged(ref _telemetryPath, value);
-    }
 
+    [ObservableProperty]
     private PacketSchema? _schema;
-    public PacketSchema? Schema
-    {
-        get => _schema;
-        set => this.RaiseAndSetIfChanged(ref _schema, value);
-    }
 
+    [ObservableProperty]
     private string? _serialSchemaPath;
-    public string? SerialSchemaPath
-    {
-        get => _serialSchemaPath;
-        set => this.RaiseAndSetIfChanged(ref _serialSchemaPath, value);
-    }
 
+    [ObservableProperty]
     private string? _networkSchemaPath;
-    public string? NetworkSchemaPath
-    {
-        get => _networkSchemaPath;
-        set => this.RaiseAndSetIfChanged(ref _networkSchemaPath, value);
-    }
 
     public string? SchemaPath
     {
@@ -59,7 +41,7 @@ public sealed class PlotViewModel : TabViewModelBase
         set {
             if (SourceType == PlotSourceType.Serial) SerialSchemaPath = value;
             else if (SourceType == PlotSourceType.Network) NetworkSchemaPath = value;
-            this.RaisePropertyChanged(nameof(SchemaPath));
+            OnPropertyChanged(nameof(SchemaPath));
         }
     }
 
@@ -68,9 +50,12 @@ public sealed class PlotViewModel : TabViewModelBase
     {
         get => _isStreaming;
         set {
-            this.RaiseAndSetIfChanged(ref _isStreaming, value);
-            this.RaisePropertyChanged(nameof(ConnectionInfo));
-            this.RaisePropertyChanged(nameof(ConnectionIcon));
+            if (SetProperty(ref _isStreaming, value))
+            {
+                OnPropertyChanged(nameof(ConnectionInfo));
+                OnPropertyChanged(nameof(ConnectionIcon));
+                SourceStateChanged?.Invoke();
+            }
         }
     }
 
@@ -78,15 +63,16 @@ public sealed class PlotViewModel : TabViewModelBase
     public bool IsPaused
     {
         get => _isPaused;
-        set => this.RaiseAndSetIfChanged(ref _isPaused, value);
+        set {
+            if (SetProperty(ref _isPaused, value))
+            {
+                SourceStateChanged?.Invoke();
+            }
+        }
     }
 
+    [ObservableProperty]
     private bool _isRecording;
-    public bool IsRecording
-    {
-        get => _isRecording;
-        set => this.RaiseAndSetIfChanged(ref _isRecording, value);
-    }
 
     public IStreamingSource? ActiveSource { get; set; }
 
@@ -97,33 +83,22 @@ public sealed class PlotViewModel : TabViewModelBase
     public bool IsSerialConfigured => !string.IsNullOrEmpty(SerialSettings.Port);
     public bool IsNetworkConfigured => !string.IsNullOrEmpty(NetworkSettings.IpAddress) && NetworkSettings.Port > 0;
 
-    public override string ConnectionInfo
+    public override string ConnectionInfo => SourceType switch
     {
-        get
-        {
-            if (SourceType == PlotSourceType.None) return "";
-            if (SourceType == PlotSourceType.File) return TelemetryPath != null ? System.IO.Path.GetFileName(TelemetryPath) : "";
-            
-            if (SourceType == PlotSourceType.Serial && IsSerialConfigured) return GetSerialInfo();
-            if (SourceType == PlotSourceType.Network && IsNetworkConfigured) return GetNetworkInfo();
-            
-            return "";
-        }
-    }
+        PlotSourceType.None => "",
+        PlotSourceType.File => TelemetryPath != null ? System.IO.Path.GetFileName(TelemetryPath) : "",
+        PlotSourceType.Serial when IsSerialConfigured => GetSerialInfo(),
+        PlotSourceType.Network when IsNetworkConfigured => GetNetworkInfo(),
+        _ => ""
+    };
 
-    public override string ConnectionIcon
+    public override string ConnectionIcon => SourceType switch
     {
-        get
-        {
-            return SourceType switch
-            {
-                PlotSourceType.File => "FileChartOutline",
-                PlotSourceType.Network => "Lan",
-                PlotSourceType.Serial => "SerialPort",
-                _ => "InformationOutline"
-            };
-        }
-    }
+        PlotSourceType.File => "FileChartOutline",
+        PlotSourceType.Network => "Lan",
+        PlotSourceType.Serial => "SerialPort",
+        _ => "InformationOutline"
+    };
 
     private string GetSerialInfo()
     {
@@ -147,7 +122,12 @@ public sealed class PlotViewModel : TabViewModelBase
     public int TotalRecords
     {
         get => _totalRecords;
-        set => this.RaiseAndSetIfChanged(ref _totalRecords, value);
+        set {
+            if (SetProperty(ref _totalRecords, value))
+            {
+                SourceStateChanged?.Invoke();
+            }
+        }
     }
 
     public IDataStore DataStore { get; }
@@ -163,25 +143,20 @@ public sealed class PlotViewModel : TabViewModelBase
     public double SavedElapsedSeconds { get; set; }
     public double FullDuration { get; set; }
 
-    // Events for the View to hook into
+    // Events for the View and ViewModel to hook into
     public Action<List<DateTime>, Dictionary<string, List<double>>, DateTime?, double?, int?>? RequestPlotUpdate;
     public Action<DateTime>? RequestCursorUpdate;
     public Action? RequestPlotClear;
+    public event Action? SourceStateChanged;
 
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(SignalsPaneColumnWidth))]
     private bool _isSignalsPaneOpen = true;
-    public bool IsSignalsPaneOpen
-    {
-        get => _isSignalsPaneOpen;
-        set {
-            this.RaiseAndSetIfChanged(ref _isSignalsPaneOpen, value);
-            this.RaisePropertyChanged(nameof(SignalsPaneColumnWidth));
-        }
-    }
 
-    private Avalonia.Controls.GridLength _signalsPaneColumnWidth = new(200);
+    private Avalonia.Controls.GridLength _signalsPaneColumnWidthValue = new(200);
     public Avalonia.Controls.GridLength SignalsPaneColumnWidth
     {
-        get => IsSignalsPaneOpen ? _signalsPaneColumnWidth : new Avalonia.Controls.GridLength(24);
+        get => IsSignalsPaneOpen ? _signalsPaneColumnWidthValue : new Avalonia.Controls.GridLength(24);
         set {
             if (IsSignalsPaneOpen && value.IsAbsolute)
             {
@@ -191,23 +166,43 @@ public sealed class PlotViewModel : TabViewModelBase
                 }
                 else
                 {
-                    _signalsPaneColumnWidth = value;
+                    _signalsPaneColumnWidthValue = value;
                 }
             }
-            this.RaisePropertyChanged(nameof(SignalsPaneColumnWidth));
+            OnPropertyChanged(nameof(SignalsPaneColumnWidth));
         }
     }
 
     public SignalStatsViewModel Statistics { get; }
 
-    public ReactiveCommand<System.Reactive.Unit, System.Reactive.Unit> ToggleSignalsPaneCommand { get; }
+    [RelayCommand]
+    private void ToggleSignalsPane() => IsSignalsPaneOpen = !IsSignalsPaneOpen;
 
     public PlotViewModel(string name, IDataStore dataStore)
     {
         Name = name;
         DataStore = dataStore;
         Statistics = new SignalStatsViewModel(dataStore);
-        ToggleSignalsPaneCommand = ReactiveCommand.Create(() => { IsSignalsPaneOpen = !IsSignalsPaneOpen; });
+
+        SelectedSignalNames.CollectionChanged += (s, e) => {
+            if (Statistics.SelectedSignal == null && SelectedSignalNames.Count > 0)
+            {
+                var first = AvailableSignals.FirstOrDefault(sig => sig.Name == SelectedSignalNames[0]);
+                if (first != null) Statistics.SelectedSignal = first;
+            }
+            else if (Statistics.SelectedSignal != null && !SelectedSignalNames.Contains(Statistics.SelectedSignal.Name))
+            {
+                if (SelectedSignalNames.Count > 0)
+                {
+                    var first = AvailableSignals.FirstOrDefault(sig => sig.Name == SelectedSignalNames[0]);
+                    if (first != null) Statistics.SelectedSignal = first;
+                }
+                else
+                {
+                    Statistics.SelectedSignal = null;
+                }
+            }
+        };
     }
 
     public void ToggleSignal(string signalName)
@@ -244,9 +239,6 @@ public sealed class PlotViewModel : TabViewModelBase
         if (settings.TryGetValue("SourceType", out var sourceType)) SourceType = Enum.Parse<PlotSourceType>(sourceType.ToString()!);
         if (settings.TryGetValue("TelemetryPath", out var path)) TelemetryPath = path.ToString();
         if (settings.TryGetValue("IsSignalsPaneOpen", out var paneOpen)) IsSignalsPaneOpen = (bool)paneOpen;
-        
-        // Complex objects might need better handling depending on how YAML deserializes to Dictionary<string, object>
-        // For now, we assume the core logic will handle the specific TabSession properties which overlap with these for the Plot type.
     }
 
     public override void Dispose()

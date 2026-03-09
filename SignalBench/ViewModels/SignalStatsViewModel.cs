@@ -1,136 +1,138 @@
+using CommunityToolkit.Mvvm.ComponentModel;
+using SignalBench.Core.Data;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using ReactiveUI;
-using SignalBench.Core.Data;
 
 namespace SignalBench.ViewModels;
 
-public class SignalStatsViewModel : ViewModelBase
+public partial class SignalStatsViewModel : ViewModelBase
 {
-    private readonly IDataStore _dataStore;
+    private readonly IDataStore? _dataStore;
+    private double _lastMinX;
+    private double _lastMaxX;
+
+    [ObservableProperty]
     private SignalItemViewModel? _selectedSignal;
+
+    [ObservableProperty]
+    private double? _min;
+
+    [ObservableProperty]
+    private double? _max;
+
+    [ObservableProperty]
+    private double? _mean;
+
+    [ObservableProperty]
+    private double? _std;
+
+    [ObservableProperty]
+    private double? _rms;
+
+    [ObservableProperty]
+    private double? _p2p;
+
+    [ObservableProperty]
+    private int _count;
+
+    [ObservableProperty]
     private bool _useSelectedWindow;
-    
-    private double _min;
-    private double _max;
-    private double _mean;
-    private double _stdDev;
-    private double _rms;
-    private double _p2p;
 
-    public SignalItemViewModel? SelectedSignal
-    {
-        get => _selectedSignal;
-        set
-        {
-            this.RaiseAndSetIfChanged(ref _selectedSignal, value);
-            UpdateStatistics();
-        }
-    }
-
-    public string? SelectedSignalName => SelectedSignal?.Name;
-
-    public bool UseSelectedWindow
-    {
-        get => _useSelectedWindow;
-        set
-        {
-            this.RaiseAndSetIfChanged(ref _useSelectedWindow, value);
-            UpdateStatistics();
-        }
-    }
-
-    public double Min { get => _min; private set => this.RaiseAndSetIfChanged(ref _min, value); }
-    public double Max { get => _max; private set => this.RaiseAndSetIfChanged(ref _max, value); }
-    public double Mean { get => _mean; private set => this.RaiseAndSetIfChanged(ref _mean, value); }
-    public double StdDev { get => _stdDev; private set => this.RaiseAndSetIfChanged(ref _stdDev, value); }
-    public double RMS { get => _rms; private set => this.RaiseAndSetIfChanged(ref _rms, value); }
-    public double P2P { get => _p2p; private set => this.RaiseAndSetIfChanged(ref _p2p, value); }
-
-    // Store window range
-    private double? _windowMin;
-    private double? _windowMax;
+    public SignalStatsViewModel() { }
 
     public SignalStatsViewModel(IDataStore dataStore)
     {
         _dataStore = dataStore;
     }
 
-    public void SetWindow(double min, double max)
+    partial void OnSelectedSignalChanged(SignalItemViewModel? value)
     {
-        _windowMin = min;
-        _windowMax = max;
+        Calculate();
+    }
+
+    partial void OnUseSelectedWindowChanged(bool value)
+    {
+        Calculate();
+    }
+
+    public void SetWindow(double minX, double maxX)
+    {
+        _lastMinX = minX;
+        _lastMaxX = maxX;
         if (UseSelectedWindow)
         {
-            UpdateStatistics();
+            Calculate();
         }
     }
 
-    public void UpdateStatistics()
+    private void Calculate()
     {
-        if (string.IsNullOrEmpty(SelectedSignalName))
+        if (_dataStore == null || SelectedSignal == null)
         {
-            ResetStats();
+            Reset();
             return;
         }
 
         List<double> data;
-        if (UseSelectedWindow && _windowMin.HasValue && _windowMax.HasValue)
+        if (UseSelectedWindow && _lastMaxX > _lastMinX)
         {
-            // We need timestamps to filter by window if window is in time
-            // However, ScottPlot 5 window is usually in axis units (double)
-            // For SignalBench, X axis is usually DateTime.ToOADate()
+            var start = DateTime.FromOADate(_lastMinX);
+            var end = DateTime.FromOADate(_lastMaxX);
+            var indices = _dataStore.GetIndices(start, end);
             
-            var allData = _dataStore.GetSignalData(SelectedSignalName);
-            var timestamps = _dataStore.GetTimestamps();
-            
-            if (allData.Count == 0 || allData.Count != timestamps.Count)
+            if (indices.start < 0 || indices.end < 0)
             {
-                ResetStats();
+                Reset();
                 return;
             }
-
-            data = new List<double>();
-            for (int i = 0; i < timestamps.Count; i++)
-            {
-                double x = timestamps[i].ToOADate();
-                if (x >= _windowMin.Value && x <= _windowMax.Value)
-                {
-                    data.Add(allData[i]);
-                }
-            }
+            
+            data = _dataStore.GetSignalData(SelectedSignal.Name, indices.start, (indices.end - indices.start) + 1);
         }
         else
         {
-            data = _dataStore.GetSignalData(SelectedSignalName);
+            data = _dataStore.GetSignalData(SelectedSignal.Name);
         }
 
         if (data == null || data.Count == 0)
         {
-            ResetStats();
+            Reset();
             return;
         }
 
-        Min = data.Min();
-        Max = data.Max();
-        Mean = data.Average();
-        P2P = Max - Min;
+        // Filter out NaNs for stats
+        var validData = data.Where(d => !double.IsNaN(d)).ToList();
+        if (validData.Count == 0)
+        {
+            Reset();
+            return;
+        }
 
-        double sumOfSquares = data.Sum(x => x * x);
-        RMS = Math.Sqrt(sumOfSquares / data.Count);
+        Count = validData.Count;
+        double minVal = validData.Min();
+        double maxVal = validData.Max();
+        Min = minVal;
+        Max = maxVal;
+        P2p = maxVal - minVal;
+        
+        double meanVal = validData.Average();
+        Mean = meanVal;
+        
+        double sumOfSquares = validData.Sum(d => d * d);
+        Rms = Math.Sqrt(sumOfSquares / validData.Count);
 
-        double sumOfDerivations = data.Sum(x => Math.Pow(x - Mean, 2));
-        StdDev = Math.Sqrt(sumOfDerivations / data.Count);
+        double sumOfDerivations = validData.Sum(d => Math.Pow(d - meanVal, 2));
+        Std = Math.Sqrt(sumOfDerivations / validData.Count);
     }
 
-    private void ResetStats()
+    private void Reset()
     {
-        Min = 0;
-        Max = 0;
-        Mean = 0;
-        StdDev = 0;
-        RMS = 0;
-        P2P = 0;
+        Min = null;
+        Max = null;
+        Mean = null;
+        Std = null;
+        Rms = null;
+        P2p = null;
+        Count = 0;
     }
 }

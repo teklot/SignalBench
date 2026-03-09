@@ -1,23 +1,22 @@
-using ReactiveUI.Avalonia;
-using ReactiveUI;
+using Avalonia.Controls;
 using SignalBench.ViewModels;
 
 namespace SignalBench.Views;
 
-public partial class DerivedSignalDialog : ReactiveWindow<DerivedSignalViewModel>
+public partial class DerivedSignalDialog : Window
 {
+    public DerivedSignalViewModel? ViewModel => DataContext as DerivedSignalViewModel;
+
     public DerivedSignalDialog()
     {
         InitializeComponent();
         
-        this.WhenActivated(d =>
+        DataContextChanged += (s, e) =>
         {
             if (ViewModel != null)
             {
-                ViewModel.AddCommand.Subscribe(result => Close(result));
-                ViewModel.DeleteCommand.Subscribe(result => Close(result));
-                ViewModel.CancelCommand.Subscribe(result => Close(result));
+                ViewModel.RequestClose += result => Close(result);
             }
-        });
+        };
     }
 }

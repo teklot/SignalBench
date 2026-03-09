@@ -248,6 +248,26 @@ public sealed class SqliteDataStore : IDataStore
         return result != null ? (result is DateTime dt ? dt : ParseTimestamp(result)) : default;
     }
 
+    public (int start, int end) GetIndices(DateTime startTime, DateTime endTime)
+    {
+        if (_connection == null) return (-1, -1);
+        using var command = _connection.CreateCommand();
+        command.CommandText = $"SELECT MIN(id), MAX(id) FROM {_tableName} WHERE timestamp >= @start AND timestamp <= @end";
+        command.Parameters.AddWithValue("@start", startTime);
+        command.Parameters.AddWithValue("@end", endTime);
+        
+        using var reader = command.ExecuteReader();
+        if (reader.Read() && !reader.IsDBNull(0))
+        {
+            // SQLite IDs are usually 1-based, we want 0-based index for IDataStore consistency
+            // but let's check how we use offsets in other methods
+            // GetSignalData uses LIMIT/OFFSET which is 0-based.
+            // ID in SQLite for this table is AUTOINCREMENT (implicitly) starting at 1.
+            return (reader.GetInt32(0) - 1, reader.GetInt32(1) - 1);
+        }
+        return (-1, -1);
+    }
+
     public int GetRowCount() => GetTotalRowCount();
 
     private int GetTotalRowCount()

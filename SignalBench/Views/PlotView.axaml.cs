@@ -1,7 +1,6 @@
 using Avalonia.Controls;
 using ScottPlot.Plottables;
 using SignalBench.ViewModels;
-using System.Reactive.Linq;
 
 namespace SignalBench.Views;
 
@@ -191,9 +190,17 @@ public partial class PlotView : UserControl
             AddOrUpdateCursor(mainPlot, cursorPosition.Value);
         }
 
-        if (DataContext is PlotViewModel statsVm && statsVm.Statistics.UseSelectedWindow)
+        if (DataContext is PlotViewModel statsVm)
         {
-            statsVm.Statistics.SetWindow(mainPlot.Plot.Axes.Bottom.Min, mainPlot.Plot.Axes.Bottom.Max);
+            if (statsVm.Statistics.UseSelectedWindow)
+            {
+                statsVm.Statistics.SetWindow(mainPlot.Plot.Axes.Bottom.Min, mainPlot.Plot.Axes.Bottom.Max);
+            }
+            else
+            {
+                // Trigger calc for full range
+                statsVm.Statistics.SetWindow(0, 0); 
+            }
         }
 
         mainPlot.Refresh();

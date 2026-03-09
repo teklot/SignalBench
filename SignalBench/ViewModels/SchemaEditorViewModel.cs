@@ -1,40 +1,29 @@
-using ReactiveUI;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using SignalBench.Core.Models.Schema;
 using SignalBench.Core.Services;
 using System.Collections.ObjectModel;
-using System.Reactive;
+using System.Collections.Generic;
+using System;
+using System.Linq;
+using System.Threading.Tasks;
+using System.IO;
 
 namespace SignalBench.ViewModels;
 
-public class FieldEditorViewModel : ViewModelBase
+public partial class FieldEditorViewModel : ViewModelBase
 {
+    [ObservableProperty]
     private string _name = "NewField";
-    public string Name
-    {
-        get => _name;
-        set => this.RaiseAndSetIfChanged(ref _name, value);
-    }
 
+    [ObservableProperty]
     private FieldType _type = FieldType.Uint16;
-    public FieldType Type
-    {
-        get => _type;
-        set => this.RaiseAndSetIfChanged(ref _type, value);
-    }
 
+    [ObservableProperty]
     private int _bitOffset;
-    public int BitOffset
-    {
-        get => _bitOffset;
-        set => this.RaiseAndSetIfChanged(ref _bitOffset, value);
-    }
 
+    [ObservableProperty]
     private int _bitLength;
-    public int BitLength
-    {
-        get => _bitLength;
-        set => this.RaiseAndSetIfChanged(ref _bitLength, value);
-    }
 
     public FieldEditorViewModel() { }
 
@@ -61,104 +50,50 @@ public class SchemaEditorResult
     public string? FilePath { get; set; }
 }
 
-public class SchemaEditorViewModel : ViewModelBase
+public partial class SchemaEditorViewModel : ViewModelBase
 {
+    [ObservableProperty]
     private string _name = "New Schema";
-    public string Name
-    {
-        get => _name;
-        set => this.RaiseAndSetIfChanged(ref _name, value);
-    }
 
+    [ObservableProperty]
     private string? _lastSavedPath;
-    public string? LastSavedPath
-    {
-        get => _lastSavedPath;
-        set => this.RaiseAndSetIfChanged(ref _lastSavedPath, value);
-    }
 
+    [ObservableProperty]
     private Endianness _endianness = Endianness.Little;
-    public Endianness Endianness
-    {
-        get => _endianness;
-        set => this.RaiseAndSetIfChanged(ref _endianness, value);
-    }
 
     public ObservableCollection<FieldEditorViewModel> Fields { get; } = [];
 
-    public ReactiveCommand<Unit, Unit> AddFieldCommand { get; }
-    public ReactiveCommand<FieldEditorViewModel, Unit> RemoveFieldCommand { get; }
-    public ReactiveCommand<Unit, SchemaEditorResult?> SaveCommand { get; }
-    public ReactiveCommand<Unit, Unit> SaveToFileCommand { get; }
-    public ReactiveCommand<Unit, Unit> OpenFromFileCommand { get; }
-    public ReactiveCommand<Unit, SchemaEditorResult?> CancelCommand { get; }
+    public event Action<SchemaEditorResult?>? RequestClose;
 
-    public FieldType[] AvailableTypes { get; } = (FieldType[])Enum.GetValues(typeof(FieldType));
-    public Endianness[] AvailableEndianness { get; } = (Endianness[])Enum.GetValues(typeof(Endianness));
-
-    public SchemaEditorViewModel(PacketSchema? existingSchema = null)
+    [RelayCommand]
+    private void AddField()
     {
-        if (existingSchema != null)
+        int nextOffset = 0;
+        if (Fields.Count > 0)
         {
-            LoadFromSchema(existingSchema);
+            var last = Fields[^1];
+            int size = GetTypeBitCount(last.Type);
+            nextOffset = last.BitOffset + (last.BitLength > 0 ? last.BitLength : size);
         }
 
-        AddFieldCommand = ReactiveCommand.Create(AddField);
-        RemoveFieldCommand = ReactiveCommand.Create<FieldEditorViewModel>(f => Fields.Remove(f));
-        SaveToFileCommand = ReactiveCommand.CreateFromTask(SaveToFileAsync);
-        OpenFromFileCommand = ReactiveCommand.CreateFromTask(OpenFromFileAsync);
-        
-        SaveCommand = ReactiveCommand.Create<SchemaEditorResult?>(() => {
-            return new SchemaEditorResult 
-            { 
-                Schema = BuildSchema(),
-                FilePath = LastSavedPath 
-            };
+        Fields.Add(new FieldEditorViewModel 
+        { 
+            Name = $"Field_{Fields.Count + 1}",
+            BitOffset = nextOffset 
         });
-
-        CancelCommand = ReactiveCommand.Create(() => (SchemaEditorResult?)null);
     }
 
-    private void LoadFromSchema(PacketSchema schema)
-    {
-        Name = schema.Name;
-        Endianness = schema.Endianness;
-        Fields.Clear();
-        foreach (var f in schema.Fields)
-            Fields.Add(new FieldEditorViewModel(f));
-    }
+    [RelayCommand]
+    private void RemoveField(FieldEditorViewModel field) => Fields.Remove(field);
 
-    private PacketSchema BuildSchema()
-    {
-        return new PacketSchema
-        {
-            Name = Name,
-            Endianness = Endianness,
-            Fields = Fields.Select(f => f.ToDefinition()).ToList()
-        };
-    }
+    [RelayCommand]
+    private void Save() => RequestClose?.Invoke(new SchemaEditorResult 
+    { 
+        Schema = BuildSchema(),
+        FilePath = LastSavedPath 
+    });
 
-    private async Task OpenFromFileAsync()
-    {
-        var topLevel = (App.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)?.MainWindow;
-        if (topLevel == null) return;
-
-        var files = await topLevel.StorageProvider.OpenFilePickerAsync(new Avalonia.Platform.Storage.FilePickerOpenOptions
-        {
-            Title = "Open Schema File",
-            AllowMultiple = false,
-            FileTypeFilter = [new Avalonia.Platform.Storage.FilePickerFileType("YAML Schema") { Patterns = ["*.yaml", "*.yml"] }]
-        });
-
-        if (files.Count > 0)
-        {
-            var yaml = await File.ReadAllTextAsync(files[0].Path.LocalPath);
-            var schema = new SchemaLoader().Load(yaml);
-            LoadFromSchema(schema);
-            LastSavedPath = files[0].Path.LocalPath;
-        }
-    }
-
+    [RelayCommand]
     private async Task SaveToFileAsync()
     {
         var topLevel = (App.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)?.MainWindow;
@@ -181,21 +116,59 @@ public class SchemaEditorViewModel : ViewModelBase
         }
     }
 
-    private void AddField()
+    [RelayCommand]
+    private async Task OpenFromFileAsync()
     {
-        int nextOffset = 0;
-        if (Fields.Count > 0)
-        {
-            var last = Fields[^1];
-            int size = GetTypeBitCount(last.Type);
-            nextOffset = last.BitOffset + (last.BitLength > 0 ? last.BitLength : size);
-        }
+        var topLevel = (App.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)?.MainWindow;
+        if (topLevel == null) return;
 
-        Fields.Add(new FieldEditorViewModel 
-        { 
-            Name = $"Field_{Fields.Count + 1}",
-            BitOffset = nextOffset 
+        var files = await topLevel.StorageProvider.OpenFilePickerAsync(new Avalonia.Platform.Storage.FilePickerOpenOptions
+        {
+            Title = "Open Schema File",
+            AllowMultiple = false,
+            FileTypeFilter = [new Avalonia.Platform.Storage.FilePickerFileType("YAML Schema") { Patterns = ["*.yaml", "*.yml"] }]
         });
+
+        if (files.Count > 0)
+        {
+            var yaml = await File.ReadAllTextAsync(files[0].Path.LocalPath);
+            var schema = new SchemaLoader().Load(yaml);
+            LoadFromSchema(schema);
+            LastSavedPath = files[0].Path.LocalPath;
+        }
+    }
+
+    [RelayCommand]
+    private void Cancel() => RequestClose?.Invoke(null);
+
+    public FieldType[] AvailableTypes { get; } = Enum.GetValues<FieldType>();
+    public Endianness[] AvailableEndianness { get; } = Enum.GetValues<Endianness>();
+
+    public SchemaEditorViewModel(PacketSchema? existingSchema = null)
+    {
+        if (existingSchema != null)
+        {
+            LoadFromSchema(existingSchema);
+        }
+    }
+
+    private void LoadFromSchema(PacketSchema schema)
+    {
+        Name = schema.Name;
+        Endianness = schema.Endianness;
+        Fields.Clear();
+        foreach (var f in schema.Fields)
+            Fields.Add(new FieldEditorViewModel(f));
+    }
+
+    private PacketSchema BuildSchema()
+    {
+        return new PacketSchema
+        {
+            Name = Name,
+            Endianness = Endianness,
+            Fields = Fields.Select(f => f.ToDefinition()).ToList()
+        };
     }
 
     private int GetTypeBitCount(FieldType type) => type switch

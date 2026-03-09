@@ -1,5 +1,6 @@
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
+using System.IO;
 
 namespace SignalBench.Core.Session;
 
@@ -11,9 +12,12 @@ public class SessionManager
     public SessionManager()
     {
         _serializer = new SerializerBuilder()
+            .WithNamingConvention(UnderscoredNamingConvention.Instance)
             .Build();
 
         _deserializer = new DeserializerBuilder()
+            .WithNamingConvention(UnderscoredNamingConvention.Instance)
+            .IgnoreUnmatchedProperties()
             .Build();
     }
 
@@ -26,6 +30,6 @@ public class SessionManager
     public ProjectSession LoadSession(string path)
     {
         var yaml = File.ReadAllText(path);
-        return _deserializer.Deserialize<ProjectSession>(yaml);
+        return _deserializer.Deserialize<ProjectSession>(yaml) ?? new ProjectSession();
     }
 }

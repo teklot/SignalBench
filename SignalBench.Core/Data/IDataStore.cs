@@ -16,6 +16,7 @@ public interface IDataStore : IDisposable
     List<double> GetSignalData(string fieldName, int? maxPoints = null);
     List<double> GetSignalData(string fieldName, int startIndex, int count);
     List<double> GetSignalData(string fieldName, DateTime startTime);
+    (int start, int end) GetIndices(DateTime startTime, DateTime endTime);
     int GetRowCount();
     void Reset(string dbPath);
     void Clear();

@@ -1,47 +1,58 @@
-using ReactiveUI;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using SignalBench.Core.Session;
 using System.Collections.ObjectModel;
-using System.Reactive;
+using System.Collections.Generic;
+using System;
+using System.Linq;
 
 namespace SignalBench.ViewModels;
 
-public class DerivedSignalViewModel : ViewModelBase
+public partial class DerivedSignalViewModel : ViewModelBase
 {
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(AddCommand))]
     private string _name = "";
-    public string Name
-    {
-        get => _name;
-        set => this.RaiseAndSetIfChanged(ref _name, value);
-    }
 
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(AddCommand))]
     private string _formula = "";
-    public string Formula
-    {
-        get => _formula;
-        set => this.RaiseAndSetIfChanged(ref _formula, value);
-    }
 
+    [ObservableProperty]
     private string? _validationMessage;
-    public string? ValidationMessage
-    {
-        get => _validationMessage;
-        set => this.RaiseAndSetIfChanged(ref _validationMessage, value);
-    }
 
+    [ObservableProperty]
     private bool _isEditMode;
-    public bool IsEditMode
-    {
-        get => _isEditMode;
-        set => this.RaiseAndSetIfChanged(ref _isEditMode, value);
-    }
+
+    public event Action<DerivedSignalResult?>? RequestClose;
 
     public ObservableCollection<string> AvailableFields { get; } = [];
     private readonly List<string> _existingNames;
     private readonly string? _originalName;
 
-    public ReactiveCommand<Unit, DerivedSignalResult?> DeleteCommand { get; }
-    public ReactiveCommand<Unit, DerivedSignalResult?> AddCommand { get; }
-    public ReactiveCommand<Unit, DerivedSignalResult?> CancelCommand { get; }
+    [RelayCommand]
+    private void Delete() => RequestClose?.Invoke(new DerivedSignalResult { Name = Name, Formula = Formula, IsDeleted = true });
+
+    [RelayCommand(CanExecute = nameof(CanAdd))]
+    private void Add() => RequestClose?.Invoke(new DerivedSignalResult { Name = Name, Formula = Formula });
+
+    [RelayCommand]
+    private void Cancel() => RequestClose?.Invoke(null);
+
+    public bool CanAdd()
+    {
+        if (string.IsNullOrWhiteSpace(Name) || string.IsNullOrWhiteSpace(Formula)) return false;
+
+        // If it's a new name or changed name, check for duplicates
+        if (Name != _originalName && _existingNames.Contains(Name, StringComparer.OrdinalIgnoreCase))
+        {
+            ValidationMessage = "A signal with this name already exists.";
+            return false;
+        }
+
+        ValidationMessage = null;
+        return true;
+    }
 
     public DerivedSignalViewModel(IEnumerable<string> availableFields, IEnumerable<string> existingNames, DerivedSignalDefinition? existing = null)
     {
@@ -53,41 +64,8 @@ public class DerivedSignalViewModel : ViewModelBase
             _name = existing.Name;
             _originalName = existing.Name;
             _formula = existing.Formula;
+            _isEditMode = true;
         }
-
-        var canAdd = this.WhenAnyValue(
-            x => x.Name,
-            x => x.Formula,
-            (name, formula) => {
-                if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(formula)) return false;
-                
-                // If it's a new name or changed name, check for duplicates
-                if (name != _originalName && _existingNames.Contains(name, StringComparer.OrdinalIgnoreCase))
-                {
-                    ValidationMessage = "A signal with this name already exists.";
-                    return false;
-                }
-                
-                ValidationMessage = null;
-                return true;
-            });
-
-        DeleteCommand = ReactiveCommand.Create<DerivedSignalResult?>(() =>
-        {
-            return new DerivedSignalResult { Name = Name, Formula = Formula, IsDeleted = true };
-        });
-
-        AddCommand = ReactiveCommand.Create<DerivedSignalResult?>(() =>
-        {
-            ValidationMessage = null;
-            return new DerivedSignalResult
-            {
-                Name = Name,
-                Formula = Formula
-            };
-        }, canAdd);
-
-        CancelCommand = ReactiveCommand.Create(() => (DerivedSignalResult?)null);
     }
 }
 
