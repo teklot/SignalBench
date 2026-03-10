@@ -6,11 +6,11 @@ using System.Linq;
 
 namespace SignalBench.Views;
 
-public partial class CsvImport : Window
+public partial class TextFileImport : Window
 {
-    public CsvImportViewModel? ViewModel => DataContext as CsvImportViewModel;
+    public TextFileImportViewModel? ViewModel => DataContext as TextFileImportViewModel;
 
-    public CsvImport()
+    public TextFileImport()
     {
         InitializeComponent();
         

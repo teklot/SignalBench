@@ -5,24 +5,41 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:mi="using:Material.Icons.Avalonia"
         xmlns:models="using:SignalBench.Core.Models.Schema"
-        mc:Ignorable="d" d:DesignWidth="600" d:DesignHeight="500"
+        mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="600"
         x:Class="SignalBench.Views.SchemaEditor"
         x:DataType="vm:SchemaEditorViewModel"
         Title="Schema Editor"
         WindowStartupLocation="CenterOwner"
-        Width="700" Height="600">
+        Width="1000" Height="700">
+
+    <Window.Styles>
+        <Style Selector="DataGridColumnHeader">
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseLowBrush}"/>
+            <Setter Property="BorderThickness" Value="0,0,1,1"/>
+            <Setter Property="Padding" Value="4,4"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+        </Style>
+    </Window.Styles>
 
     <Grid RowDefinitions="*, Auto">
         <Grid Grid.Row="0" RowDefinitions="Auto, Auto, *">
             <!-- Header Info -->
             <Border Grid.Row="0" BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" BorderThickness="0,0,0,1" Padding="20">
-                <Grid ColumnDefinitions="*, 150">
+                <Grid ColumnDefinitions="*, 150, 150">
                     <StackPanel Spacing="8">
                         <TextBlock Text="SCHEMA NAME" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
                         <TextBox Text="{Binding Name}" Watermark="Enter schema name..."/>
                     </StackPanel>
                     
                     <StackPanel Grid.Column="1" Spacing="8" Margin="20,0,0,0">
+                        <TextBlock Text="SYNC WORD (HEX)" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                        <TextBox Text="{Binding SyncWordHex}" Watermark="e.g. AA55" MaxLength="4"/>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="2" Spacing="8" Margin="20,0,0,0">
                         <TextBlock Text="ENDIANNESS" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
                         <ComboBox HorizontalAlignment="Stretch" 
                                   ItemsSource="{Binding AvailableEndianness}"
@@ -33,7 +50,8 @@
 
             <!-- Toolbar -->
             <Border Grid.Row="1" Background="{DynamicResource SystemControlBackgroundListLowBrush}" Padding="20,10">
-                <StackPanel Orientation="Horizontal" Spacing="8">                    <Button Command="{Binding AddFieldCommand}" Classes="accent">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Button Command="{Binding AddFieldCommand}" Classes="accent">
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <mi:MaterialIcon Kind="Plus" Width="16" Height="16"/>
                             <TextBlock Text="ADD FIELD" FontWeight="Bold" FontSize="11" VerticalAlignment="Center"/>
@@ -46,58 +64,109 @@
                             <TextBlock Text="OPEN FROM FILE" FontWeight="Bold" FontSize="11" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Button>
-                    <Button Command="{Binding SaveToFileCommand}">
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <mi:MaterialIcon Kind="ContentSaveOutline" Width="16" Height="16"/>
-                            <TextBlock Text="SAVE TO FILE" FontWeight="Bold" FontSize="11" VerticalAlignment="Center"/>
-                        </StackPanel>
-                    </Button>
                 </StackPanel>
             </Border>
 
-            <!-- Fields List -->
-            <Border Grid.Row="2" Padding="20">
-                <Border BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" BorderThickness="1">
-                    <DataGrid ItemsSource="{Binding Fields}"
-                              AutoGenerateColumns="False"
-                              GridLinesVisibility="All"
-                              HeadersVisibility="All"
-                              Background="{DynamicResource SystemControlBackgroundAltHighBrush}">
-                        <DataGrid.Columns>
-                            <DataGridTextColumn Header="NAME" Binding="{Binding Name}" Width="*"/>
-                            <DataGridTemplateColumn Header="TYPE" Width="120">
-                                <DataGridTemplateColumn.CellTemplate>
-                                    <DataTemplate>
-                                        <TextBlock Text="{Binding Type}" VerticalAlignment="Center" Margin="10,0"/>
-                                    </DataTemplate>
-                                </DataGridTemplateColumn.CellTemplate>
-                                <DataGridTemplateColumn.CellEditingTemplate>
-                                    <DataTemplate>
-                                        <ComboBox HorizontalAlignment="Stretch"
-                                                  ItemsSource="{Binding $parent[Window].((vm:SchemaEditorViewModel)DataContext).AvailableTypes}"
-                                                  SelectedItem="{Binding Type}"/>
-                                    </DataTemplate>
-                                </DataGridTemplateColumn.CellEditingTemplate>
-                            </DataGridTemplateColumn>
-                            <DataGridTextColumn Header="BIT OFFSET" Binding="{Binding BitOffset}" Width="100"/>
-                            <DataGridTextColumn Header="BIT LENGTH" Binding="{Binding BitLength}" Width="100"/>
-                            <DataGridTemplateColumn Width="50">
-                                <DataGridTemplateColumn.CellTemplate>
-                                    <DataTemplate>
-                                        <Button Command="{Binding $parent[Window].((vm:SchemaEditorViewModel)DataContext).RemoveFieldCommand}"
-                                                CommandParameter="{Binding}"
-                                                Background="Transparent"
-                                                BorderThickness="0"
-                                                HorizontalAlignment="Center">
-                                            <mi:MaterialIcon Kind="DeleteOutline" Foreground="Red" Width="16" Height="16"/>
-                                        </Button>
-                                    </DataTemplate>
-                                </DataGridTemplateColumn.CellTemplate>
-                            </DataGridTemplateColumn>
-                        </DataGrid.Columns>
-                    </DataGrid>
+            <!-- Fields List & Details -->
+            <Grid Grid.Row="2" ColumnDefinitions="*, 4, 320">
+                <Border Grid.Column="0" Padding="20">
+                    <Border BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" BorderThickness="1">
+                        <DataGrid ItemsSource="{Binding Fields}"
+                                  SelectedItem="{Binding SelectedField}"
+                                  AutoGenerateColumns="False"
+                                  GridLinesVisibility="All"
+                                  HeadersVisibility="All"
+                                  CanUserResizeColumns="True"
+                                  Background="{DynamicResource SystemControlBackgroundAltHighBrush}">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="NAME" Binding="{Binding Name}" Width="*"/>
+                                <DataGridTemplateColumn Header="TYPE">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding Type}" VerticalAlignment="Center" Margin="10,0" FontSize="12"/>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                    <DataGridTemplateColumn.CellEditingTemplate>
+                                        <DataTemplate>
+                                            <ComboBox HorizontalAlignment="Stretch"
+                                                      ItemsSource="{Binding $parent[Window].((vm:SchemaEditorViewModel)DataContext).AvailableTypes}"
+                                                      SelectedItem="{Binding Type}"/>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellEditingTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTextColumn Header="SCALE" Binding="{Binding Scale}"/>
+                                <DataGridTextColumn Header="BIAS" Binding="{Binding Offset}"/>
+                                <DataGridTextColumn Header="BOFF" Binding="{Binding BitOffset}"/>
+                                <DataGridTextColumn Header="BLEN" Binding="{Binding BitLength}"/>
+                                <DataGridTemplateColumn>
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <Button Command="{Binding $parent[Window].((vm:SchemaEditorViewModel)DataContext).RemoveFieldCommand}"
+                                                    CommandParameter="{Binding}"
+                                                    Background="Transparent"
+                                                    BorderThickness="0"
+                                                    HorizontalAlignment="Center"
+                                                    Padding="0">
+                                                <mi:MaterialIcon Kind="DeleteOutline" Foreground="#e81123" Width="16" Height="16"/>
+                                            </Button>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </Border>
                 </Border>
-            </Border>
+
+                <!-- Grid Splitter -->
+                <GridSplitter Grid.Column="1" Width="4" Background="Transparent" ResizeDirection="Columns" Margin="0,20"/>
+
+                <!-- Sidebar Details -->
+                <Border Grid.Column="2" 
+                        Background="{DynamicResource SystemControlBackgroundListLowBrush}"
+                        BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
+                        BorderThickness="1,0,0,0"
+                        Padding="15">
+                    <StackPanel Spacing="15" IsEnabled="{Binding SelectedField, Converter={x:Static ObjectConverters.IsNotNull}}">
+                        <TextBlock Text="FIELD DETAILS" FontWeight="Bold" FontSize="12" Margin="0,0,0,5"/>
+                        
+                        <StackPanel Spacing="5">
+                            <TextBlock Text="UNIT" FontSize="11"/>
+                            <TextBox Text="{Binding SelectedField.Unit}" Watermark="e.g. V, Hz, °C"/>
+                        </StackPanel>
+
+                        <StackPanel Spacing="5">
+                            <TextBlock Text="DESCRIPTION" FontSize="11"/>
+                            <TextBox Text="{Binding SelectedField.Description}" 
+                                     AcceptsReturn="True" 
+                                     Height="80" 
+                                     TextWrapping="Wrap"
+                                     Watermark="Field notes..."/>
+                        </StackPanel>
+
+                        <Border Height="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" Margin="0,5"/>
+                        
+                        <Grid ColumnDefinitions="*, *" RowDefinitions="Auto, Auto">
+                            <StackPanel Grid.Row="0" Grid.Column="0" Spacing="5" Margin="0,0,5,5">
+                                <TextBlock Text="SCALE" FontSize="11"/>
+                                <NumericUpDown Value="{Binding SelectedField.Scale}" Increment="0.001" Height="28"/>
+                            </StackPanel>
+                            <StackPanel Grid.Row="0" Grid.Column="1" Spacing="5" Margin="5,0,0,5">
+                                <TextBlock Text="BIAS (OFFSET)" FontSize="11"/>
+                                <NumericUpDown Value="{Binding SelectedField.Offset}" Increment="0.1" Height="28"/>
+                            </StackPanel>
+                            
+                            <StackPanel Grid.Row="1" Grid.Column="0" Spacing="5" Margin="0,5,5,0">
+                                <TextBlock Text="BIT OFFSET (BOFF)" FontSize="11"/>
+                                <NumericUpDown Value="{Binding SelectedField.BitOffset}" Minimum="0" Height="28"/>
+                            </StackPanel>
+                            <StackPanel Grid.Row="1" Grid.Column="1" Spacing="5" Margin="5,5,0,0">
+                                <TextBlock Text="BIT LENGTH (BLEN)" FontSize="11"/>
+                                <NumericUpDown Value="{Binding SelectedField.BitLength}" Minimum="0" Height="28"/>
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+            </Grid>
         </Grid>
 
         <!-- Footer Actions -->
@@ -108,7 +177,7 @@
                 BorderThickness="0,1,0,0">
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="12">
                 <Button Content="Cancel" Command="{Binding CancelCommand}" Width="100" HorizontalContentAlignment="Center"/>
-                <Button Content="Save Schema" Command="{Binding SaveCommand}" Width="120" HorizontalContentAlignment="Center" Classes="accent"/>
+                <Button Content="Save to File" Command="{Binding SaveAndCloseCommand}" Width="120" HorizontalContentAlignment="Center" Classes="accent"/>
             </StackPanel>
         </Border>
     </Grid>

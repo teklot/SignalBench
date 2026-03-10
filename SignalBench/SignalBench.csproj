@@ -34,6 +34,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Update="ViewModels\MainWindowViewModel.*.cs">
+      <DependentUpon>MainWindowViewModel.cs</DependentUpon>
+    </Compile>
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\SignalBench.Core\SignalBench.Core.csproj" />
   </ItemGroup>
 </Project>

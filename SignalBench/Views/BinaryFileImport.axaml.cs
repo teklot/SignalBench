@@ -6,11 +6,11 @@ using System.Linq;
 
 namespace SignalBench.Views;
 
-public partial class BinaryImport : Window
+public partial class BinaryFileImport : Window
 {
-    public BinaryImportViewModel? ViewModel => DataContext as BinaryImportViewModel;
+    public BinaryFileImportViewModel? ViewModel => DataContext as BinaryFileImportViewModel;
 
-    public BinaryImport()
+    public BinaryFileImport()
     {
         InitializeComponent();
         

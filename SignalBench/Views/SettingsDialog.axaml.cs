@@ -3,11 +3,11 @@ using SignalBench.ViewModels;
 
 namespace SignalBench.Views;
 
-public partial class SettingsWindow : Window
+public partial class SettingsDialog : Window
 {
-    public SettingsViewModel? ViewModel => DataContext as SettingsViewModel;
+    public SettingsDialogViewModel? ViewModel => DataContext as SettingsDialogViewModel;
 
-    public SettingsWindow()
+    public SettingsDialog()
     {
         InitializeComponent();
         

@@ -18,14 +18,17 @@ public partial class AboutWindow : Window
         var featureService = (App.Current as App)?.Services?.GetService<IFeatureService>();
         if (featureService != null)
         {
-            LicenseStatusText.Text = featureService.CurrentStatus switch
+            var text = featureService.CurrentStatus switch
             {
                 LicenseStatus.Pro => "PRO Edition",
-                LicenseStatus.Free => "Community Edition",
+                LicenseStatus.Free => "",
                 LicenseStatus.Expired => "Trial Expired",
                 LicenseStatus.Invalid => "Invalid License",
-                _ => "Community Edition"
+                _ => ""
             };
+            
+            LicenseStatusLabel.Text = text;
+            LicenseStatusBorder.IsVisible = !string.IsNullOrEmpty(text);
         }
     }
 

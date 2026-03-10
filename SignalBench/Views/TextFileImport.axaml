@@ -5,9 +5,9 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:mi="using:Material.Icons.Avalonia"
         mc:Ignorable="d" d:DesignWidth="600" d:DesignHeight="500"
-        x:Class="SignalBench.Views.CsvImport"
-        x:DataType="vm:CsvImportViewModel"
-        Title="Import Delimited File (CSV, TSV, etc.)"
+        x:Class="SignalBench.Views.TextFileImport"
+        x:DataType="vm:TextFileImportViewModel"
+        Title="Import Delimited Text File"
         WindowStartupLocation="CenterOwner"
         Width="700" Height="550">
 
@@ -29,11 +29,11 @@
                             <TextBox Grid.Column="0" 
                                      Text="{Binding FilePath}" 
                                      IsReadOnly="True"
-                                     Watermark="Select CSV file..." />
+                                     Watermark="Select any delimited text file..." />
                             <Button Grid.Column="1" 
                                     Command="{Binding BrowseCommand}" 
                                     Margin="8,0,0,0"
-                                    ToolTip.Tip="Open CSV File">
+                                    ToolTip.Tip="Open Delimited Text File">
                                 <mi:MaterialIcon Kind="FolderOpenOutline" Width="16" Height="16"/>
                             </Button>
                         </Grid>

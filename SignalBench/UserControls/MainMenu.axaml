@@ -1,0 +1,156 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SignalBench.ViewModels"
+             xmlns:mi="using:Material.Icons.Avalonia"
+             xmlns:sdk="using:SignalBench.SDK.Interfaces"
+             xmlns:converters="using:SignalBench.Converters"
+             x:Class="SignalBench.UserControls.MainMenu"
+             x:DataType="vm:MainWindowViewModel">
+    <Menu BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}" BorderThickness="0,0,0,1">
+        <MenuItem Header="_File">
+            <MenuItem Header="_New..." ItemsSource="{Binding AvailableTabFactories}" IsEnabled="{Binding CanAddPlot}">
+                <MenuItem.Icon>
+                    <mi:MaterialIcon Kind="Plus" Width="20" Height="20"/>
+                </MenuItem.Icon>
+                <MenuItem.ItemTemplate>
+                    <DataTemplate x:DataType="sdk:ITabFactory">
+                        <MenuItem Header="{Binding DisplayName}" 
+                                  Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).AddTabCommand}"
+                                  CommandParameter="{Binding}">
+                            <MenuItem.Icon>
+                                <mi:MaterialIcon Kind="{Binding Icon}" Width="16" Height="16"/>
+                            </MenuItem.Icon>
+                        </MenuItem>
+                    </DataTemplate>
+                </MenuItem.ItemTemplate>
+            </MenuItem>
+            <Separator/>
+            <MenuItem Header="Open _Text File..." Command="{Binding OpenCsvCommand}">
+                <MenuItem.Icon>
+                    <mi:MaterialIcon Kind="FileTableOutline" Width="20" Height="20"/>
+                </MenuItem.Icon>
+            </MenuItem>
+            <MenuItem Header="Open _Binary File..." Command="{Binding OpenBinaryCommand}">
+                <MenuItem.Icon>
+                    <Grid Width="20" Height="20">
+                        <mi:MaterialIcon Kind="FileOutline" Width="20" Height="20"/>
+                        <TextBlock Text="101&#x0a;010" 
+                                   FontSize="5" 
+                                   FontWeight="Black" 
+                                   Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
+                                   HorizontalAlignment="Center" 
+                                   VerticalAlignment="Center"
+                                   Margin="0,3,0,0"
+                                   LineHeight="5"
+                                   TextAlignment="Center"/>
+                    </Grid>
+                </MenuItem.Icon>
+            </MenuItem>
+            <MenuItem Header="Recent Telemetry" ItemsSource="{Binding RecentFiles}">
+                <MenuItem.ItemTemplate>
+                    <DataTemplate x:DataType="vm:RecentFileViewModel">
+                        <Button Content="{Binding DisplayName}"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).OpenRecentFileCommand}"
+                                CommandParameter="{Binding Path}"
+                                Padding="0"/>
+                    </DataTemplate>
+                </MenuItem.ItemTemplate>
+            </MenuItem>
+            <Separator/>
+            <MenuItem Header="Open _Session..." Command="{Binding OpenSessionCommand}">
+                <MenuItem.Icon>
+                    <mi:MaterialIcon Kind="FolderOpenOutline" Width="20" Height="20"/>
+                </MenuItem.Icon>
+            </MenuItem>
+            <MenuItem Header="_Save Session..." Command="{Binding SaveSessionCommand}">
+                <MenuItem.Icon>
+                    <mi:MaterialIcon Kind="ContentSaveOutline" Width="20" Height="20"/>
+                </MenuItem.Icon>
+            </MenuItem>
+            <Separator/>
+            <MenuItem Header="Close _All" Command="{Binding CloseAllCommand}">
+                <MenuItem.Icon>
+                    <mi:MaterialIcon Kind="WindowClose" Width="20" Height="20"/>
+                </MenuItem.Icon>
+            </MenuItem>
+            <Separator/>
+            <MenuItem Header="_Export CSV..." Command="{Binding ExportCsvCommand}">
+                <MenuItem.Icon>
+                    <mi:MaterialIcon Kind="FileExportOutline" Width="20" Height="20"/>
+                </MenuItem.Icon>
+            </MenuItem>
+            <Separator/>
+            <MenuItem Header="E_xit" Command="{Binding ExitCommand}"/>
+        </MenuItem>
+        
+        <MenuItem Header="_View">
+            <MenuItem Header="Signals Panel" 
+                      Command="{Binding ToggleSignalsPaneCommand}">
+                <MenuItem.Icon>
+                    <mi:MaterialIcon Kind="Check" IsVisible="{Binding IsSignalsPaneOpen}" Width="18" Height="18" Foreground="{DynamicResource SystemAccentColor}"/>
+                </MenuItem.Icon>
+            </MenuItem>
+            <MenuItem Header="Toolbar" 
+                      Command="{Binding ToggleToolbarCommand}">
+                <MenuItem.Icon>
+                    <mi:MaterialIcon Kind="Check" IsVisible="{Binding IsToolbarVisible}" Width="18" Height="18" Foreground="{DynamicResource SystemAccentColor}"/>
+                </MenuItem.Icon>
+            </MenuItem>
+        </MenuItem>
+
+
+        <MenuItem Header="_Tools">
+            <MenuItem Header="Schema _Editor..." Command="{Binding OpenSchemaEditorCommand}">
+                <MenuItem.Icon>
+                    <mi:MaterialIcon Kind="FileDocumentEditOutline" Width="20" Height="20"/>
+                </MenuItem.Icon>
+            </MenuItem>
+            <Separator/>
+            <MenuItem Header="_Serial Stream Settings..." Command="{Binding OpenSerialSettingsCommand}">
+                <MenuItem.Icon>
+                    <mi:MaterialIcon Kind="SerialPort" Width="20" Height="20"/>
+                </MenuItem.Icon>
+            </MenuItem>
+            <MenuItem Header="_Network Stream Settings..." Command="{Binding OpenNetworkSettingsCommand}">
+                <MenuItem.Icon>
+                    <mi:MaterialIcon Kind="Lan" Width="20" Height="20"/>
+                </MenuItem.Icon>
+            </MenuItem>
+            <MenuItem Header="Record Live Stream"
+                      Command="{Binding ToggleRecordingCommand}"
+                      IsEnabled="{Binding IsStreaming}">
+                <MenuItem.Icon>
+                    <mi:MaterialIcon Kind="{Binding IsRecording, Converter={x:Static converters:BoolToRecordIconConverter.Instance}}" Width="20" Height="20" Foreground="{Binding IsRecording, Converter={x:Static converters:BoolToColorConverter.Instance}, ConverterParameter='Recording'}"/>
+                </MenuItem.Icon>
+            </MenuItem>
+            <Separator/>
+            <MenuItem Header="_Create Derived Signal..." Command="{Binding CreateDerivedSignalCommand}">
+                <MenuItem.Icon>
+                    <mi:MaterialIcon Kind="FunctionVariant" Width="20" Height="20"/>
+                </MenuItem.Icon>
+            </MenuItem>
+            <Separator/>
+            <MenuItem Header="_Settings..." Command="{Binding OpenSettingsCommand}">
+                <MenuItem.Icon>
+                    <mi:MaterialIcon Kind="SettingsOutline" Width="20" Height="20"/>
+                </MenuItem.Icon>
+            </MenuItem>
+        </MenuItem>
+
+        <MenuItem Header="_Help">
+            <MenuItem Header="_Manage License..." Command="{Binding OpenLicenseSettingsCommand}" IsVisible="False">
+                <MenuItem.Icon>
+                    <mi:MaterialIcon Kind="Key" Width="20" Height="20"/>
+                </MenuItem.Icon>
+            </MenuItem>
+            <Separator/>
+            <MenuItem Header="_About" Command="{Binding OpenAboutCommand}">
+                <MenuItem.Icon>
+                    <mi:MaterialIcon Kind="InformationOutline" Width="20" Height="20"/>
+                </MenuItem.Icon>
+            </MenuItem>
+        </MenuItem>
+    </Menu>
+</UserControl>

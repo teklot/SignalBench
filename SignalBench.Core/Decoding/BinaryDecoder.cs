@@ -9,9 +9,29 @@ public sealed class BinaryDecoder
     public DecodedPacket Decode(ReadOnlySpan<byte> data, PacketSchema schema)
     {
         var fields = new Dictionary<string, object>();
+        DecodeFields(data, schema.Fields, schema.Endianness, fields, "");
 
-        foreach (var field in schema.Fields)
+        return new DecodedPacket 
+        { 
+            SchemaName = schema.Name, 
+            Timestamp = DateTime.Now, 
+            Fields = fields 
+        };
+    }
+
+    private void DecodeFields(ReadOnlySpan<byte> data, IEnumerable<FieldDefinition> fieldDefs, Endianness endian, Dictionary<string, object> results, string prefix)
+    {
+        foreach (var field in fieldDefs)
         {
+            string fullName = string.IsNullOrEmpty(prefix) ? field.Name : $"{prefix}/{field.Name}";
+
+            if (field.Fields != null && field.Fields.Count > 0)
+            {
+                // Recursive call for nested fields
+                DecodeFields(data, field.Fields, endian, results, fullName);
+                continue;
+            }
+
             int byteOffset = field.BitOffset / 8;
             int bitOffsetInByte = field.BitOffset % 8;
 
@@ -20,43 +40,38 @@ public sealed class BinaryDecoder
             int neededBytes = GetTypeSize(field.Type, field.BitLength);
             if (byteOffset + neededBytes > data.Length) continue;
 
-            object value = field.Type switch
+            double rawValue = field.Type switch
             {
-                FieldType.Uint8 => (object)ExtractBits(data[byteOffset], bitOffsetInByte, field.BitLength),
-                FieldType.Uint16 => (object)ReadUInt16(data, byteOffset, bitOffsetInByte, field.BitLength, schema.Endianness),
-                FieldType.Uint32 => (object)ReadUInt32(data, byteOffset, bitOffsetInByte, field.BitLength, schema.Endianness),
-                FieldType.Uint64 => (object)(schema.Endianness == Endianness.Little
+                FieldType.Uint8 => ExtractBits(data[byteOffset], bitOffsetInByte, field.BitLength),
+                FieldType.Uint16 => ReadUInt16(data, byteOffset, bitOffsetInByte, field.BitLength, endian),
+                FieldType.Uint32 => ReadUInt32(data, byteOffset, bitOffsetInByte, field.BitLength, endian),
+                FieldType.Uint64 => (double)(endian == Endianness.Little
                     ? BinaryPrimitives.ReadUInt64LittleEndian(data.Slice(byteOffset, 8))
                     : BinaryPrimitives.ReadUInt64BigEndian(data.Slice(byteOffset, 8))),
-                FieldType.Int8 => (object)unchecked((sbyte)data[byteOffset]),
-                FieldType.Int16 => (object)(schema.Endianness == Endianness.Little
+                FieldType.Int8 => unchecked((sbyte)data[byteOffset]),
+                FieldType.Int16 => (endian == Endianness.Little
                     ? BinaryPrimitives.ReadInt16LittleEndian(data.Slice(byteOffset, 2))
                     : BinaryPrimitives.ReadInt16BigEndian(data.Slice(byteOffset, 2))),
-                FieldType.Int32 => (object)(schema.Endianness == Endianness.Little
+                FieldType.Int32 => (endian == Endianness.Little
                     ? BinaryPrimitives.ReadInt32LittleEndian(data.Slice(byteOffset, 4))
                     : BinaryPrimitives.ReadInt32BigEndian(data.Slice(byteOffset, 4))),
-                FieldType.Int64 => (object)(schema.Endianness == Endianness.Little
+                FieldType.Int64 => (double)(endian == Endianness.Little
                     ? BinaryPrimitives.ReadInt64LittleEndian(data.Slice(byteOffset, 8))
                     : BinaryPrimitives.ReadInt64BigEndian(data.Slice(byteOffset, 8))),
-                FieldType.Float32 => (object)(schema.Endianness == Endianness.Little
+                FieldType.Float32 => (endian == Endianness.Little
                     ? BinaryPrimitives.ReadSingleLittleEndian(data.Slice(byteOffset, 4))
                     : BinaryPrimitives.ReadSingleBigEndian(data.Slice(byteOffset, 4))),
-                FieldType.Float64 => (object)(schema.Endianness == Endianness.Little
+                FieldType.Float64 => (endian == Endianness.Little
                     ? BinaryPrimitives.ReadDoubleLittleEndian(data.Slice(byteOffset, 8))
                     : BinaryPrimitives.ReadDoubleBigEndian(data.Slice(byteOffset, 8))),
-                FieldType.Bool => (object)(data[byteOffset] != 0),
-                _ => (object)0
+                FieldType.Bool => (data[byteOffset] != 0 ? 1.0 : 0.0),
+                _ => 0.0
             };
 
-            fields[field.Name] = value;
+            // Apply Scale and Offset
+            double finalValue = (rawValue * field.Scale) + field.Offset;
+            results[fullName] = finalValue;
         }
-
-        return new DecodedPacket 
-        { 
-            SchemaName = schema.Name, 
-            Timestamp = DateTime.Now, 
-            Fields = fields 
-        };
     }
 
     private uint ExtractBits(byte b, int offset, int length)

@@ -1,0 +1,157 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SignalBench.ViewModels"
+             xmlns:mi="using:Material.Icons.Avalonia"
+             xmlns:converters="using:SignalBench.Converters"
+             x:Class="SignalBench.UserControls.RibbonToolbar"
+             x:DataType="vm:MainWindowViewModel">
+    <Border Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}" BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}" BorderThickness="0,0,0,1" IsVisible="{Binding IsToolbarVisible}">
+        <StackPanel Orientation="Horizontal" Margin="5,0">
+            <!-- SESSION GROUP -->
+            <StackPanel Orientation="Vertical" Margin="8,6">
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="2">
+                    <Button Classes="toolbar" Command="{Binding OpenSessionCommand}" ToolTip.Tip="Open Session">
+                        <mi:MaterialIcon Kind="FolderOpenOutline" Width="22" Height="22" Foreground="{DynamicResource SystemAccentColor}"/>
+                    </Button>
+                    <Button Classes="toolbar" Command="{Binding SaveSessionCommand}" ToolTip.Tip="Save Session">
+                        <mi:MaterialIcon Kind="ContentSaveOutline" Width="22" Height="22" Foreground="{DynamicResource SystemAccentColor}"/>
+                    </Button>
+                    <Button Classes="toolbar" Command="{Binding CloseAllCommand}" ToolTip.Tip="Close All / Reset Workspace">
+                        <mi:MaterialIcon Kind="WindowClose" Width="22" Height="22" Foreground="#d83b01"/>
+                    </Button>
+                </StackPanel>
+                <TextBlock Text="SESSION" FontSize="9" FontWeight="SemiBold" HorizontalAlignment="Center" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" Margin="0,2,0,0"/>
+            </StackPanel>
+            <Border Width="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" VerticalAlignment="Stretch"/>
+            
+            <!-- DATA FILE GROUP -->
+            <StackPanel Orientation="Vertical" Margin="8,6">
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="2">
+                    <Button Classes="toolbar" Command="{Binding OpenCsvCommand}" ToolTip.Tip="Open Text File Telemetry">
+                        <mi:MaterialIcon Kind="FileTableOutline" Width="22" Height="22" Foreground="{DynamicResource SystemAccentColor}"/>
+                    </Button>
+                    <Button Classes="toolbar" Command="{Binding OpenBinaryCommand}" ToolTip.Tip="Open Binary Telemetry">
+                        <Grid Width="22" Height="22">
+                            <mi:MaterialIcon Kind="FileOutline" Width="22" Height="22" Foreground="{DynamicResource SystemAccentColor}"/>
+                            <TextBlock Text="101&#x0a;010" 
+                                       FontSize="6.5" 
+                                       FontWeight="Black" 
+                                       Foreground="{DynamicResource SystemAccentColor}"
+                                       HorizontalAlignment="Center" 
+                                       VerticalAlignment="Center"
+                                       Margin="0,4,0,0"
+                                       LineHeight="6.5"
+                                       TextAlignment="Center"/>
+                        </Grid>
+                    </Button>
+                    <Button Classes="toolbar" Command="{Binding ExportCsvCommand}" ToolTip.Tip="Export CSV">
+                        <mi:MaterialIcon Kind="FileExportOutline" Width="22" Height="22" Foreground="{DynamicResource SystemAccentColor}"/>
+                    </Button>
+                </StackPanel>
+                <TextBlock Text="DATA FILE" FontSize="9" FontWeight="SemiBold" HorizontalAlignment="Center" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" Margin="0,2,0,0"/>
+            </StackPanel>
+            <Border Width="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" VerticalAlignment="Stretch"/>
+
+            <!-- STREAM GROUP -->
+            <StackPanel Orientation="Vertical" Margin="8,6">
+                <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+                    <Button Classes="toolbar" Command="{Binding ToggleStreamingCommand}" ToolTip.Tip="Serial Stream">
+                        <Grid Width="24" Height="24" ClipToBounds="False">
+                            <mi:MaterialIcon Kind="SerialPort" Width="24" Height="24" Foreground="{DynamicResource SystemAccentColor}"/>
+                            
+                            <!-- Streaming Badge (Pause/Play) -->
+                            <Border Background="Transparent" 
+                                    CornerRadius="10"
+                                    Padding="1"
+                                    HorizontalAlignment="Right" 
+                                    VerticalAlignment="Top" 
+                                    Margin="0,-4,-8,0">
+                                <Border.IsVisible>
+                                    <MultiBinding Converter="{x:Static converters:StreamingStateToBadgeVisibilityConverter.Instance}">
+                                        <Binding Path="IsSerialStreaming"/>
+                                        <Binding Path="IsSerialPaused"/>
+                                    </MultiBinding>
+                                </Border.IsVisible>
+                                <mi:MaterialIcon Width="10" Height="10">
+                                    <mi:MaterialIcon.Kind>
+                                        <MultiBinding Converter="{x:Static converters:StreamingStateToBadgeIconConverter.Instance}">
+                                            <Binding Path="IsSerialStreaming"/>
+                                            <Binding Path="IsSerialPaused"/>
+                                        </MultiBinding>
+                                    </mi:MaterialIcon.Kind>
+                                    <mi:MaterialIcon.Foreground>
+                                        <MultiBinding Converter="{x:Static converters:StreamingStateToIndicatorColorConverter.Instance}">
+                                            <Binding Path="IsSerialStreaming"/>
+                                            <Binding Path="IsSerialPaused"/>
+                                        </MultiBinding>
+                                    </mi:MaterialIcon.Foreground>
+                                </mi:MaterialIcon>
+                            </Border>
+                        </Grid>
+                    </Button>
+                    <Button Classes="toolbar" Command="{Binding ToggleUdpStreamingCommand}" ToolTip.Tip="Network Stream">
+                        <Grid Width="24" Height="24" ClipToBounds="False">
+                            <mi:MaterialIcon Kind="Lan" Width="24" Height="24" Foreground="{DynamicResource SystemAccentColor}"/>
+                            
+                            <!-- Streaming Badge (Pause/Play) -->
+                            <Border Background="Transparent" 
+                                    CornerRadius="10"
+                                    Padding="1"
+                                    HorizontalAlignment="Right" 
+                                    VerticalAlignment="Top" 
+                                    Margin="0,-4,-4,0">
+                                <Border.IsVisible>
+                                    <MultiBinding Converter="{x:Static converters:StreamingStateToBadgeVisibilityConverter.Instance}">
+                                        <Binding Path="IsNetworkStreaming"/>
+                                        <Binding Path="IsNetworkPaused"/>
+                                    </MultiBinding>
+                                </Border.IsVisible>
+                                <mi:MaterialIcon Width="10" Height="10">
+                                    <mi:MaterialIcon.Kind>
+                                        <MultiBinding Converter="{x:Static converters:StreamingStateToBadgeIconConverter.Instance}">
+                                            <Binding Path="IsNetworkStreaming"/>
+                                            <Binding Path="IsNetworkPaused"/>
+                                        </MultiBinding>
+                                    </mi:MaterialIcon.Kind>
+                                    <mi:MaterialIcon.Foreground>
+                                        <MultiBinding Converter="{x:Static converters:StreamingStateToIndicatorColorConverter.Instance}">
+                                            <Binding Path="IsNetworkStreaming"/>
+                                            <Binding Path="IsNetworkPaused"/>
+                                        </MultiBinding>
+                                    </mi:MaterialIcon.Foreground>
+                                </mi:MaterialIcon>
+                            </Border>
+                        </Grid>
+                    </Button>
+                    <Button Classes="toolbar" Command="{Binding ToggleRecordingCommand}" ToolTip.Tip="{Binding IsRecording, Converter={x:Static converters:BoolToRecordIconConverter.Instance}, ConverterParameter='Tooltip'}" IsEnabled="{Binding IsStreaming}">
+                        <mi:MaterialIcon Kind="{Binding IsRecording, Converter={x:Static converters:BoolToRecordIconConverter.Instance}}" Width="24" Height="24" Foreground="{Binding IsRecording, Converter={x:Static converters:BoolToColorConverter.Instance}, ConverterParameter='Recording'}"/>
+                    </Button>
+                </StackPanel>
+                <TextBlock Text="STREAM" FontSize="9" FontWeight="SemiBold" HorizontalAlignment="Center" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" Margin="0,2,0,0"/>
+            </StackPanel>
+            <Border Width="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" VerticalAlignment="Stretch"/>
+            
+            <!-- SCHEMA GROUP -->
+            <StackPanel Orientation="Vertical" Margin="8,6">
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="2">
+                    <Button Classes="toolbar" Command="{Binding OpenSchemaEditorCommand}" ToolTip.Tip="Schema Editor (Create or Edit)">
+                        <mi:MaterialIcon Kind="FileDocumentEditOutline" Width="22" Height="22" Foreground="{DynamicResource SystemAccentColor}"/>
+                    </Button>
+                    <Button Classes="toolbar" Command="{Binding CreateDerivedSignalCommand}" ToolTip.Tip="Create Derived Signal">
+                        <mi:MaterialIcon Kind="FunctionVariant" Width="22" Height="22" Foreground="{DynamicResource SystemAccentColor}"/>
+                    </Button>
+                </StackPanel>
+                <TextBlock Text="SCHEMA" FontSize="9" FontWeight="SemiBold" HorizontalAlignment="Center" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" Margin="0,2,0,0"/>
+            </StackPanel>
+            <Border Width="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" VerticalAlignment="Stretch"/>
+            
+            <!-- APP GROUP -->
+            <StackPanel Orientation="Vertical" Margin="8,6" VerticalAlignment="Center">
+                <Button Classes="toolbar" Command="{Binding OpenSettingsCommand}" ToolTip.Tip="Settings" HorizontalAlignment="Center">
+                    <mi:MaterialIcon Kind="SettingsOutline" Width="22" Height="22" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                </Button>
+                <TextBlock Text="APP" FontSize="9" FontWeight="SemiBold" HorizontalAlignment="Center" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" Margin="0,2,0,0"/>
+            </StackPanel>
+        </StackPanel>
+    </Border>
+</UserControl>

@@ -5,9 +5,9 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:mi="using:Material.Icons.Avalonia"
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
-        x:Class="SignalBench.Views.BinaryImport"
-        x:DataType="vm:BinaryImportViewModel"
-        Title="Import Binary"
+        x:Class="SignalBench.Views.BinaryFileImport"
+        x:DataType="vm:BinaryFileImportViewModel"
+        Title="Import Binary File"
         WindowStartupLocation="CenterOwner"
         Width="900" Height="650">
 

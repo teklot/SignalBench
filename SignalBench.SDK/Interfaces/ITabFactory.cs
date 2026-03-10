@@ -1,6 +1,6 @@
 namespace SignalBench.SDK.Interfaces;
 
-public interface ITabFactory
+public interface ITabFactory : IPlugin
 {
     /// <summary>
     /// Unique ID for the tab type (e.g. "SignalBench.Plot")

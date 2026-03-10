@@ -2,7 +2,7 @@
 
 **A professional-grade telemetry decoding and analysis workbench for satellite, aerospace, automotive, and industrial test engineers.**
 
-SignalBench is a high-performance, engineer-grade telemetry workbench designed for mission-critical test campaigns. It supports everything from CubeSat missions to complex flight test systems, providing robust decoding for CSV, binary logs, and live network or serial streams. Decode, visualize, and analyze telemetry without the need for custom scripting.
+SignalBench is a high-performance, engineer-grade telemetry workbench designed for mission-critical test campaigns. It supports everything from CubeSat missions to complex flight test systems, providing robust decoding for delimited text files (e.g., CSV, TSV), binary logs, and live network or serial streams. Decode, visualize, and analyze telemetry without the need for custom scripting.
 
 ## 🏗️ Project Structure
 
@@ -24,8 +24,8 @@ The project has recently undergone a major architectural overhaul to support a "
 ## 🚀 Features
 
 - **Workspace-Centric UI**: Top-level tabbed architecture. Each tab is a complete workspace with its own independent data source (File, Serial, or Network), signal selection sidebar, and plot configuration.
-- **Intelligent Data Import**: Specialized, format-aware dialogs for CSV and Binary data. Includes live data previews, delimiter/header configuration, and validation to prevent malformed imports.
-- **Binary Telemetry Mapping**: Full control over binary decoding via YAML-defined packet schemas. Supports custom timestamp field selection from any numeric field in the schema.
+- **Intelligent Data Import**: Specialized, format-aware dialogs for Delimited Text (CSV, TSV, etc.) and Binary data. Includes live data previews, custom delimiter/header configuration, and validation.
+- **DSDL-Lite Binary Decoding**: Full control over binary decoding via YAML-defined packet schemas with support for scaling, units, and nested fields.
 - **Live Network Streaming**: Connect via **TCP (Client)** or **UDP (Listener)** to decode and visualize data in real-time.
 - **Live Serial Streaming**: Connect to COM ports with full control over Baud Rate, Parity, and Stop Bits.
 - **High Performance**: Handles large files (> 500K+ records) and high-frequency streams efficiently using a Hybrid (In-Memory/SQLite) data store.
@@ -33,6 +33,50 @@ The project has recently undergone a major architectural overhaul to support a "
 - **Derived Signals**: Create custom calculated signals using math expressions (e.g., `sqrt(battery_voltage)`).
 - **Data Logging**: Record raw network or serial streams directly to disk while visualizing.
 - **Session Management**: Save and restore workspace sessions (`.sbs` files). Supports multi-tab persistence, embedded schemas, and **automatic restoration** of the last session on startup.
+
+## 📄 DSDL-Lite Packet Schema
+
+SignalBench uses a professional-grade YAML schema format inspired by industry standards like DSDL (Data Structure Definition Language). This allows you to define complex binary packets with support for nested groups, linear transformations, and categorical mappings.
+
+### Key Capabilities
+- **Recursive Namespacing**: Group related signals into hierarchies (e.g., `Battery/Cell1/Voltage`).
+- **Linear Transformation**: Automatically convert raw integers to physical values using `scale` and `offset` (`PhysicalValue = (Raw * Scale) + Offset`).
+- **Categorical Lookup**: Map numeric status codes to human-readable strings (Enums).
+- **Physical Metadata**: Assign units (V, A, Hz, °C) that are displayed throughout the UI and statistics panels.
+
+### Comprehensive Schema Example
+```yaml
+packet:
+  name: "FlightController"
+  endianness: little
+  fields:
+    - name: "system_status"
+      type: uint8
+      lookup:
+        0: "BOOTING"
+        1: "READY"
+        2: "FAULT"
+        
+    - name: "battery"
+      fields: # Nested Group
+        - name: "voltage"
+          type: uint16
+          scale: 0.001  # Convert mV to V
+          unit: "V"
+        - name: "current"
+          type: int16
+          scale: 0.1
+          unit: "A"
+
+    - name: "environment"
+      fields:
+        - name: "temperature"
+          type: int16
+          scale: 0.01
+          offset: -40.0
+          unit: "°C"
+          description: "Internal ambient temperature"
+```
 
 ## 🚀 Getting Started (Quick Start)
 
@@ -42,8 +86,8 @@ Before loading binary data or streaming, the app needs to know the structure of 
 *   Define or select a `.yaml` schema file.
 
 ### 2. Import Static Telemetry Data
-*   **CSV Import**: Click the **CSV File icon** in the **DATA FILE** group.
-    *   Select your file, configure the **Delimiter** and **Has Header** settings.
+*   **Delimited Text File Import**: Click the **Text File icon** in the **DATA FILE** group.
+    *   Select your file, configure the **Delimiter** (Comma, Semicolon, Pipe, Tab, etc.) and **Has Header** settings.
     *   The preview grid will update automatically to validate your settings.
 *   **Binary Import**: Click the **Binary File icon** (identified by the '101' badge).
     *   Select your file and a corresponding schema.
@@ -70,11 +114,9 @@ Streaming settings are **per-workspace (per-tab)**. You can stream from multiple
 
 - **Platform**: Windows, Linux, macOS (Cross-platform via Avalonia)
 - **Runtime**: .NET 9.0 SDK
-- **Hardware**: Serial port access or Network (Ethernet/WiFi) connectivity
 - **Dependencies**: 
   - Avalonia UI
   - ScottPlot (v5.1+)
-  - System.IO.Ports
   - YamlDotNet
   - Microsoft.Data.Sqlite
   - NCalcSync

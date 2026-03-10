@@ -6,6 +6,12 @@ namespace SignalBench.ViewModels;
 
 public class PlotTabFactory : ITabFactory
 {
+    public string Id => "SignalBench.PlotFactory";
+    public string Name => "Plot Tab Factory";
+    public string Description => "Built-in plot tab factory.";
+    public string Version => "1.0.0";
+    public void Initialize() { }
+
     public string TabTypeId => "SignalBench.Plot";
     public string DisplayName => "New Plot";
     public string Icon => "ChartLine";

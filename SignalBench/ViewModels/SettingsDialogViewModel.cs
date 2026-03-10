@@ -7,7 +7,7 @@ using Avalonia;
 
 namespace SignalBench.ViewModels;
 
-public partial class SettingsViewModel : ViewModelBase
+public partial class SettingsDialogViewModel : ViewModelBase
 {
     private readonly ISettingsService _settingsService;
     private readonly SignalBench.SDK.Interfaces.IFeatureService _featureService;
@@ -46,6 +46,9 @@ public partial class SettingsViewModel : ViewModelBase
 
     [ObservableProperty]
     private bool _autoLoadLastSession;
+
+    [ObservableProperty]
+    private int _selectedTabIndex;
 
     public string[] Themes { get; } = ["System", "Light", "Dark"];
     public string[] StorageModes { get; } = ["InMemory", "Sqlite"];
@@ -98,7 +101,7 @@ public partial class SettingsViewModel : ViewModelBase
         LicenseStatus = status.ToString();
     }
 
-    public SettingsViewModel(ISettingsService settingsService, SignalBench.SDK.Interfaces.IFeatureService featureService)
+    public SettingsDialogViewModel(ISettingsService settingsService, SignalBench.SDK.Interfaces.IFeatureService featureService)
     {
         _settingsService = settingsService;
         _featureService = featureService;

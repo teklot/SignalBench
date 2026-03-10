@@ -86,7 +86,7 @@ public partial class App : Application
             return new HybridDataStore(mode);
         });
         services.AddSingleton<MainWindowViewModel>();
-        services.AddTransient<SettingsViewModel>();
+        services.AddTransient<SettingsDialogViewModel>();
     }
 
     private void DisableAvaloniaDataAnnotationValidation()

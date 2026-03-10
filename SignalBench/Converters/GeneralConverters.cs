@@ -60,3 +60,19 @@ public class SignalItemToNameConverter : IValueConverter
         return value?.ToString();
     }
 }
+
+public class ValueWithUnitConverter : IMultiValueConverter
+{
+    public static readonly ValueWithUnitConverter Instance = new();
+    public object? Convert(System.Collections.Generic.IList<object?> values, Type targetType, object? parameter, CultureInfo culture)
+    {
+        if (values.Count < 1 || values[0] == null || values[0] is not double d) return "n/a";
+        
+        string val = d.ToString("G5");
+        if (values.Count > 1 && values[1] is string unit && !string.IsNullOrEmpty(unit))
+        {
+            return $"{val} {unit}";
+        }
+        return val;
+    }
+}

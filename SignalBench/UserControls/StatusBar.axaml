@@ -1,0 +1,52 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SignalBench.ViewModels"
+             xmlns:mi="using:Material.Icons.Avalonia"
+             x:Class="SignalBench.UserControls.StatusBar"
+             x:DataType="vm:MainWindowViewModel">
+    <Border Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}" 
+            BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}" 
+            BorderThickness="0,1,0,0" 
+            Height="28" 
+            Padding="10,0">
+        <Grid ColumnDefinitions="*, Auto, Auto">
+            <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Spacing="8">
+                <mi:MaterialIcon Kind="InformationOutline" Width="14" Height="14" Foreground="{DynamicResource SystemAccentColor}"/>
+                <TextBlock Text="{Binding StatusText}" FontSize="11" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                
+                <!-- Dynamic Connection Info -->
+                <Border Width="1" Height="14" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" Margin="8,0" IsVisible="{Binding SelectedTab.ConnectionInfo, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding SelectedTab.ConnectionInfo, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                    <mi:MaterialIcon Kind="{Binding SelectedTab.ConnectionIcon}" Width="14" Height="14" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                    <TextBlock Text="{Binding SelectedTab.ConnectionInfo}" FontSize="11" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                </StackPanel>
+            </StackPanel>
+            
+            <!-- Progress bar shown during loading -->
+            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Spacing="8" IsVisible="{Binding IsLoading}">
+                <ProgressBar Value="{Binding LoadProgress}" Width="100" Height="10"/>
+                <TextBlock Text="{Binding LoadElapsed}" FontSize="11" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" VerticalAlignment="Center"/>
+            </StackPanel>
+
+            <!-- License Badge -->
+            <Button Grid.Column="2" 
+                    Command="{Binding OpenLicenseSettingsCommand}"
+                    Background="Transparent"
+                    BorderThickness="0"
+                    Padding="0"
+                    Margin="10,0,0,0"
+                    VerticalAlignment="Center"
+                    ToolTip.Tip="Manage License in Settings"
+                    IsVisible="False">
+                <Border Background="{DynamicResource SystemAccentColor}" 
+                        CornerRadius="4" 
+                        Padding="8,2">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <mi:MaterialIcon Kind="ShieldCheckOutline" Width="12" Height="12" Foreground="White"/>
+                        <TextBlock Text="{Binding LicenseStatusText}" FontSize="10" FontWeight="Bold" Foreground="White"/>
+                    </StackPanel>
+                </Border>
+            </Button>
+        </Grid>
+    </Border>
+</UserControl>

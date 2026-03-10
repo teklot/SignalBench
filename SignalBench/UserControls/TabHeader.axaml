@@ -1,0 +1,55 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SignalBench.ViewModels"
+             xmlns:mi="using:Material.Icons.Avalonia"
+             xmlns:sdk="using:SignalBench.SDK.Interfaces"
+             x:Class="SignalBench.UserControls.TabHeader"
+             x:DataType="vm:MainWindowViewModel">
+    <Border Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}" BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}" BorderThickness="0,0,0,1">
+        <StackPanel Orientation="Horizontal" Margin="10,0">
+            <TabStrip ItemsSource="{Binding Tabs}" SelectedItem="{Binding SelectedTab}" BorderThickness="0">
+                <TabStrip.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <WrapPanel Orientation="Horizontal"/>
+                    </ItemsPanelTemplate>
+                </TabStrip.ItemsPanel>
+                <TabStrip.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock Text="{Binding Name}" VerticalAlignment="Center"/>
+                            <Button Classes="tab-close"
+                                    Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).RemoveTabCommand}" 
+                                    CommandParameter="{Binding}"
+                                    Background="Transparent" BorderThickness="0"
+                                    ToolTip.Tip="Close Tab">
+                                <mi:MaterialIcon Kind="Close"/>
+                            </Button>
+                        </StackPanel>
+                    </DataTemplate>
+                </TabStrip.ItemTemplate>
+            </TabStrip>
+            
+            <Button ToolTip.Tip="New Tab"
+                    Background="Transparent" BorderThickness="0" Padding="8,4"
+                    VerticalAlignment="Center"
+                    IsVisible="{Binding CanAddPlot}">
+                <mi:MaterialIcon Kind="Plus" Width="18" Height="18" Foreground="{DynamicResource SystemAccentColor}"/>
+                <Button.Flyout>
+                    <MenuFlyout ItemsSource="{Binding AvailableTabFactories}">
+                        <MenuFlyout.ItemTemplate>
+                            <DataTemplate x:DataType="sdk:ITabFactory">
+                                <MenuItem Header="{Binding DisplayName}" 
+                                          Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).AddTabCommand}"
+                                          CommandParameter="{Binding}">
+                                    <MenuItem.Icon>
+                                        <mi:MaterialIcon Kind="{Binding Icon}" Width="16" Height="16"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                            </DataTemplate>
+                        </MenuFlyout.ItemTemplate>
+                    </MenuFlyout>
+                </Button.Flyout>
+            </Button>
+        </StackPanel>
+    </Border>
+</UserControl>

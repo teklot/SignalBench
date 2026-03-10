@@ -14,14 +14,14 @@ using System.IO;
 
 namespace SignalBench.ViewModels;
 
-public class BinaryImportResult
+public class BinaryFileImportResult
 {
     public string TelemetryPath { get; set; } = string.Empty;
     public PacketSchema? Schema { get; set; }
     public string? TimestampField { get; set; }
 }
 
-public partial class BinaryImportViewModel : ViewModelBase
+public partial class BinaryFileImportViewModel : ViewModelBase
 {
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsImportEnabled))]
@@ -48,13 +48,13 @@ public partial class BinaryImportViewModel : ViewModelBase
     public ObservableCollection<IDictionary<string, object>> PreviewRecords { get; } = [];
     public ObservableCollection<string> AvailableColumns { get; } = [];
 
-    public event Action<BinaryImportResult?>? RequestClose;
+    public event Action<BinaryFileImportResult?>? RequestClose;
 
-    private readonly ILogger<BinaryImportViewModel> _logger;
+    private readonly ILogger<BinaryFileImportViewModel> _logger;
     public bool IsImportEnabled => SelectedSchema != null && !string.IsNullOrEmpty(TelemetryPath) && IsPreviewLoaded;
 
     [RelayCommand(CanExecute = nameof(IsImportEnabled))]
-    private void Import() => RequestClose?.Invoke(new BinaryImportResult
+    private void Import() => RequestClose?.Invoke(new BinaryFileImportResult
     {
         TelemetryPath = TelemetryPath,
         Schema = SelectedSchema,
@@ -64,7 +64,7 @@ public partial class BinaryImportViewModel : ViewModelBase
     [RelayCommand]
     private void Cancel() => RequestClose?.Invoke(null);
 
-    public BinaryImportViewModel(string? telemetryPath, ILogger<BinaryImportViewModel> logger)
+    public BinaryFileImportViewModel(string? telemetryPath, ILogger<BinaryFileImportViewModel> logger)
     {
         _telemetryPath = telemetryPath ?? string.Empty;
         _logger = logger;

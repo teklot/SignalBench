@@ -16,13 +16,14 @@ public class ViewLocator : IDataTemplate
         {
             MainWindowViewModel => new MainWindow(),
             PlotViewModel => new PlotView(),
-            BinaryImportViewModel => new BinaryImport(),
-            CsvImportViewModel => new CsvImport(),
+            BinaryFileImportViewModel => new BinaryFileImport(),
+            TextFileImportViewModel => new TextFileImport(),
             DerivedSignalViewModel => new DerivedSignalDialog(),
+
             NetworkDialogViewModel => new NetworkDialog(),
             SchemaEditorViewModel => new SchemaEditor(),
             SerialDialogViewModel => new SerialDialog(),
-            SettingsViewModel => new SettingsWindow(),
+            SettingsDialogViewModel => new SettingsDialog(),
             SignalStatsViewModel => new SignalStatsView(),
             _ => new TextBlock { Text = "Not Found: " + data.GetType().Name }
         };

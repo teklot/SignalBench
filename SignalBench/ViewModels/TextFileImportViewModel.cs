@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace SignalBench.ViewModels;
 
-public partial class CsvImportViewModel : ViewModelBase
+public partial class TextFileImportViewModel : ViewModelBase
 {
     [ObservableProperty]
     private string _delimiter = "Comma (,)";
@@ -52,17 +52,17 @@ public partial class CsvImportViewModel : ViewModelBase
 
     partial void OnFilePathChanged(string? value) => LoadPreview();
 
-    public event Action<CsvImportResult?>? RequestClose;
+    public event Action<TextFileImportResult?>? RequestClose;
 
-    public CsvImportViewModel() { }
+    public TextFileImportViewModel() { }
 
-    public CsvImportViewModel(string? filePath)
+    public TextFileImportViewModel(string? filePath)
     {
         FilePath = filePath;
     }
 
     [RelayCommand(CanExecute = nameof(IsPreviewLoaded))]
-    private void Import() => RequestClose?.Invoke(new CsvImportResult
+    private void Import() => RequestClose?.Invoke(new TextFileImportResult
     {
         FilePath = FilePath ?? string.Empty,
         Delimiter = GetActualDelimiter(),
@@ -83,10 +83,10 @@ public partial class CsvImportViewModel : ViewModelBase
 
             var files = await topLevel.StorageProvider.OpenFilePickerAsync(new Avalonia.Platform.Storage.FilePickerOpenOptions
             {
-                Title = "Select CSV Telemetry",
+                Title = "Select Text File Telemetry",
                 AllowMultiple = false,
                 FileTypeFilter = [
-                    new Avalonia.Platform.Storage.FilePickerFileType("CSV Files") { Patterns = ["*.csv", "*.tsv", "*.txt"] },
+                    new Avalonia.Platform.Storage.FilePickerFileType("Text Files") { Patterns = ["*.csv", "*.tsv", "*.txt"] },
                     Avalonia.Platform.Storage.FilePickerFileTypes.All
                 ]
             });
@@ -146,13 +146,13 @@ public partial class CsvImportViewModel : ViewModelBase
         {
             PreviewRecords.Clear();
             AvailableColumns.Clear();
-            System.Diagnostics.Debug.WriteLine($"CSV Preview Error: {ex.Message} (File: {FilePath}, Delimiter: {GetActualDelimiter()})");
+            System.Diagnostics.Debug.WriteLine($"Text File Preview Error: {ex.Message} (File: {FilePath}, Delimiter: {GetActualDelimiter()})");
         }
         ImportCommand.NotifyCanExecuteChanged();
     }
 }
 
-public class CsvImportResult
+public class TextFileImportResult
 {
     public string FilePath { get; set; } = string.Empty;
     public string Delimiter { get; set; } = ",";

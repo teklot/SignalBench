@@ -14,10 +14,3 @@ public enum FieldType
     Float64,
     Bool
 }
-
-public enum SchemaType
-{
-    Binary,
-    Streaming,
-    Csv
-}

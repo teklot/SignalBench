@@ -5,6 +5,10 @@
              xmlns:converters="using:SignalBench.Converters"
              x:Class="SignalBench.Views.SignalStatsView"
              x:DataType="vm:SignalStatsViewModel">
+    <UserControl.Resources>
+        <converters:ValueWithUnitConverter x:Key="ValueWithUnitConverter"/>
+    </UserControl.Resources>
+    
     <StackPanel Margin="10,5,5,5" Spacing="10">
         <!-- Signal Selection -->
         <StackPanel Spacing="5">
@@ -31,27 +35,69 @@
         <StackPanel Spacing="4">
             <Grid ColumnDefinitions="*, Auto">
                 <TextBlock Text="Min" FontSize="12" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
-                <TextBlock Grid.Column="1" Text="{Binding Min, StringFormat={}{0:G5}, TargetNullValue='n/a'}" FontSize="12" FontWeight="SemiBold"/>
+                <TextBlock Grid.Column="1" FontSize="12" FontWeight="SemiBold">
+                    <TextBlock.Text>
+                        <MultiBinding Converter="{StaticResource ValueWithUnitConverter}">
+                            <Binding Path="Min"/>
+                            <Binding Path="SelectedSignal.Unit"/>
+                        </MultiBinding>
+                    </TextBlock.Text>
+                </TextBlock>
             </Grid>
             <Grid ColumnDefinitions="*, Auto">
                 <TextBlock Text="Max" FontSize="12" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
-                <TextBlock Grid.Column="1" Text="{Binding Max, StringFormat={}{0:G5}, TargetNullValue='n/a'}" FontSize="12" FontWeight="SemiBold"/>
+                <TextBlock Grid.Column="1" FontSize="12" FontWeight="SemiBold">
+                    <TextBlock.Text>
+                        <MultiBinding Converter="{StaticResource ValueWithUnitConverter}">
+                            <Binding Path="Max"/>
+                            <Binding Path="SelectedSignal.Unit"/>
+                        </MultiBinding>
+                    </TextBlock.Text>
+                </TextBlock>
             </Grid>
             <Grid ColumnDefinitions="*, Auto">
                 <TextBlock Text="Mean" FontSize="12" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
-                <TextBlock Grid.Column="1" Text="{Binding Mean, StringFormat={}{0:G5}, TargetNullValue='n/a'}" FontSize="12" FontWeight="SemiBold"/>
+                <TextBlock Grid.Column="1" FontSize="12" FontWeight="SemiBold">
+                    <TextBlock.Text>
+                        <MultiBinding Converter="{StaticResource ValueWithUnitConverter}">
+                            <Binding Path="Mean"/>
+                            <Binding Path="SelectedSignal.Unit"/>
+                        </MultiBinding>
+                    </TextBlock.Text>
+                </TextBlock>
             </Grid>
             <Grid ColumnDefinitions="*, Auto">
                 <TextBlock Text="Std" FontSize="12" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
-                <TextBlock Grid.Column="1" Text="{Binding Std, StringFormat={}{0:G5}, TargetNullValue='n/a'}" FontSize="12" FontWeight="SemiBold"/>
+                <TextBlock Grid.Column="1" FontSize="12" FontWeight="SemiBold">
+                    <TextBlock.Text>
+                        <MultiBinding Converter="{StaticResource ValueWithUnitConverter}">
+                            <Binding Path="Std"/>
+                            <Binding Path="SelectedSignal.Unit"/>
+                        </MultiBinding>
+                    </TextBlock.Text>
+                </TextBlock>
             </Grid>
             <Grid ColumnDefinitions="*, Auto">
                 <TextBlock Text="RMS" FontSize="12" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
-                <TextBlock Grid.Column="1" Text="{Binding Rms, StringFormat={}{0:G5}, TargetNullValue='n/a'}" FontSize="12" FontWeight="SemiBold"/>
+                <TextBlock Grid.Column="1" FontSize="12" FontWeight="SemiBold">
+                    <TextBlock.Text>
+                        <MultiBinding Converter="{StaticResource ValueWithUnitConverter}">
+                            <Binding Path="Rms"/>
+                            <Binding Path="SelectedSignal.Unit"/>
+                        </MultiBinding>
+                    </TextBlock.Text>
+                </TextBlock>
             </Grid>
             <Grid ColumnDefinitions="*, Auto">
                 <TextBlock Text="P2P" FontSize="12" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
-                <TextBlock Grid.Column="1" Text="{Binding P2p, StringFormat={}{0:G5}, TargetNullValue='n/a'}" FontSize="12" FontWeight="SemiBold"/>
+                <TextBlock Grid.Column="1" FontSize="12" FontWeight="SemiBold">
+                    <TextBlock.Text>
+                        <MultiBinding Converter="{StaticResource ValueWithUnitConverter}">
+                            <Binding Path="P2p"/>
+                            <Binding Path="SelectedSignal.Unit"/>
+                        </MultiBinding>
+                    </TextBlock.Text>
+                </TextBlock>
             </Grid>
         </StackPanel>
     </StackPanel>

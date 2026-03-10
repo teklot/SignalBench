@@ -63,5 +63,13 @@
         <Style Selector="Button.toolbar:disabled /template/ ContentPresenter">
             <Setter Property="Background" Value="Transparent"/>
         </Style>
+
+        <!-- Global Tab Header Styling -->
+        <Style Selector="TabStripItem, TabItem">
+            <Setter Property="FontSize" Value="10"/>
+            <Setter Property="MinHeight" Value="24"/>
+            <Setter Property="Padding" Value="8,0"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
     </Application.Styles>
 </Application>
