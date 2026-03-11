@@ -36,9 +36,9 @@ public class DecodingTests
 
         var packet = decoder.Decode(data, schema);
 
-        packet.Fields["timestamp"].Should().Be((uint)1);
-        packet.Fields["battery_voltage"].Should().Be(1.0f);
-        packet.Fields["temperature_1"].Should().Be((short)5);
+        ((double)packet.Fields["timestamp"]).Should().Be(1.0);
+        ((double)packet.Fields["battery_voltage"]).Should().Be(1.0);
+        ((double)packet.Fields["temperature_1"]).Should().Be(5.0);
     }
 
     [Fact]
@@ -62,8 +62,8 @@ public class DecodingTests
 
         var packet = decoder.Decode(data, schema);
 
-        packet.Fields["value16"].Should().Be((ushort)0x0102);
-        packet.Fields["value32"].Should().Be((uint)0x03040506);
+        ((double)packet.Fields["value16"]).Should().Be((double)0x0102);
+        ((double)packet.Fields["value32"]).Should().Be((double)0x03040506);
     }
 
     [Fact]
@@ -85,7 +85,7 @@ public class DecodingTests
 
         var packet = decoder.Decode(data, schema);
 
-        ((ulong)packet.Fields["value"]).Should().Be(0x0807060504030201);
+        ((double)packet.Fields["value"]).Should().Be(0x0807060504030201);
     }
 
     [Fact]
@@ -109,8 +109,8 @@ public class DecodingTests
 
         var packet = decoder.Decode(data, schema);
 
-        ((ulong)packet.Fields["value64"]).Should().Be(0x0807060504030201);
-        ((uint)packet.Fields["value8"]).Should().Be(0xFF);
+        ((double)packet.Fields["value64"]).Should().Be(0x0807060504030201);
+        ((double)packet.Fields["value8"]).Should().Be(0xFF);
     }
 
     [Fact]
@@ -134,8 +134,8 @@ public class DecodingTests
 
         var packet = decoder.Decode(data, schema);
 
-        ((uint)packet.Fields["value8"]).Should().Be(0xFF);
-        ((ulong)packet.Fields["value64"]).Should().Be(0x0807060504030201);
+        ((double)packet.Fields["value8"]).Should().Be(0xFF);
+        ((double)packet.Fields["value64"]).Should().Be(0x0807060504030201);
     }
 
     [Fact]
@@ -163,10 +163,10 @@ public class DecodingTests
 
         var packet = decoder.Decode(data, schema);
 
-        ((uint)packet.Fields["value8"]).Should().Be(0xFF);
-        ((uint)packet.Fields["value16"]).Should().Be(0x0201);
-        ((uint)packet.Fields["value32"]).Should().Be(0x06050403);
-        ((ulong)packet.Fields["value64"]).Should().Be(0x0E0D0C0B0A090807);
+        ((double)packet.Fields["value8"]).Should().Be(0xFF);
+        ((double)packet.Fields["value16"]).Should().Be(0x0201);
+        ((double)packet.Fields["value32"]).Should().Be(0x06050403);
+        ((double)packet.Fields["value64"]).Should().Be(0x0E0D0C0B0A090807);
     }
 
     [Fact]
@@ -192,7 +192,7 @@ public class DecodingTests
 
         var packet = decoder.Decode(data, schema);
 
-        ((float)packet.Fields["f32"]).Should().BeApproximately(3.14f, 0.001f);
+        ((double)packet.Fields["f32"]).Should().BeApproximately(3.14, 0.001);
         ((double)packet.Fields["f64"]).Should().BeApproximately(2.718281828, 0.000001);
     }
 
@@ -221,8 +221,8 @@ public class DecodingTests
 
         var packet = decoder.Decode(data, schema);
 
-        packet.Fields["low_nibble"].Should().Be((uint)0xB);
-        packet.Fields["high_nibble"].Should().Be((uint)0xA);
+        ((double)packet.Fields["low_nibble"]).Should().Be(0xB);
+        ((double)packet.Fields["high_nibble"]).Should().Be(0xA);
     }
 
     [Fact]
