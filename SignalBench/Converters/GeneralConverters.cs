@@ -69,7 +69,14 @@ public class ValueWithUnitConverter : IMultiValueConverter
         if (values.Count < 1 || values[0] == null || values[0] is not double d) return "n/a";
         
         string val = d.ToString("G5");
-        if (values.Count > 1 && values[1] is string unit && !string.IsNullOrEmpty(unit))
+        string? unit = null;
+        if (values.Count > 1)
+        {
+            if (values[1] is string s) unit = s;
+            else if (values[1] is SignalBench.ViewModels.SignalItemViewModel item) unit = item.Unit;
+        }
+
+        if (!string.IsNullOrEmpty(unit))
         {
             return $"{val} {unit}";
         }

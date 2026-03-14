@@ -1,4 +1,4 @@
-# SignalBench v0.2.3.2
+# SignalBench v0.2.3
 
 **A professional-grade telemetry decoding and analysis workbench for satellite, aerospace, automotive, and industrial test engineers.**
 
@@ -21,7 +21,7 @@ The project has recently undergone a major architectural overhaul to support a "
 - **Plugin Infrastructure**: Implemented a robust `PluginLoader` service in the Core. The app now dynamically scans a `Plugins/` directory on startup, loading any DLL that implements the `IPlugin` interface.
 - **Visualization Refactor**: Refactored the internal "Tab" system to be entirely generic. The UI no longer assumes every tab is a `PlotView`. By implementing `ITabViewModel` and `ITabFactory`, developers can now add entirely new view types (e.g., 3D Models, Maps, Gauges) via plugins.
 
-## 🚀 Features
+## ✨ Features
 
 - **Workspace-Centric UI**: Top-level tabbed architecture. Each tab is a complete workspace with its own independent data source (File, Serial, or Network), signal selection sidebar, and plot configuration.
 - **Intelligent Data Import**: Specialized, format-aware dialogs for Delimited Text (CSV, TSV, etc.) and Binary data. Includes live data previews, custom delimiter/header configuration, and validation.
@@ -113,15 +113,18 @@ Streaming settings are **per-workspace (per-tab)**. You can stream from multiple
 ## 📋 Requirements & Setup
 
 - **Platform**: Windows, Linux, macOS (Cross-platform via Avalonia)
-- **Runtime**: .NET 9.0 SDK
+- **Runtime**: .NET 10.0 SDK
+- **IDE**: Visual Studio 2026 (or JetBrains Rider / VS Code with .NET 10 support)
 - **Dependencies**: 
-  - Avalonia UI
+  - Avalonia UI (v11.3+)
   - ScottPlot (v5.1+)
   - YamlDotNet
   - Microsoft.Data.Sqlite
   - NCalcSync
 
 ### Building from Source
+
+The project uses the modern .NET 10 artifacts layout. Build results are centralized in the `artifacts/` directory at the root of the solution.
 
 ```bash
 dotnet build SignalBench.sln
@@ -132,6 +135,11 @@ dotnet build SignalBench.sln
 ```bash
 dotnet test
 ```
+
+### Development Notes
+
+- **Central Package Management (CPM)**: All NuGet package versions are managed centrally in `Directory.Packages.props`.
+- **SDK Portability**: The `SignalBench.SDK` project uses `VersionOverride` for its dependencies to ensure it can be safely referenced as a source project from external solutions.
 
 ---
 

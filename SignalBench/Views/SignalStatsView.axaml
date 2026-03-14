@@ -39,7 +39,7 @@
                     <TextBlock.Text>
                         <MultiBinding Converter="{StaticResource ValueWithUnitConverter}">
                             <Binding Path="Min"/>
-                            <Binding Path="SelectedSignal.Unit"/>
+                            <Binding Path="SelectedSignal"/>
                         </MultiBinding>
                     </TextBlock.Text>
                 </TextBlock>
@@ -50,7 +50,7 @@
                     <TextBlock.Text>
                         <MultiBinding Converter="{StaticResource ValueWithUnitConverter}">
                             <Binding Path="Max"/>
-                            <Binding Path="SelectedSignal.Unit"/>
+                            <Binding Path="SelectedSignal"/>
                         </MultiBinding>
                     </TextBlock.Text>
                 </TextBlock>
@@ -61,7 +61,7 @@
                     <TextBlock.Text>
                         <MultiBinding Converter="{StaticResource ValueWithUnitConverter}">
                             <Binding Path="Mean"/>
-                            <Binding Path="SelectedSignal.Unit"/>
+                            <Binding Path="SelectedSignal"/>
                         </MultiBinding>
                     </TextBlock.Text>
                 </TextBlock>
@@ -72,7 +72,7 @@
                     <TextBlock.Text>
                         <MultiBinding Converter="{StaticResource ValueWithUnitConverter}">
                             <Binding Path="Std"/>
-                            <Binding Path="SelectedSignal.Unit"/>
+                            <Binding Path="SelectedSignal"/>
                         </MultiBinding>
                     </TextBlock.Text>
                 </TextBlock>
@@ -83,7 +83,7 @@
                     <TextBlock.Text>
                         <MultiBinding Converter="{StaticResource ValueWithUnitConverter}">
                             <Binding Path="Rms"/>
-                            <Binding Path="SelectedSignal.Unit"/>
+                            <Binding Path="SelectedSignal"/>
                         </MultiBinding>
                     </TextBlock.Text>
                 </TextBlock>
@@ -94,7 +94,7 @@
                     <TextBlock.Text>
                         <MultiBinding Converter="{StaticResource ValueWithUnitConverter}">
                             <Binding Path="P2p"/>
-                            <Binding Path="SelectedSignal.Unit"/>
+                            <Binding Path="SelectedSignal"/>
                         </MultiBinding>
                     </TextBlock.Text>
                 </TextBlock>
