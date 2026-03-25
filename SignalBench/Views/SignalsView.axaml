@@ -3,15 +3,27 @@
              xmlns:vm="using:SignalBench.ViewModels"
              xmlns:mi="using:Material.Icons.Avalonia"
              xmlns:views="using:SignalBench.Views"
+             xmlns:converters="using:SignalBench.Converters"
+             xmlns:CoreModels="using:SignalBench.Core.Models"
              x:Class="SignalBench.Views.SignalsView"
              x:DataType="vm:PlotViewModel">
     <Grid RowDefinitions="*, Auto">
         <ScrollViewer Grid.Row="0">
-            <StackPanel Margin="10,5,5,5">
+            <StackPanel>
+                <!-- Empty Signals State -->
+                <TextBlock Text="No signals available. Load a schema or data file to begin."
+                           FontSize="12"
+                           FontStyle="Italic"
+                           Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
+                           Margin="15,10"
+                           TextWrapping="Wrap"
+                           IsVisible="{Binding RegularSignals.Count, Converter={x:Static converters:CollectionEmptyToBoolConverter.Instance}}"/>
+
                 <!-- Regular Signals -->
                 <ListBox ItemsSource="{Binding RegularSignals}"
                          Background="Transparent"
-                         BorderThickness="0">
+                         BorderThickness="0"
+                         Margin="10,5,5,5">
                     <ListBox.Styles>
                         <Style Selector="ListBoxItem">
                             <Setter Property="Padding" Value="0,2"/>
@@ -39,7 +51,7 @@
                 </ListBox>
 
                 <!-- Derived Signals Section -->
-                <StackPanel IsVisible="{Binding DerivedSignals.Count}">
+                <StackPanel IsVisible="{Binding DerivedSignals.Count}" Margin="10,10,5,5">
                     <TextBlock Text="DERIVED SIGNALS" Classes="SectionHeader"/>
                     <Border Height="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" Margin="0,0,0,5"/>
                     <ItemsControl ItemsSource="{Binding AvailableSignals}">
@@ -61,6 +73,68 @@
                                                Foreground="#107c10"/>
                                     <Button Grid.Column="3" 
                                             Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).EditDerivedSignalCommand}"
+                                            CommandParameter="{Binding Name}"
+                                            Background="Transparent"
+                                            BorderThickness="0"
+                                            Padding="4,2"
+                                            Margin="4,0,0,0"
+                                            ToolTip.Tip="Edit">
+                                        <mi:MaterialIcon Kind="Pencil" Width="14" Height="14" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                                    </Button>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+
+                <!-- Thresholds Section -->
+                <StackPanel Margin="0,15,0,0">
+                    <Border Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}" 
+                            Height="32" Padding="10,0"
+                            BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                            BorderThickness="0,1,0,1">
+                        <Grid ColumnDefinitions="*, Auto">
+                            <TextBlock Grid.Column="0" Text="THRESHOLDS" VerticalAlignment="Center" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource SystemAccentColor}"/>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4">
+                                <Button Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).CreateThresholdRuleCommand}"
+                                        Background="Transparent"
+                                        BorderThickness="0"
+                                        Padding="4"
+                                        ToolTip.Tip="Add Threshold">
+                                    <mi:MaterialIcon Kind="Plus" Width="14" Height="14" Foreground="{DynamicResource SystemAccentColor}"/>
+                                </Button>
+                                <Button Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ExportViolationsCommand}"
+                                        Background="Transparent"
+                                        BorderThickness="0"
+                                        Padding="4"
+                                        ToolTip.Tip="Export Violations">
+                                    <mi:MaterialIcon Kind="Export" Width="14" Height="14" Foreground="{DynamicResource SystemAccentColor}"/>
+                                </Button>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                    
+                    <!-- Empty Thresholds State -->
+                    <TextBlock Text="No threshold rules defined."
+                               FontSize="12"
+                               FontStyle="Italic"
+                               Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
+                               Margin="15,10"
+                               IsVisible="{Binding ThresholdRules.Count, Converter={x:Static converters:CollectionEmptyToBoolConverter.Instance}}"/>
+
+                    <ItemsControl ItemsSource="{Binding ThresholdRules}" Margin="10,5,5,5">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="CoreModels:ThresholdRule">
+                                <Grid ColumnDefinitions="*, Auto" Margin="0,2">
+                                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Ellipse Width="8" Height="8" Fill="{Binding Color}" Margin="0,0,8,0"/>
+                                        <TextBlock Text="{Binding Name}"
+                                                   FontSize="13"
+                                                   VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                    
+                                    <Button Grid.Column="1" 
+                                            Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).EditThresholdRuleCommand}"
                                             CommandParameter="{Binding Name}"
                                             Background="Transparent"
                                             BorderThickness="0"

@@ -134,6 +134,7 @@ public sealed partial class PlotViewModel : TabViewModelBase
     public ObservableCollection<SignalItemViewModel> AvailableSignals { get; } = [];
     public ObservableCollection<SignalItemViewModel> RegularSignals { get; } = [];
     public ObservableCollection<DerivedSignalDefinition> DerivedSignals { get; } = [];
+    public ObservableCollection<ThresholdRule> ThresholdRules { get; } = [];
     public ObservableCollection<string> SelectedSignalNames { get; } = [];
 
     // Playback state per plot
@@ -144,7 +145,7 @@ public sealed partial class PlotViewModel : TabViewModelBase
     public double FullDuration { get; set; }
 
     // Events for the View and ViewModel to hook into
-    public Action<List<DateTime>, Dictionary<string, List<double>>, DateTime?, double?, int?>? RequestPlotUpdate;
+    public Action<List<DateTime>, Dictionary<string, List<double>>, DateTime?, double?, int?, List<ThresholdViolation>?>? RequestPlotUpdate;
     public Action<DateTime>? RequestCursorUpdate;
     public Action? RequestPlotClear;
     public event Action? SourceStateChanged;
@@ -230,6 +231,7 @@ public sealed partial class PlotViewModel : TabViewModelBase
             { "CsvSettings", CsvSettings },
             { "SelectedSignalNames", SelectedSignalNames.ToList() },
             { "DerivedSignals", DerivedSignals.ToList() },
+            { "ThresholdRules", ThresholdRules.ToList() },
             { "IsSignalsPaneOpen", IsSignalsPaneOpen }
         };
     }

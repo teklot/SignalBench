@@ -1,0 +1,96 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:SignalBench.ViewModels"
+        xmlns:converters="using:SignalBench.Converters"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="500" d:DesignHeight="450"
+        x:Class="SignalBench.Views.ThresholdRuleDialog"
+        x:DataType="vm:ThresholdRuleViewModel"
+        Title="Threshold Rule"
+        WindowStartupLocation="CenterOwner"
+        Width="500" Height="450">
+
+    <Grid RowDefinitions="*, Auto">
+        <ScrollViewer Grid.Row="0">
+            <Border Padding="20">
+                <StackPanel Spacing="15">
+                    <TextBlock Text="THRESHOLD RULE" Classes="SectionHeader" Margin="0,0,0,5"/>
+
+                    <StackPanel Spacing="5">
+                        <TextBlock Text="RULE NAME" Classes="InputLabel"/>
+                        <TextBox Text="{Binding Name}"
+                                 Watermark="e.g., Battery Low"
+                                 HorizontalAlignment="Stretch" />
+                    </StackPanel>
+
+                    <StackPanel Spacing="5">
+                        <TextBlock Text="CONDITION (FORMULA)" Classes="InputLabel"/>
+                        <TextBox Text="{Binding Formula}"
+                                 Watermark="e.g., battery_voltage &lt; 6.5"
+                                 HorizontalAlignment="Stretch" />
+                        <TextBlock Text="Example: battery_voltage &lt; 6.5"
+                                   FontSize="11"
+                                   Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" />
+                    </StackPanel>
+
+                    <StackPanel Spacing="5">
+                        <TextBlock Text="MARKER COLOR (HEX)" Classes="InputLabel"/>
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <TextBox Text="{Binding Color}"
+                                     Watermark="#FF0000"
+                                     Width="150" />
+                            <Border Background="{Binding Color}" Width="30" Height="30" CornerRadius="4" BorderBrush="Gray" BorderThickness="1"/>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <StackPanel Spacing="5">
+                        <CheckBox Content="Active" IsChecked="{Binding IsActive}" />
+                    </StackPanel>
+
+                    <StackPanel Spacing="5">
+                        <TextBlock Text="DESCRIPTION (OPTIONAL)" Classes="InputLabel"/>
+                        <TextBox Text="{Binding Description}"
+                                 Watermark="What does this rule detect?"
+                                 AcceptsReturn="True"
+                                 Height="60"
+                                 HorizontalAlignment="Stretch" />
+                    </StackPanel>
+
+                    <TextBlock Text="{Binding ValidationMessage}"
+                               Foreground="Red"
+                               FontSize="12"
+                               IsVisible="{Binding ValidationMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                </StackPanel>
+            </Border>
+        </ScrollViewer>
+
+        <Border Grid.Row="1"
+                Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}"
+                Padding="20,15"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
+                BorderThickness="0,1,0,0">
+            <Grid ColumnDefinitions="Auto, *, Auto">
+                <Button Grid.Column="0" Content="Delete"
+                        Command="{Binding DeleteCommand}"
+                        Width="100"
+                        HorizontalContentAlignment="Center"
+                        Foreground="White"
+                        Background="#d83b01"
+                        IsVisible="{Binding IsEditMode}"/>
+                
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="12">
+                    <Button Content="Cancel"
+                            Command="{Binding CancelCommand}"
+                            Width="100"
+                            HorizontalContentAlignment="Center" />
+                    <Button Content="Save"
+                            Command="{Binding SaveCommand}"
+                            Width="100"
+                            HorizontalContentAlignment="Center"
+                            Classes="accent" />
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

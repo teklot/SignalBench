@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
 using SignalBench.Core;
 using SignalBench.Core.Data;
+using SignalBench.Core.Models;
 using SignalBench.Core.Models.Schema;
 using SignalBench.Core.Services;
 using SignalBench.Core.Session;
@@ -266,6 +267,7 @@ public partial class MainWindowViewModel : ViewModelBase
         OnPropertyChanged(nameof(CanAddPlot));
         NotifyPlaybackCommands();
         CreateDerivedSignalCommand?.NotifyCanExecuteChanged();
+        CreateThresholdRuleCommand?.NotifyCanExecuteChanged();
         SaveSessionCommand?.NotifyCanExecuteChanged();
         ExportCsvCommand?.NotifyCanExecuteChanged();
     }
@@ -313,7 +315,12 @@ public partial class MainWindowViewModel : ViewModelBase
     public IAsyncRelayCommand CreateDerivedSignalCommand { get; }
     public IAsyncRelayCommand<string> EditDerivedSignalCommand { get; }
     public IAsyncRelayCommand<string> RemoveDerivedSignalCommand { get; }
+    public IAsyncRelayCommand CreateThresholdRuleCommand { get; }
+    public IAsyncRelayCommand<string> EditThresholdRuleCommand { get; }
+    public IAsyncRelayCommand RemoveThresholdRuleCommand { get; }
+    public IAsyncRelayCommand ExportViolationsCommand { get; }
     public IRelayCommand<ITabFactory> AddTabCommand { get; }
+
     public IRelayCommand AddEmptyPlotCommand { get; }
     public IRelayCommand<TabViewModelBase> RemoveTabCommand { get; }
     public IAsyncRelayCommand OpenSettingsCommand { get; }
@@ -375,6 +382,11 @@ public partial class MainWindowViewModel : ViewModelBase
         
         EditDerivedSignalCommand = new AsyncRelayCommand<string>(EditDerivedSignalAsync!);
         RemoveDerivedSignalCommand = new AsyncRelayCommand<string>(RemoveDerivedSignalAsync!);
+
+        CreateThresholdRuleCommand = new AsyncRelayCommand(CreateThresholdRuleAsync, () => SelectedPlot != null && SelectedPlot.AvailableSignals.Count > 0);
+        EditThresholdRuleCommand = new AsyncRelayCommand<string>(EditThresholdRuleAsync!);
+        RemoveThresholdRuleCommand = new AsyncRelayCommand<string>(RemoveThresholdRuleAsync!);
+        ExportViolationsCommand = new AsyncRelayCommand(ExportViolationsAsync, () => SelectedPlot != null && SelectedPlot.ThresholdRules.Count > 0);
         
         AddTabCommand = new RelayCommand<ITabFactory>(f => AddTab(f!), _ => Tabs.Count < 10);
         AddEmptyPlotCommand = new RelayCommand(() => AddPlot(), () => Tabs.Count < 10);
@@ -705,8 +717,49 @@ public partial class MainWindowViewModel : ViewModelBase
             var plotData = new Dictionary<string, List<double>>();
             foreach (var signalName in plot.SelectedSignalNames)
                 plotData[signalName] = plot.DataStore.GetSignalData(signalName, shouldDownsample ? maxPlotPoints : null);
-            
-            plot.RequestPlotUpdate?.Invoke(timestamps, plotData, null, null, null);
+
+            // Evaluate Thresholds
+            var violations = new List<ThresholdViolation>();
+            if (plot.ThresholdRules.Count > 0)
+            {
+                // For performance, we only check the signals involved in the formula
+                // But for now, let's just use all available signals at each point
+                // Note: using downsampled timestamps for markers too to keep it consistent
+                for (int i = 0; i < timestamps.Count; i++)
+                {
+                    var parameters = new Dictionary<string, object>();
+                    foreach (var kv in plotData)
+                    {
+                        if (kv.Value.Count > i) parameters[kv.Key] = kv.Value[i];
+                    }
+
+                    foreach (var rule in plot.ThresholdRules)
+                    {
+                        if (rule.IsActive && _formulaEngine.EvaluateCondition(rule.Formula, parameters))
+                        {
+                            // Try to find a signal value to plot the marker at (first signal mentioned in formula)
+                            double? violationValue = null;
+                            foreach (var paramName in parameters.Keys)
+                            {
+                                if (rule.Formula.Contains(paramName, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    violationValue = Convert.ToDouble(parameters[paramName]);
+                                    break;
+                                }
+                            }
+
+                            violations.Add(new ThresholdViolation { 
+                                Timestamp = timestamps[i], 
+                                RuleName = rule.Name, 
+                                Color = rule.Color,
+                                Value = violationValue
+                            });
+                        }
+                    }
+                }
+            }
+
+            plot.RequestPlotUpdate?.Invoke(timestamps, plotData, null, null, null, violations);
             
             // Update current values for the signals pane
             if (plot == SelectedPlot) RefreshCurrentValues();

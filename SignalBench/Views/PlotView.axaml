@@ -42,7 +42,10 @@
                 Background="{DynamicResource SystemRegionBrush}" BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}" BorderThickness="0,0,1,0" 
                 IsVisible="{Binding IsSignalsPaneOpen}">
             <Grid RowDefinitions="Auto, *">
-                <Border Grid.Row="0" Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}" Height="32" Padding="10,0">
+                <Border Grid.Row="0" Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}" 
+                        Height="32" Padding="10,0"
+                        BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                        BorderThickness="0,0,0,1">
                     <Grid ColumnDefinitions="*, Auto">
                         <TextBlock Grid.Column="0" Text="SIGNALS" VerticalAlignment="Center" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource SystemAccentColor}"/>
                         <Button Grid.Column="1" Command="{Binding ToggleSignalsPaneCommand}" Background="Transparent" BorderThickness="0" Padding="4" ToolTip.Tip="Collapse">

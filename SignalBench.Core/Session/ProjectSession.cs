@@ -29,6 +29,7 @@ public class TabSession
     public string? SchemaYaml { get; set; } // Embedded schema content
     public List<string> SelectedSignalNames { get; set; } = [];
     public List<DerivedSignalDefinition> DerivedSignals { get; set; } = [];
+    public List<ThresholdRule> ThresholdRules { get; set; } = [];
     
     // Core settings objects
     public SerialSettings? SerialSettings { get; set; }

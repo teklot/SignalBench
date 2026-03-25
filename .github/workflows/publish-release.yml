@@ -38,12 +38,8 @@ jobs:
       shell: bash
       run: mkdir -p ./publish/${{ matrix.runtime }}/Plugins
 
-    - name: Zip Artifact (Windows)
-      if: matrix.os == 'windows-latest'
-      run: Compress-Archive -Path ./publish/${{ matrix.runtime }}/* -DestinationPath ./${{ matrix.artifact_name }}.zip
-
-    - name: Zip Artifact (Unix)
-      if: matrix.os != 'windows-latest'
+    - name: Zip Artifact
+      shell: bash
       run: |
         cd ./publish/${{ matrix.runtime }}
         zip -r ../../${{ matrix.artifact_name }}.zip .
@@ -52,5 +48,6 @@ jobs:
       uses: softprops/action-gh-release@v2
       with:
         files: ${{ matrix.artifact_name }}.zip
+        body_path: RELEASE_NOTES.md
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

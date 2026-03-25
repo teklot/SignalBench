@@ -82,4 +82,39 @@ public class ValueWithUnitConverter : IMultiValueConverter
         }
         return val;
     }
+    public object? ConvertBack(System.Collections.Generic.IList<object?> values, Type targetType, object? parameter, CultureInfo culture) => throw new NotImplementedException();
+}
+
+public class CollectionEmptyToBoolConverter : IValueConverter
+{
+    public static readonly CollectionEmptyToBoolConverter Instance = new();
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        if (value is int count) return count == 0;
+        if (value is long lCount) return lCount == 0;
+        if (value is System.Collections.IEnumerable enumerable)
+        {
+            var enumerator = enumerable.GetEnumerator();
+            return !enumerator.MoveNext();
+        }
+        return true;
+    }
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => throw new NotImplementedException();
+}
+
+public class CollectionNotEmptyToBoolConverter : IValueConverter
+{
+    public static readonly CollectionNotEmptyToBoolConverter Instance = new();
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        if (value is int count) return count > 0;
+        if (value is long lCount) return lCount > 0;
+        if (value is System.Collections.IEnumerable enumerable)
+        {
+            var enumerator = enumerable.GetEnumerator();
+            return enumerator.MoveNext();
+        }
+        return false;
+    }
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => throw new NotImplementedException();
 }

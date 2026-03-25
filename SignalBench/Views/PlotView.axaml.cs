@@ -75,7 +75,7 @@ public partial class PlotView : UserControl
         }
     }
 
-    public void UpdatePlot(List<DateTime> timestamps, Dictionary<string, List<double>> data, DateTime? cursorPosition = null, double? fixedXMax = null, int? rollingWindowSize = null)
+    public void UpdatePlot(List<DateTime> timestamps, Dictionary<string, List<double>> data, DateTime? cursorPosition = null, double? fixedXMax = null, int? rollingWindowSize = null, List<SignalBench.Core.Models.ThresholdViolation>? violations = null)
     {
         var mainPlot = this.FindControl<ScottPlot.Avalonia.AvaPlot>("MainPlot");
         if (mainPlot == null) return;
@@ -122,6 +122,30 @@ public partial class PlotView : UserControl
                 if (signal != null)
                 {
                     scatter.Color = mainPlot.Plot.Add.Palette.GetColor(signal.ColorIndex);
+                }
+            }
+        }
+
+        // Add Threshold Markers
+        if (violations != null && violations.Count > 0)
+        {
+            var addedRules = new HashSet<string>();
+            foreach (var v in violations)
+            {
+                double yCoord = v.Value ?? maxY;
+                var marker = mainPlot.Plot.Add.Marker(v.Timestamp.ToOADate(), yCoord);
+                marker.Shape = ScottPlot.MarkerShape.FilledDiamond;
+                marker.Size = 10;
+                marker.Color = ScottPlot.Color.FromHex(v.Color);
+                
+                if (!addedRules.Contains(v.RuleName))
+                {
+                    marker.LegendText = v.RuleName;
+                    addedRules.Add(v.RuleName);
+                }
+                else
+                {
+                    marker.LegendText = string.Empty;
                 }
             }
         }

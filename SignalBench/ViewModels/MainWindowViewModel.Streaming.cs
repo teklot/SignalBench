@@ -359,7 +359,7 @@ public partial class MainWindowViewModel
             if (timestamps.Count > 0)
             {
                 double? forceXMax = timestamps[^1].ToOADate();
-                targetPlot.RequestPlotUpdate?.Invoke(timestamps, plotData, null, forceXMax, windowSeconds);
+                targetPlot.RequestPlotUpdate?.Invoke(timestamps, plotData, null, forceXMax, windowSeconds, null);
             }
         }
     }

@@ -1,4 +1,4 @@
-# SignalBench v0.2.3
+# SignalBench v0.2.5
 
 **A professional-grade telemetry decoding and analysis workbench for satellite, aerospace, automotive, and industrial test engineers.**
 
@@ -13,13 +13,14 @@ The SignalBench ecosystem is split into four main projects:
 - **SignalBench.SDK**: The public bridge for plugin developers. Contains all core interfaces (`ITelemetrySource`, `IPlugin`, `ITabViewModel`).
 - **SignalBench.Tests**: Unit and integration tests for decoding and streaming.
 
-## 🛠️ Recent Project Evolution
+## 🔌 Extensibility & Plugins
 
-The project has recently undergone a major architectural overhaul to support a "Core vs. Community" plugin strategy:
+SignalBench is designed with a "Core vs. Community" strategy, allowing engineers to extend the platform without modifying the core source code.
 
-- **SDK Extraction**: Extracted `SignalBench.SDK` into a standalone project. Moved all core interfaces (`IPlugin`, `ITelemetrySource`, `IDataStore`) to the SDK to allow third-party developers to build plugins without needing the full source code.
-- **Plugin Infrastructure**: Implemented a robust `PluginLoader` service in the Core. The app now dynamically scans a `Plugins/` directory on startup, loading any DLL that implements the `IPlugin` interface.
-- **Visualization Refactor**: Refactored the internal "Tab" system to be entirely generic. The UI no longer assumes every tab is a `PlotView`. By implementing `ITabViewModel` and `ITabFactory`, developers can now add entirely new view types (e.g., 3D Models, Maps, Gauges) via plugins.
+- **Standalone SDK**: `SignalBench.SDK` provides all core interfaces (`IPlugin`, `ITelemetrySource`, `ITabViewModel`, etc.). Third-party developers can build plugins against this DLL.
+- **Dynamic Loading**: The application scans a `Plugins/` directory on startup and automatically loads any compatible plugins.
+- **Custom Viewports**: The internal "Tab" system is generic. Developers can implement `ITabViewModel` and `ITabFactory` to add entirely new visualization types like 3D models, custom gauges, or maps.
+- **Custom Data Sources**: Add support for proprietary telemetry protocols by implementing `ITelemetrySource` via a plugin.
 
 ## ✨ Features
 
@@ -31,8 +32,18 @@ The project has recently undergone a major architectural overhaul to support a "
 - **High Performance**: Handles large files (> 500K+ records) and high-frequency streams efficiently using a Hybrid (In-Memory/SQLite) data store.
 - **Visualization**: Interactive plots with a **Time-Based Rolling Window** (e.g., show the last 10 seconds of live data).
 - **Derived Signals**: Create custom calculated signals using math expressions (e.g., `sqrt(battery_voltage)`).
+- **Threshold Monitoring**: Define custom rules using math formulas (e.g., `battery_voltage < 6.5`) to automatically highlight violations with markers directly on the signal graph.
 - **Data Logging**: Record raw network or serial streams directly to disk while visualizing.
 - **Session Management**: Save and restore workspace sessions (`.sbs` files). Supports multi-tab persistence, embedded schemas, and **automatic restoration** of the last session on startup.
+
+## 🛠️ Threshold & Alert Monitoring
+
+New in v0.2.5, SignalBench supports real-time and post-processing threshold monitoring. You can define rules that are evaluated for every data point to ensure system health.
+
+- **Formula-Based Rules**: Use the built-in expression engine to define complex conditions (e.g., `temp > 85 AND pressure > 120`).
+- **Visual Alerting**: Violations are marked with **diamond-shaped indicators** placed directly on the signal graph traces for immediate visual correlation.
+- **Rule Management**: Enable or disable rules on the fly from the sidebar. Rules are persistent and saved as part of your workspace session.
+- **Violation Export**: Export a complete list of all triggered alerts, including timestamps and the specific rule violated, to a CSV file for post-mission reporting.
 
 ## 📄 DSDL-Lite Packet Schema
 
@@ -120,7 +131,7 @@ Streaming settings are **per-workspace (per-tab)**. You can stream from multiple
   - ScottPlot (v5.1+)
   - YamlDotNet
   - Microsoft.Data.Sqlite
-  - NCalcSync
+  - NCalc
 
 ### Building from Source
 

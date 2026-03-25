@@ -34,7 +34,8 @@ public partial class MainWindowViewModel
                             SourceType = p.SourceType.ToString(),
                             TelemetryPath = p.TelemetryPath,
                             SelectedSignalNames = [.. p.SelectedSignalNames],
-                            DerivedSignals = [.. p.DerivedSignals]
+                            DerivedSignals = [.. p.DerivedSignals],
+                            ThresholdRules = [.. p.ThresholdRules]
                         };
 
                         // Embed schema YAML if available
@@ -153,6 +154,12 @@ public partial class MainWindowViewModel
                         if (!targetPlot.DerivedSignals.Any(d => d.Name == ds.Name))
                             targetPlot.DerivedSignals.Add(ds);
                     }
+
+                    foreach (var tr in tab.ThresholdRules)
+                    {
+                        if (!targetPlot.ThresholdRules.Any(r => r.Name == tr.Name))
+                            targetPlot.ThresholdRules.Add(tr);
+                    }
                 }
             }
             if (session.SelectedTabIndex >= 0 && session.SelectedTabIndex < Tabs.Count)
@@ -257,6 +264,12 @@ public partial class MainWindowViewModel
                             if (!targetPlot.DerivedSignals.Any(d => d.Name == ds.Name))
                                 targetPlot.DerivedSignals.Add(ds);
                         }
+
+                        foreach (var tr in tab.ThresholdRules)
+                        {
+                            if (!targetPlot.ThresholdRules.Any(r => r.Name == tr.Name))
+                                targetPlot.ThresholdRules.Add(tr);
+                        }
                     }
                 }
                 if (session.SelectedTabIndex >= 0 && session.SelectedTabIndex < Tabs.Count)
@@ -286,6 +299,7 @@ public partial class MainWindowViewModel
                         TelemetryPath = p.TelemetryPath,
                         SelectedSignalNames = [.. p.SelectedSignalNames],
                         DerivedSignals = [.. p.DerivedSignals],
+                        ThresholdRules = [.. p.ThresholdRules],
                         SerialSettings = p.SerialSettings,
                         NetworkSettings = p.NetworkSettings,
                         CsvSettings = p.CsvSettings
