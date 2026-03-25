@@ -42,7 +42,7 @@ jobs:
       shell: bash
       run: |
         cd ./publish/${{ matrix.runtime }}
-        zip -r ../../${{ matrix.artifact_name }}.zip .
+        7z a -r ../../${{ matrix.artifact_name }}.zip .
 
     - name: Upload Release Asset
       uses: softprops/action-gh-release@v2
