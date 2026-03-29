@@ -138,7 +138,7 @@ Streaming settings are **per-workspace (per-tab)**. You can stream from multiple
 The project uses the modern .NET 10 artifacts layout. Build results are centralized in the `artifacts/` directory at the root of the solution.
 
 ```bash
-dotnet build SignalBench.sln
+dotnet build SignalBench.slnx
 ```
 
 ### Running Tests
