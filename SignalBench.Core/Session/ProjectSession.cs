@@ -26,7 +26,7 @@ public class TabSession
     // Legacy/Core Plot settings - Kept for compatibility with existing logic
     public string SourceType { get; set; } = "None"; // None, File, Serial, Network
     public string? TelemetryPath { get; set; }
-    public string? SchemaYaml { get; set; } // Embedded schema content
+    public string? SchemaPath { get; set; }
     public List<string> SelectedSignalNames { get; set; } = [];
     public List<DerivedSignalDefinition> DerivedSignals { get; set; } = [];
     public List<ThresholdRule> ThresholdRules { get; set; } = [];

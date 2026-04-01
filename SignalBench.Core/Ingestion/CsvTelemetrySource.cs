@@ -44,6 +44,18 @@ public sealed class CsvTelemetrySource(string filePath, string delimiter = ",", 
                 var header = _headers[i];
                 var rawVal = values[i];
                 
+                bool isTimestamp = timestampColumn != null && header.Equals(timestampColumn, StringComparison.OrdinalIgnoreCase);
+
+                if (isTimestamp)
+                {
+                    if (DateTime.TryParse(rawVal, out var dt))
+                        timestamp = dt;
+                    else if (double.TryParse(rawVal, out double unix))
+                        timestamp = DateTime.UnixEpoch.AddSeconds(unix);
+                    
+                    continue; // Do not add to fields
+                }
+
                 if (double.TryParse(rawVal, out double val))
                 {
                     fields[header] = val;
@@ -51,14 +63,6 @@ public sealed class CsvTelemetrySource(string filePath, string delimiter = ",", 
                 else
                 {
                     fields[header] = rawVal;
-                }
-
-                if (timestampColumn != null && header.Equals(timestampColumn, StringComparison.OrdinalIgnoreCase))
-                {
-                    if (DateTime.TryParse(rawVal, out var dt))
-                        timestamp = dt;
-                    else if (double.TryParse(rawVal, out double unix))
-                        timestamp = DateTime.UnixEpoch.AddSeconds(unix);
                 }
             }
             

@@ -61,7 +61,12 @@ public partial class MainWindowViewModel
         OnPropertyChanged(nameof(StatusText));
         var startTime = DateTime.Now;
 
-        if (path.EndsWith(".csv"))
+        bool isDelimited = path.EndsWith(".csv", StringComparison.OrdinalIgnoreCase) || 
+                           path.EndsWith(".tsv", StringComparison.OrdinalIgnoreCase) || 
+                           path.EndsWith(".txt", StringComparison.OrdinalIgnoreCase) || 
+                           path.EndsWith(".log", StringComparison.OrdinalIgnoreCase);
+
+        if (isDelimited)
         {
             CsvSettings csvSettings;
             if (existingCsvSettings != null)
@@ -154,13 +159,13 @@ public partial class MainWindowViewModel
                     }
                     else
                     {
-                        Avalonia.Threading.Dispatcher.UIThread.Post(() => { IsLoading = false; StatusText = "No records found in CSV."; });
+                        Avalonia.Threading.Dispatcher.UIThread.Post(() => { IsLoading = false; StatusText = "No records found in the delimited file."; });
                     }
                 }
                 catch (Exception ex)
                 {
                     Avalonia.Threading.Dispatcher.UIThread.Post(() => IsLoading = false);
-                    await ShowError("Load Error", "Failed to load CSV telemetry.", ex);
+                    await ShowError("Load Error", "Failed to load delimited telemetry.", ex);
                 }
             });
         }

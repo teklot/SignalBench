@@ -1,8 +1,8 @@
-# SignalBench v0.2.5
+# SignalBench v0.2.6
 
 **A professional-grade telemetry decoding and analysis workbench for satellite, aerospace, automotive, and industrial test engineers.**
 
-SignalBench is a high-performance, engineer-grade telemetry workbench designed for mission-critical test campaigns. It supports everything from CubeSat missions to complex flight test systems, providing robust decoding for delimited text files (e.g., CSV, TSV), binary logs, and live network or serial streams. Decode, visualize, and analyze telemetry without the need for custom scripting.
+SignalBench is a high-performance, engineer-grade telemetry workbench designed for mission-critical test campaigns. It supports everything from CubeSat missions to complex flight test systems, providing robust decoding for delimited text files (e.g., CSV, TSV, TXT, LOG), binary logs, and live network or serial streams. Decode, visualize, and analyze telemetry without the need for custom scripting.
 
 ## 🏗️ Project Structure
 
@@ -25,25 +25,26 @@ SignalBench is designed with a "Core vs. Community" strategy, allowing engineers
 ## ✨ Features
 
 - **Workspace-Centric UI**: Top-level tabbed architecture. Each tab is a complete workspace with its own independent data source (File, Serial, or Network), signal selection sidebar, and plot configuration.
-- **Intelligent Data Import**: Specialized, format-aware dialogs for Delimited Text (CSV, TSV, etc.) and Binary data. Includes live data previews, custom delimiter/header configuration, and validation.
-- **DSDL-Lite Binary Decoding**: Full control over binary decoding via YAML-defined packet schemas with support for scaling, units, and nested fields.
+- **Intelligent Data Import**: Specialized, format-aware dialogs for Delimited Text (CSV, TSV, TXT, LOG) and Binary data. Includes live data previews, custom delimiter/header configuration, and validation.
+- **DSDL-Lite Binary Decoding**: Full control over binary decoding via YAML-defined packet schemas with support for scaling, units, and nested fields. Includes **CRC (Cyclic Redundancy Check)** validation.
 - **Live Network Streaming**: Connect via **TCP (Client)** or **UDP (Listener)** to decode and visualize data in real-time.
 - **Live Serial Streaming**: Connect to COM ports with full control over Baud Rate, Parity, and Stop Bits.
 - **High Performance**: Handles large files (> 500K+ records) and high-frequency streams efficiently using a Hybrid (In-Memory/SQLite) data store.
 - **Visualization**: Interactive plots with a **Time-Based Rolling Window** (e.g., show the last 10 seconds of live data).
 - **Derived Signals**: Create custom calculated signals using math expressions (e.g., `sqrt(battery_voltage)`).
-- **Threshold Monitoring**: Define custom rules using math formulas (e.g., `battery_voltage < 6.5`) to automatically highlight violations with markers directly on the signal graph.
+- **Threshold Monitoring**: Define custom rules using math formulas (e.g., `battery_voltage < 6.5`) to automatically highlight violations with diamond-shaped markers directly on the signal graph.
+- **Integrity Checks (CRC)**: Automatically validates incoming binary packets using CRC-8, CRC-16, or CRC-32. Corrupted data points are visually flagged with **red "X" markers** for easy identification.
 - **Data Logging**: Record raw network or serial streams directly to disk while visualizing.
-- **Session Management**: Save and restore workspace sessions (`.sbs` files). Supports multi-tab persistence, embedded schemas, and **automatic restoration** of the last session on startup.
+- **Session Management**: Save and restore workspace sessions (`.sbs` files). Supports multi-tab persistence and **automatic restoration** of the last session on startup. Session files now use **external schema references** for consistent management.
 
-## 🛠️ Threshold & Alert Monitoring
+## 🛠️ Threshold & Integrity Monitoring
 
-New in v0.2.5, SignalBench supports real-time and post-processing threshold monitoring. You can define rules that are evaluated for every data point to ensure system health.
+New in v0.2.6, SignalBench adds advanced integrity validation alongside existing threshold monitoring.
 
-- **Formula-Based Rules**: Use the built-in expression engine to define complex conditions (e.g., `temp > 85 AND pressure > 120`).
-- **Visual Alerting**: Violations are marked with **diamond-shaped indicators** placed directly on the signal graph traces for immediate visual correlation.
-- **Rule Management**: Enable or disable rules on the fly from the sidebar. Rules are persistent and saved as part of your workspace session.
-- **Violation Export**: Export a complete list of all triggered alerts, including timestamps and the specific rule violated, to a CSV file for post-mission reporting.
+- **Formula-Based Thresholds**: Use the built-in expression engine to define complex conditions (e.g., `temp > 85 AND pressure > 120`). Violations are marked with diamond indicators.
+- **CRC Validation**: Every binary packet is verified against its schema-defined CRC. Support for custom polynomials, initial values, final XOR, and bit reflection.
+- **Integrity Flagging**: All data points that fail CRC validation are marked with a **red "X"** directly on the signal traces, allowing engineers to correlate data corruption with environmental or mission events.
+- **Violation Export**: Export a complete list of all triggered alerts to a CSV file for post-mission reporting.
 
 ## 📄 DSDL-Lite Packet Schema
 
@@ -87,6 +88,16 @@ packet:
           offset: -40.0
           unit: "°C"
           description: "Internal ambient temperature"
+          
+  # CRC integrity check (Optional)
+  crc:
+    type: Crc16
+    polynomial: 0x1021
+    initial_value: 0x0000
+    bit_offset: 64 # Where the CRC field is in the packet
+    bit_length: 16
+    reflect_input: true
+    reflect_output: true
 ```
 
 ## 🚀 Getting Started (Quick Start)

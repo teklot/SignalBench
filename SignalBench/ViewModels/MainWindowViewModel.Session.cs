@@ -38,16 +38,17 @@ public partial class MainWindowViewModel
                             ThresholdRules = [.. p.ThresholdRules]
                         };
 
-                        // Embed schema YAML if available
-                        if (p.Schema != null)
+                        // Use SchemaPath if available, but skip for delimited files (indicated by CsvSettings)
+                        bool isDelimited = p.SourceType == PlotSourceType.File && p.CsvSettings != null && !string.IsNullOrEmpty(p.CsvSettings.Delimiter);
+                        if (!isDelimited)
                         {
-                            try { tab.SchemaYaml = new SchemaLoader().Save(p.Schema); } catch { }
+                            tab.SchemaPath = p.SchemaPath;
                         }
 
                         // Only save settings relevant to the source type
                         if (p.SourceType == PlotSourceType.Serial) tab.SerialSettings = p.SerialSettings;
                         if (p.SourceType == PlotSourceType.Network) tab.NetworkSettings = p.NetworkSettings;
-                        if (p.SourceType == PlotSourceType.File && p.TelemetryPath?.EndsWith(".csv", StringComparison.OrdinalIgnoreCase) == true)
+                        if (isDelimited)
                         {
                             tab.CsvSettings = new CsvSettings
                             {
@@ -117,12 +118,18 @@ public partial class MainWindowViewModel
                     plot.NetworkSettings.Port = tab.NetworkSettings.Port;
                     plot.NetworkSettings.RollingWindowSeconds = tab.NetworkSettings.RollingWindowSeconds;
                 }
-                // Load Schema (prefer embedded YAML)
+                // Load Schema
                 PacketSchema? schema = null;
-                if (!string.IsNullOrEmpty(tab.SchemaYaml))
+                if (!string.IsNullOrEmpty(tab.SchemaPath) && File.Exists(tab.SchemaPath))
                 {
-                    schema = new SchemaLoader().Load(tab.SchemaYaml);
-                    plot.Schema = schema;
+                    try
+                    {
+                        var yaml = await File.ReadAllTextAsync(tab.SchemaPath);
+                        schema = new SchemaLoader().Load(yaml);
+                        plot.Schema = schema;
+                        plot.SchemaPath = tab.SchemaPath;
+                    }
+                    catch (Exception ex) { _logger.LogWarning(ex, "Failed to load schema from {Path}", tab.SchemaPath); }
                 }
                 Tabs.Add(plot);
                 SelectedTab = plot;
@@ -228,12 +235,18 @@ public partial class MainWindowViewModel
                         plot.NetworkSettings.Port = tab.NetworkSettings.Port;
                         plot.NetworkSettings.RollingWindowSeconds = tab.NetworkSettings.RollingWindowSeconds;
                     }
-                    // Load Schema from embedded YAML
+                    // Load Schema from path
                     PacketSchema? schema = null;
-                    if (!string.IsNullOrEmpty(tab.SchemaYaml))
+                    if (!string.IsNullOrEmpty(tab.SchemaPath) && File.Exists(tab.SchemaPath))
                     {
-                        schema = new SchemaLoader().Load(tab.SchemaYaml);
-                        plot.Schema = schema;
+                        try
+                        {
+                            var yaml = await File.ReadAllTextAsync(tab.SchemaPath);
+                            schema = new SchemaLoader().Load(yaml);
+                            plot.Schema = schema;
+                            plot.SchemaPath = tab.SchemaPath;
+                        }
+                        catch (Exception ex) { _logger.LogWarning(ex, "Failed to load schema from {Path}", tab.SchemaPath); }
                     }
                     Tabs.Add(plot);
                     SelectedTab = plot;
@@ -304,7 +317,14 @@ public partial class MainWindowViewModel
                         NetworkSettings = p.NetworkSettings,
                         CsvSettings = p.CsvSettings
                     };
-                    if (p.Schema != null) { try { tab.SchemaYaml = new SchemaLoader().Save(p.Schema); } catch { } }
+
+                    // Use SchemaPath if available, but skip for delimited files (indicated by CsvSettings)
+                    bool isDelimited = p.SourceType == PlotSourceType.File && p.CsvSettings != null && !string.IsNullOrEmpty(p.CsvSettings.Delimiter);
+                    if (!isDelimited)
+                    {
+                        tab.SchemaPath = p.SchemaPath;
+                    }
+
                     tabSessions.Add(tab);
                 }
             }

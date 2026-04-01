@@ -1,3 +1,22 @@
+# Release Notes - v0.2.6
+
+## 🚀 New Features
+- **CRC Validation**: 
+  - Full support for CRC-8, CRC-16, and CRC-32 (Cyclic Redundancy Checks) for binary packets.
+  - Automatic validation of every received packet against the schema-defined CRC.
+  - Visual **red "X" markers** on the signal graph traces for all data points that fail integrity checks.
+  - High-performance CRC engine with support for bit-reflection (input/output) and custom polynomials.
+- **Enhanced Delimited File Support**: 
+  - Added native support for **.tsv**, **.txt**, and **.log** files alongside CSV.
+  - Improved the import wizard to handle various delimiters (comma, semicolon, pipe, tab).
+  - Explicitly **skips the timestamp signal** from the sidebar and plot to keep the focus on telemetry data.
+
+## 🛠️ Improvements & Fixes
+- **Optimized Session Management**: 
+  - Session files (`.sbs`) now store **external schema references** instead of embedding full schema YAML, reducing file size and ensuring consistent schema management.
+  - Automatically identifies delimited files in sessions to skip unnecessary binary schema logic.
+- **CRC Positioning**: Improved binary decoding to support CRC fields located at any position within the packet (beginning, middle, or end).
+
 # Release Notes - v0.2.5
 
 ## 🚀 New Features

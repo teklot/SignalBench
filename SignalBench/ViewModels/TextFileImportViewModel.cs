@@ -86,7 +86,7 @@ public partial class TextFileImportViewModel : ViewModelBase
                 Title = "Select Text File Telemetry",
                 AllowMultiple = false,
                 FileTypeFilter = [
-                    new Avalonia.Platform.Storage.FilePickerFileType("Text Files") { Patterns = ["*.csv", "*.tsv", "*.txt"] },
+                    new Avalonia.Platform.Storage.FilePickerFileType("Text Files") { Patterns = ["*.csv", "*.tsv", "*.txt", "*.log"] },
                     Avalonia.Platform.Storage.FilePickerFileTypes.All
                 ]
             });
