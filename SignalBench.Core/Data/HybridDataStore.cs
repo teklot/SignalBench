@@ -112,6 +112,27 @@ public sealed class HybridDataStore(StorageMode mode = StorageMode.InMemory) : I
             : _inMemory.GetIndices(startTime, endTime);
     }
 
+    public List<int> GetInvalidIndices(int? maxPoints = null)
+    {
+        return mode == StorageMode.Sqlite
+            ? _sqlite?.GetInvalidIndices(maxPoints) ?? []
+            : _inMemory.GetInvalidIndices(maxPoints);
+    }
+
+    public List<int> GetInvalidIndices(int startIndex, int count)
+    {
+        return mode == StorageMode.Sqlite
+            ? _sqlite?.GetInvalidIndices(startIndex, count) ?? []
+            : _inMemory.GetInvalidIndices(startIndex, count);
+    }
+
+    public List<int> GetInvalidIndices(DateTime startTime)
+    {
+        return mode == StorageMode.Sqlite
+            ? _sqlite?.GetInvalidIndices(startTime) ?? []
+            : _inMemory.GetInvalidIndices(startTime);
+    }
+
     public int GetRowCount()
     {
         return mode == StorageMode.Sqlite 

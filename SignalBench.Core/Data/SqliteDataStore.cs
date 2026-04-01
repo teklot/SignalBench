@@ -79,7 +79,7 @@ public sealed class SqliteDataStore : IDataStore
             .Select(f => $"\"{f.Name}\" REAL");
 
         var columns = string.Join(", ", fieldCols);
-        var sql = $"CREATE TABLE IF NOT EXISTS {_tableName} (id INTEGER PRIMARY KEY, timestamp DATETIME";
+        var sql = $"CREATE TABLE IF NOT EXISTS {_tableName} (id INTEGER PRIMARY KEY, timestamp DATETIME, is_valid INTEGER DEFAULT 1";
         if (!string.IsNullOrEmpty(columns))
             sql += ", " + columns;
         sql += ")";
@@ -111,10 +111,10 @@ public sealed class SqliteDataStore : IDataStore
         var fieldNames = string.Join(", ", allFieldNames.Select(k => $"\"{k}\""));
         var fieldParams = string.Join(", ", allFieldNames.Select(k => $"@{k.Replace(" ", "_")}"));
         
-        var sql = $"INSERT INTO {_tableName} (timestamp";
+        var sql = $"INSERT INTO {_tableName} (timestamp, is_valid";
         if (!string.IsNullOrEmpty(fieldNames))
             sql += $", {fieldNames}";
-        sql += ") VALUES (@ts";
+        sql += ") VALUES (@ts, @valid";
         if (!string.IsNullOrEmpty(fieldParams))
             sql += $", {fieldParams}";
         sql += ")";
@@ -132,6 +132,7 @@ public sealed class SqliteDataStore : IDataStore
             if (finalTs == default) finalTs = DateTime.Now;
 
             command.Parameters.AddWithValue("@ts", finalTs);
+            command.Parameters.AddWithValue("@valid", packet.IsValid ? 1 : 0);
 
             foreach (var fieldName in allFieldNames)
             {
@@ -171,7 +172,6 @@ public sealed class SqliteDataStore : IDataStore
         if (_connection == null) return [];
         var data = new List<DateTime>();
         using var command = _connection.CreateCommand();
-        command.CommandText = "SELECT timestamp FROM " + _tableName + " ORDER BY id";
         
         if (maxPoints.HasValue)
         {
@@ -179,6 +179,10 @@ public sealed class SqliteDataStore : IDataStore
             var step = Math.Max(1, totalRows / maxPoints.Value);
             command.CommandText = $"SELECT timestamp FROM {_tableName} WHERE id % @step = 0 ORDER BY id";
             command.Parameters.AddWithValue("@step", step);
+        }
+        else
+        {
+            command.CommandText = $"SELECT timestamp FROM {_tableName} ORDER BY id";
         }
         
         using var reader = command.ExecuteReader();
@@ -259,13 +263,83 @@ public sealed class SqliteDataStore : IDataStore
         using var reader = command.ExecuteReader();
         if (reader.Read() && !reader.IsDBNull(0))
         {
-            // SQLite IDs are usually 1-based, we want 0-based index for IDataStore consistency
-            // but let's check how we use offsets in other methods
-            // GetSignalData uses LIMIT/OFFSET which is 0-based.
-            // ID in SQLite for this table is AUTOINCREMENT (implicitly) starting at 1.
             return (reader.GetInt32(0) - 1, reader.GetInt32(1) - 1);
         }
         return (-1, -1);
+    }
+
+    public List<int> GetInvalidIndices(int? maxPoints = null)
+    {
+        if (_connection == null) return [];
+        var data = new List<int>();
+        using var command = _connection.CreateCommand();
+        
+        if (maxPoints.HasValue)
+        {
+            var totalRows = GetTotalRowCount();
+            var step = Math.Max(1, totalRows / maxPoints.Value);
+            
+            // We need to know which of the downsampled points are invalid.
+            // A point at index 'i' in the downsampled set corresponds to index 'i*step' in the original set.
+            command.CommandText = $@"
+                SELECT (id-1)/@step 
+                FROM {_tableName} 
+                WHERE (id-1) % @step = 0 AND is_valid = 0 
+                ORDER BY id";
+            command.Parameters.AddWithValue("@step", step);
+        }
+        else
+        {
+            command.CommandText = $"SELECT id - 1 FROM {_tableName} WHERE is_valid = 0 ORDER BY id";
+        }
+        
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            data.Add(reader.GetInt32(0));
+        }
+        return data;
+    }
+
+    public List<int> GetInvalidIndices(int startIndex, int count)
+    {
+        if (_connection == null) return [];
+        var data = new List<int>();
+        using var command = _connection.CreateCommand();
+        command.CommandText = $"SELECT row_num - 1 FROM (SELECT ROW_NUMBER() OVER(ORDER BY id) as row_num, is_valid FROM {_tableName}) WHERE is_valid = 0 LIMIT @count OFFSET @offset";
+        command.Parameters.AddWithValue("@count", count);
+        command.Parameters.AddWithValue("@offset", startIndex);
+        
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            data.Add(reader.GetInt32(0));
+        }
+        return data;
+    }
+
+    public List<int> GetInvalidIndices(DateTime startTime)
+    {
+        if (_connection == null) return [];
+        var data = new List<int>();
+        using var command = _connection.CreateCommand();
+        // We need the index relative to the set where timestamp >= startTime
+        command.CommandText = $@"
+            SELECT row_num - 1 
+            FROM (
+                SELECT ROW_NUMBER() OVER(ORDER BY id) as row_num, is_valid 
+                FROM {_tableName} 
+                WHERE timestamp >= @start
+            ) 
+            WHERE is_valid = 0";
+        command.Parameters.AddWithValue("@start", startTime);
+        
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            data.Add(reader.GetInt32(0));
+        }
+        return data;
     }
 
     public int GetRowCount() => GetTotalRowCount();

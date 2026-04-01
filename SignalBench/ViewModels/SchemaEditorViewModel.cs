@@ -64,6 +64,71 @@ public partial class FieldEditorViewModel : ViewModelBase
     };
 }
 
+public partial class CrcEditorViewModel : ViewModelBase
+{
+    [ObservableProperty]
+    private bool _isEnabled;
+
+    [ObservableProperty]
+    private CrcType _type = CrcType.Crc16;
+
+    [ObservableProperty]
+    private string _polynomialHex = "1021";
+
+    [ObservableProperty]
+    private string _initialValueHex = "FFFF";
+
+    [ObservableProperty]
+    private string _finalXorHex = "0000";
+
+    [ObservableProperty]
+    private bool _reflectInput;
+
+    [ObservableProperty]
+    private bool _reflectOutput;
+
+    [ObservableProperty]
+    private int _bitOffset;
+
+    [ObservableProperty]
+    private int _bitLength = 16;
+
+    public CrcDefinition? ToDefinition()
+    {
+        if (!IsEnabled) return null;
+
+        uint poly = 0, init = 0, xor = 0;
+        uint.TryParse(PolynomialHex, System.Globalization.NumberStyles.HexNumber, null, out poly);
+        uint.TryParse(InitialValueHex, System.Globalization.NumberStyles.HexNumber, null, out init);
+        uint.TryParse(FinalXorHex, System.Globalization.NumberStyles.HexNumber, null, out xor);
+
+        return new CrcDefinition
+        {
+            Type = Type,
+            Polynomial = poly,
+            InitialValue = init,
+            FinalXor = xor,
+            ReflectInput = ReflectInput,
+            ReflectOutput = ReflectOutput,
+            BitOffset = BitOffset,
+            BitLength = BitLength
+        };
+    }
+
+    public void LoadFrom(CrcDefinition crc)
+    {
+        IsEnabled = true;
+        Type = crc.Type;
+        PolynomialHex = crc.Polynomial.ToString("X");
+        InitialValueHex = crc.InitialValue.ToString("X");
+        FinalXorHex = crc.FinalXor.ToString("X");
+        ReflectInput = crc.ReflectInput;
+        ReflectOutput = crc.ReflectOutput;
+        BitOffset = crc.BitOffset;
+        BitLength = crc.BitLength;
+    }
+}
+
 public class SchemaEditorResult
 {
     public PacketSchema Schema { get; set; } = null!;
@@ -93,6 +158,9 @@ public partial class SchemaEditorViewModel : ViewModelBase
 
     [ObservableProperty]
     private FieldEditorViewModel? _selectedField;
+
+    [ObservableProperty]
+    private CrcEditorViewModel _crc = new();
 
     public ObservableCollection<FieldEditorViewModel> Fields { get; } = [];
 
@@ -192,6 +260,7 @@ public partial class SchemaEditorViewModel : ViewModelBase
     private void Cancel() => RequestClose?.Invoke(null);
 
     public FieldType[] AvailableTypes { get; } = Enum.GetValues<FieldType>();
+    public CrcType[] AvailableCrcTypes { get; } = Enum.GetValues<CrcType>();
     public Endianness[] AvailableEndianness { get; } = Enum.GetValues<Endianness>();
 
     public SchemaEditorViewModel(PacketSchema? existingSchema = null)
@@ -211,6 +280,15 @@ public partial class SchemaEditorViewModel : ViewModelBase
         foreach (var f in schema.Fields)
             Fields.Add(new FieldEditorViewModel(f));
         
+        if (schema.Crc != null)
+        {
+            Crc.LoadFrom(schema.Crc);
+        }
+        else
+        {
+            Crc.IsEnabled = false;
+        }
+
         if (Fields.Count > 0) SelectedField = Fields[0];
         SaveAndCloseCommand.NotifyCanExecuteChanged();
     }
@@ -229,7 +307,8 @@ public partial class SchemaEditorViewModel : ViewModelBase
             Name = Name,
             SyncWord = syncWord,
             Endianness = Endianness,
-            Fields = Fields.Select(f => f.ToDefinition()).ToList()
+            Fields = Fields.Select(f => f.ToDefinition()).ToList(),
+            Crc = Crc.ToDefinition()
         };
     }
 

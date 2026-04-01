@@ -74,6 +74,18 @@ public sealed partial class PlotViewModel : TabViewModelBase
     [ObservableProperty]
     private bool _isRecording;
 
+    private bool _invalidDataPoint;
+    public bool InvalidDataPoint
+    {
+        get => _invalidDataPoint;
+        set {
+            if (SetProperty(ref _invalidDataPoint, value))
+            {
+                SourceStateChanged?.Invoke();
+            }
+        }
+    }
+
     public IStreamingSource? ActiveSource { get; set; }
 
     public SerialSettings SerialSettings { get; } = new();
@@ -145,7 +157,7 @@ public sealed partial class PlotViewModel : TabViewModelBase
     public double FullDuration { get; set; }
 
     // Events for the View and ViewModel to hook into
-    public Action<List<DateTime>, Dictionary<string, List<double>>, DateTime?, double?, int?, List<ThresholdViolation>?>? RequestPlotUpdate;
+    public Action<List<DateTime>, Dictionary<string, List<double>>, DateTime?, double?, int?, List<ThresholdViolation>?, List<int>?>? RequestPlotUpdate;
     public Action<DateTime>? RequestCursorUpdate;
     public Action? RequestPlotClear;
     public event Action? SourceStateChanged;

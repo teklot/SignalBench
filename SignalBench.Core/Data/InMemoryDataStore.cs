@@ -7,6 +7,7 @@ public sealed class InMemoryDataStore : IDataStore
 {
     private readonly Dictionary<string, List<double>> _signals = [];
     private readonly List<DateTime> _timestamps = [];
+    private readonly List<bool> _validity = [];
     private List<string> _signalNames = [];
     private readonly object _lock = new();
 
@@ -16,6 +17,7 @@ public sealed class InMemoryDataStore : IDataStore
         {
             _signals.Clear();
             _timestamps.Clear();
+            _validity.Clear();
             _signalNames = schema.Fields.Select(f => f.Name).Where(n => !n.Equals("timestamp", StringComparison.OrdinalIgnoreCase)).ToList();
             
             foreach (var name in _signalNames)
@@ -42,6 +44,7 @@ public sealed class InMemoryDataStore : IDataStore
                     ts = packet.Timestamp;
                 }
                 _timestamps.Add(ts);
+                _validity.Add(packet.IsValid);
                 index++;
                 
                 foreach (var name in _signalNames)
@@ -157,18 +160,76 @@ public sealed class InMemoryDataStore : IDataStore
         }
     }
 
+    public List<int> GetInvalidIndices(int? maxPoints = null)
+    {
+        lock (_lock)
+        {
+            var result = new List<int>();
+            if (!maxPoints.HasValue || maxPoints.Value >= _validity.Count)
+            {
+                for (int i = 0; i < _validity.Count; i++)
+                    if (!_validity[i]) result.Add(i);
+                return result;
+            }
+            
+            var step = Math.Max(1, _validity.Count / maxPoints.Value);
+            int plotIdx = 0;
+            for (int i = 0; i < _validity.Count; i += step)
+            {
+                if (!_validity[i]) result.Add(plotIdx);
+                plotIdx++;
+                if (plotIdx >= maxPoints.Value) break;
+            }
+            return result;
+        }
+    }
+
+    public List<int> GetInvalidIndices(int startIndex, int count)
+    {
+        lock (_lock)
+        {
+            var result = new List<int>();
+            int limit = Math.Min(startIndex + count, _validity.Count);
+            for (int i = startIndex; i < limit; i++)
+            {
+                if (!_validity[i]) result.Add(i);
+            }
+            return result;
+        }
+    }
+
+    public List<int> GetInvalidIndices(DateTime startTime)
+    {
+        lock (_lock)
+        {
+            var result = new List<int>();
+            int index = 0;
+            for (int i = 0; i < _timestamps.Count; i++)
+            {
+                if (_timestamps[i] >= startTime)
+                {
+                    if (!_validity[i]) result.Add(index);
+                    index++;
+                }
+            }
+            return result;
+        }
+    }
+
     public int GetRowCount() => _timestamps.Count;
 
     public void Reset(string dbPath)
     {
         _signals.Clear();
         _timestamps.Clear();
+        _validity.Clear();
         _signalNames.Clear();
     }
 
     public void Clear()
     {
         _timestamps.Clear();
+        _validity.Clear();
         foreach (var key in _signals.Keys)
         {
             _signals[key].Clear();
@@ -190,5 +251,6 @@ public sealed class InMemoryDataStore : IDataStore
     {
         _signals.Clear();
         _timestamps.Clear();
+        _validity.Clear();
     }
 }

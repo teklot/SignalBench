@@ -55,6 +55,11 @@ public class SchemaLoader
             currentBitOffset = field.BitOffset + field.BitLength;
         }
 
+        if (file.Packet.Crc != null && file.Packet.Crc.BitOffset == 0)
+        {
+            file.Packet.Crc.BitOffset = currentBitOffset;
+        }
+
         return file.Packet;
     }
 

@@ -51,6 +51,7 @@ public partial class PlotView : UserControl
         {
             _attachedVm.RequestPlotUpdate = null;
             _attachedVm.RequestCursorUpdate = null;
+            _attachedVm.RequestPlotClear = null;
         }
 
         if (DataContext is PlotViewModel vm)
@@ -59,15 +60,6 @@ public partial class PlotView : UserControl
             vm.RequestPlotUpdate = UpdatePlot;
             vm.RequestCursorUpdate = UpdateCursorOnly;
             vm.RequestPlotClear = ClearPlot;
-            
-            // Trigger a refresh for the newly selected plot
-            // We use a small delay or post to ensure the view is fully ready
-            Avalonia.Threading.Dispatcher.UIThread.Post(() => {
-                if (DataContext == vm) // Still the same?
-                {
-                    // MainWindowViewModel can trigger this refresh
-                }
-            });
         }
         else
         {
@@ -75,7 +67,7 @@ public partial class PlotView : UserControl
         }
     }
 
-    public void UpdatePlot(List<DateTime> timestamps, Dictionary<string, List<double>> data, DateTime? cursorPosition = null, double? fixedXMax = null, int? rollingWindowSize = null, List<SignalBench.Core.Models.ThresholdViolation>? violations = null)
+    public void UpdatePlot(List<DateTime> timestamps, Dictionary<string, List<double>> data, DateTime? cursorPosition = null, double? fixedXMax = null, int? rollingWindowSize = null, List<SignalBench.Core.Models.ThresholdViolation>? violations = null, List<int>? invalidIndices = null)
     {
         var mainPlot = this.FindControl<ScottPlot.Avalonia.AvaPlot>("MainPlot");
         if (mainPlot == null) return;
@@ -105,10 +97,13 @@ public partial class PlotView : UserControl
             double[] x = timestamps.Select(t => t.ToOADate()).ToArray();
             double[] y = [.. kv.Value];
             
-            var yMin = y.Min();
-            var yMax = y.Max();
-            if (yMin < minY) minY = yMin;
-            if (yMax > maxY) maxY = yMax;
+            if (y.Length > 0)
+            {
+                var yMin = y.Min();
+                var yMax = y.Max();
+                if (yMin < minY) minY = yMin;
+                if (yMax > maxY) maxY = yMax;
+            }
             
             var scatter = mainPlot.Plot.Add.Scatter(x, y);
             scatter.LegendText = kv.Key;
@@ -147,6 +142,24 @@ public partial class PlotView : UserControl
                 {
                     marker.LegendText = string.Empty;
                 }
+            }
+        }
+
+        // Add Invalid CRC Markers
+        if (invalidIndices != null && invalidIndices.Count > 0)
+        {
+            foreach (var idx in invalidIndices)
+            {
+                if (idx < 0 || idx >= timestamps.Count) continue;
+                
+                // Put a red "X" at the top of the plot for each invalid packet.
+                var marker = mainPlot.Plot.Add.Marker(timestamps[idx].ToOADate(), maxY);
+                marker.Shape = ScottPlot.MarkerShape.Cross;
+                marker.Size = 12;
+                marker.Color = ScottPlot.Colors.Red;
+                marker.LineWidth = 2;
+                
+                if (idx == invalidIndices[0]) marker.LegendText = "Invalid CRC";
             }
         }
 

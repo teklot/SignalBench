@@ -270,6 +270,7 @@ public partial class MainWindowViewModel : ViewModelBase
         CreateThresholdRuleCommand?.NotifyCanExecuteChanged();
         SaveSessionCommand?.NotifyCanExecuteChanged();
         ExportCsvCommand?.NotifyCanExecuteChanged();
+        if (SelectedPlot != null) UpdatePlot(SelectedPlot);
     }
 
     private void NotifyPlaybackCommands()
@@ -713,6 +714,7 @@ public partial class MainWindowViewModel : ViewModelBase
             var maxPlotPoints = 10000;
             var shouldDownsample = rowCount > maxPlotPoints;
             var timestamps = plot.DataStore.GetTimestamps(shouldDownsample ? maxPlotPoints : null);
+            var invalidIndices = plot.DataStore.GetInvalidIndices(shouldDownsample ? maxPlotPoints : null);
 
             var plotData = new Dictionary<string, List<double>>();
             foreach (var signalName in plot.SelectedSignalNames)
@@ -759,7 +761,7 @@ public partial class MainWindowViewModel : ViewModelBase
                 }
             }
 
-            plot.RequestPlotUpdate?.Invoke(timestamps, plotData, null, null, null, violations);
+            plot.RequestPlotUpdate?.Invoke(timestamps, plotData, null, null, null, violations, invalidIndices);
             
             // Update current values for the signals pane
             if (plot == SelectedPlot) RefreshCurrentValues();

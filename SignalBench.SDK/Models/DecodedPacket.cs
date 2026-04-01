@@ -8,4 +8,5 @@ public sealed record DecodedPacket
     public required string SchemaName { get; init; }
     public required DateTime Timestamp { get; init; }
     public Dictionary<string, object> Fields { get; init; } = [];
+    public bool IsValid { get; init; } = true;
 }

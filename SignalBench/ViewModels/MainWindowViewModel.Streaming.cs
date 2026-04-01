@@ -352,6 +352,7 @@ public partial class MainWindowViewModel
             DateTime startTs = latestTs.AddSeconds(-windowSeconds);
 
             var timestamps = targetStore.GetTimestamps(startTs);
+            var invalidIndices = targetStore.GetInvalidIndices(startTs);
             var plotData = new Dictionary<string, List<double>>();
             foreach (var signalName in targetPlot.SelectedSignalNames)
                 plotData[signalName] = targetStore.GetSignalData(signalName, startTs);
@@ -359,7 +360,7 @@ public partial class MainWindowViewModel
             if (timestamps.Count > 0)
             {
                 double? forceXMax = timestamps[^1].ToOADate();
-                targetPlot.RequestPlotUpdate?.Invoke(timestamps, plotData, null, forceXMax, windowSeconds, null);
+                targetPlot.RequestPlotUpdate?.Invoke(timestamps, plotData, null, forceXMax, windowSeconds, null, invalidIndices);
             }
         }
     }

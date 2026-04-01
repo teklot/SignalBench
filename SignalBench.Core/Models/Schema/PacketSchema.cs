@@ -26,11 +26,24 @@ public enum Endianness
     Big
 }
 
+public class CrcDefinition
+{
+    public CrcType Type { get; set; } = CrcType.Crc16;
+    public uint Polynomial { get; set; } = 0x1021;
+    public uint InitialValue { get; set; } = 0xFFFF;
+    public uint FinalXor { get; set; } = 0x0000;
+    public bool ReflectInput { get; set; } = false;
+    public bool ReflectOutput { get; set; } = false;
+    public int BitOffset { get; set; }
+    public int BitLength { get; set; } = 16;
+}
+
 public class PacketSchema
 {
     public string Name { get; set; } = string.Empty;
     public uint? SyncWord { get; set; }
     public Endianness Endianness { get; set; } = Endianness.Little;
     public List<FieldDefinition> Fields { get; set; } = [];
+    public CrcDefinition? Crc { get; set; }
     public int Version { get; set; } = 1;
 }

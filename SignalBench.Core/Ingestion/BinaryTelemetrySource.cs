@@ -23,15 +23,24 @@ public sealed class BinaryTelemetrySource(string filePath, PacketSchema schema) 
         {
             size += GetTypeSize(field.Type);
         }
+
+        if (schema.Crc != null)
+        {
+            // If BitOffset is specified and beyond current size, use that.
+            // Otherwise assume it's at the end.
+            int crcEndByte = (schema.Crc.BitOffset + schema.Crc.BitLength + 7) / 8;
+            size = Math.Max(size, crcEndByte);
+        }
+
         return size;
     }
 
     private static int GetTypeSize(FieldType type) => type switch
     {
-        FieldType.Uint8 or FieldType.Int8 => 1,
+        FieldType.Uint8 or FieldType.Int8 or FieldType.Bool => 1,
         FieldType.Uint16 or FieldType.Int16 => 2,
         FieldType.Uint32 or FieldType.Int32 or FieldType.Float32 => 4,
-        FieldType.Uint64 or FieldType.Float64 => 8,
+        FieldType.Uint64 or FieldType.Int64 or FieldType.Float64 => 8,
         _ => 0
     };
 

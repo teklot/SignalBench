@@ -11,12 +11,75 @@ public sealed class BinaryDecoder
         var fields = new Dictionary<string, object>();
         DecodeFields(data, schema.Fields, schema.Endianness, fields, "");
 
+        bool isValid = true;
+        if (schema.Crc != null)
+        {
+            isValid = ValidateCrc(data, schema.Crc, schema.Endianness);
+        }
+
         return new DecodedPacket 
         { 
             SchemaName = schema.Name, 
             Timestamp = DateTime.Now, 
-            Fields = fields 
+            Fields = fields,
+            IsValid = isValid
         };
+    }
+
+    private bool ValidateCrc(ReadOnlySpan<byte> data, CrcDefinition crcDef, Endianness endian)
+    {
+        int crcByteOffset = crcDef.BitOffset / 8;
+        int crcByteLength = (crcDef.BitLength + 7) / 8;
+
+        if (crcByteOffset + crcByteLength > data.Length) return false;
+
+        // Extract received CRC
+        uint receivedCrc = 0;
+        var crcData = data.Slice(crcByteOffset, crcByteLength);
+        if (crcDef.Type == CrcType.Crc8)
+        {
+            receivedCrc = crcData[0];
+        }
+        else if (crcDef.Type == CrcType.Crc16)
+        {
+            receivedCrc = endian == Endianness.Little
+                ? BinaryPrimitives.ReadUInt16LittleEndian(crcData)
+                : BinaryPrimitives.ReadUInt16BigEndian(crcData);
+        }
+        else if (crcDef.Type == CrcType.Crc32)
+        {
+            receivedCrc = endian == Endianness.Little
+                ? BinaryPrimitives.ReadUInt32LittleEndian(crcData)
+                : BinaryPrimitives.ReadUInt32BigEndian(crcData);
+        }
+
+        // Calculate CRC on data excluding the CRC field itself
+        byte[] dataToVerify;
+        if (crcByteOffset == 0)
+        {
+            dataToVerify = data.Slice(crcByteLength).ToArray();
+        }
+        else if (crcByteOffset + crcByteLength >= data.Length)
+        {
+            dataToVerify = data.Slice(0, crcByteOffset).ToArray();
+        }
+        else
+        {
+            dataToVerify = new byte[data.Length - crcByteLength];
+            data.Slice(0, crcByteOffset).CopyTo(dataToVerify);
+            data.Slice(crcByteOffset + crcByteLength).CopyTo(dataToVerify.AsSpan(crcByteOffset));
+        }
+        
+        uint calculatedCrc = CrcCalculator.CalculateCrc(
+            dataToVerify, 
+            crcDef.Type, 
+            crcDef.Polynomial, 
+            crcDef.InitialValue, 
+            crcDef.FinalXor, 
+            crcDef.ReflectInput, 
+            crcDef.ReflectOutput);
+
+        return receivedCrc == calculatedCrc;
     }
 
     private void DecodeFields(ReadOnlySpan<byte> data, IEnumerable<FieldDefinition> fieldDefs, Endianness endian, Dictionary<string, object> results, string prefix)

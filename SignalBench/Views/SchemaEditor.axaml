@@ -5,6 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:mi="using:Material.Icons.Avalonia"
         xmlns:models="using:SignalBench.Core.Models.Schema"
+        xmlns:converters="using:SignalBench.Converters"
         mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="600"
         x:Class="SignalBench.Views.SchemaEditor"
         x:DataType="vm:SchemaEditorViewModel"
@@ -126,45 +127,99 @@
                         BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
                         BorderThickness="1,0,0,0"
                         Padding="15">
-                    <StackPanel Spacing="15" IsEnabled="{Binding SelectedField, Converter={x:Static ObjectConverters.IsNotNull}}">
-                        <TextBlock Text="FIELD DETAILS" FontWeight="Bold" FontSize="12" Margin="0,0,0,5"/>
-                        
-                        <StackPanel Spacing="5">
-                            <TextBlock Text="UNIT" FontSize="11"/>
-                            <TextBox Text="{Binding SelectedField.Unit}" Watermark="e.g. V, Hz, °C"/>
-                        </StackPanel>
+                    <ScrollViewer>
+                        <StackPanel Spacing="15">
+                            <StackPanel Spacing="15" IsEnabled="{Binding SelectedField, Converter={x:Static converters:ObjectConverters.IsNotNull}}">
+                                <TextBlock Text="FIELD DETAILS" FontWeight="Bold" FontSize="12" Margin="0,0,0,5"/>
+                                
+                                <StackPanel Spacing="5">
+                                    <TextBlock Text="UNIT" FontSize="11"/>
+                                    <TextBox Text="{Binding SelectedField.Unit}" Watermark="e.g. V, Hz, °C"/>
+                                </StackPanel>
 
-                        <StackPanel Spacing="5">
-                            <TextBlock Text="DESCRIPTION" FontSize="11"/>
-                            <TextBox Text="{Binding SelectedField.Description}" 
-                                     AcceptsReturn="True" 
-                                     Height="80" 
-                                     TextWrapping="Wrap"
-                                     Watermark="Field notes..."/>
-                        </StackPanel>
+                                <StackPanel Spacing="5">
+                                    <TextBlock Text="DESCRIPTION" FontSize="11"/>
+                                    <TextBox Text="{Binding SelectedField.Description}" 
+                                            AcceptsReturn="True" 
+                                            Height="80" 
+                                            TextWrapping="Wrap"
+                                            Watermark="Field notes..."/>
+                                </StackPanel>
 
-                        <Border Height="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" Margin="0,5"/>
-                        
-                        <Grid ColumnDefinitions="*, *" RowDefinitions="Auto, Auto">
-                            <StackPanel Grid.Row="0" Grid.Column="0" Spacing="5" Margin="0,0,5,5">
-                                <TextBlock Text="SCALE" FontSize="11"/>
-                                <NumericUpDown Value="{Binding SelectedField.Scale}" Increment="0.001" Height="28"/>
+                                <Border Height="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" Margin="0,5"/>
+                                
+                                <Grid ColumnDefinitions="*, *" RowDefinitions="Auto, Auto">
+                                    <StackPanel Grid.Row="0" Grid.Column="0" Spacing="5" Margin="0,0,5,5">
+                                        <TextBlock Text="SCALE" FontSize="11"/>
+                                        <NumericUpDown Value="{Binding SelectedField.Scale}" Increment="0.001" Height="28"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Row="0" Grid.Column="1" Spacing="5" Margin="5,0,0,5">
+                                        <TextBlock Text="BIAS (OFFSET)" FontSize="11"/>
+                                        <NumericUpDown Value="{Binding SelectedField.Offset}" Increment="0.1" Height="28"/>
+                                    </StackPanel>
+                                    
+                                    <StackPanel Grid.Row="1" Grid.Column="0" Spacing="5" Margin="0,5,5,0">
+                                        <TextBlock Text="BIT OFFSET (BOFF)" FontSize="11"/>
+                                        <NumericUpDown Value="{Binding SelectedField.BitOffset}" Minimum="0" Height="28"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Row="1" Grid.Column="1" Spacing="5" Margin="5,5,0,0">
+                                        <TextBlock Text="BIT LENGTH (BLEN)" FontSize="11"/>
+                                        <NumericUpDown Value="{Binding SelectedField.BitLength}" Minimum="0" Height="28"/>
+                                    </StackPanel>
+                                </Grid>
                             </StackPanel>
-                            <StackPanel Grid.Row="0" Grid.Column="1" Spacing="5" Margin="5,0,0,5">
-                                <TextBlock Text="BIAS (OFFSET)" FontSize="11"/>
-                                <NumericUpDown Value="{Binding SelectedField.Offset}" Increment="0.1" Height="28"/>
-                            </StackPanel>
-                            
-                            <StackPanel Grid.Row="1" Grid.Column="0" Spacing="5" Margin="0,5,5,0">
-                                <TextBlock Text="BIT OFFSET (BOFF)" FontSize="11"/>
-                                <NumericUpDown Value="{Binding SelectedField.BitOffset}" Minimum="0" Height="28"/>
-                            </StackPanel>
-                            <StackPanel Grid.Row="1" Grid.Column="1" Spacing="5" Margin="5,5,0,0">
-                                <TextBlock Text="BIT LENGTH (BLEN)" FontSize="11"/>
-                                <NumericUpDown Value="{Binding SelectedField.BitLength}" Minimum="0" Height="28"/>
-                            </StackPanel>
-                        </Grid>
-                    </StackPanel>
+
+                            <Border Height="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" Margin="0,10"/>
+
+                            <Expander Header="CRC VALIDATION" IsExpanded="False" HorizontalAlignment="Stretch">
+                                <StackPanel Spacing="10" Margin="0,10,0,0">
+                                    <CheckBox Content="Enable CRC Validation" IsChecked="{Binding Crc.IsEnabled}"/>
+                                    
+                                    <StackPanel Spacing="10" IsEnabled="{Binding Crc.IsEnabled}">
+                                        <Grid ColumnDefinitions="*, *">
+                                            <StackPanel Spacing="5" Margin="0,0,5,0">
+                                                <TextBlock Text="CRC TYPE" FontSize="11"/>
+                                                <ComboBox ItemsSource="{Binding AvailableCrcTypes}" 
+                                                          SelectedItem="{Binding Crc.Type}"
+                                                          HorizontalAlignment="Stretch"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="1" Spacing="5" Margin="5,0,0,0">
+                                                <TextBlock Text="POLY (HEX)" FontSize="11"/>
+                                                <TextBox Text="{Binding Crc.PolynomialHex}"/>
+                                            </StackPanel>
+                                        </Grid>
+
+                                        <Grid ColumnDefinitions="*, *">
+                                            <StackPanel Spacing="5" Margin="0,0,5,0">
+                                                <TextBlock Text="INIT (HEX)" FontSize="11"/>
+                                                <TextBox Text="{Binding Crc.InitialValueHex}"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="1" Spacing="5" Margin="5,0,0,0">
+                                                <TextBlock Text="XOR (HEX)" FontSize="11"/>
+                                                <TextBox Text="{Binding Crc.FinalXorHex}"/>
+                                            </StackPanel>
+                                        </Grid>
+
+                                        <Grid ColumnDefinitions="*, *">
+                                            <CheckBox Grid.Column="0" Content="Reflect In" IsChecked="{Binding Crc.ReflectInput}" FontSize="11"/>
+                                            <CheckBox Grid.Column="1" Content="Reflect Out" IsChecked="{Binding Crc.ReflectOutput}" FontSize="11"/>
+                                        </Grid>
+
+                                        <Grid ColumnDefinitions="*, *">
+                                            <StackPanel Spacing="5" Margin="0,0,5,0">
+                                                <TextBlock Text="BIT OFFSET" FontSize="11"/>
+                                                <NumericUpDown Value="{Binding Crc.BitOffset}" Minimum="0" Height="28"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="1" Spacing="5" Margin="5,0,0,0">
+                                                <TextBlock Text="BIT LENGTH" FontSize="11"/>
+                                                <NumericUpDown Value="{Binding Crc.BitLength}" Minimum="0" Height="28"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Expander>
+                        </StackPanel>
+                    </ScrollViewer>
                 </Border>
             </Grid>
         </Grid>
