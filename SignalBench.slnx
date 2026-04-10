@@ -7,6 +7,7 @@
     <File Path="RELEASE_NOTES.md" />
   </Folder>
   <Project Path="SignalBench.Core/SignalBench.Core.csproj" />
+  <Project Path="SignalFlux/SignalFlux.csproj" />
   <Project Path="SignalBench.SDK/SignalBench.SDK.csproj" />
   <Project Path="SignalBench.Tests/SignalBench.Tests.csproj" />
   <Project Path="SignalBench/SignalBench.csproj" />

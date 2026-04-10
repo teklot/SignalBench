@@ -1,3 +1,12 @@
+# Release Notes - v0.3.0
+
+## 🚀 New Features (SignalFlux Integration)
+- **Unified Binary Protocol Platform**: SignalFlux is now a core component of the SignalBench ecosystem.
+- **Headless Signal Generation**: New `signalflux` CLI for high-performance, headless protocol simulation.
+- **Unified Schema Engine**: Use the exact same YAML packet schemas for both generation (Flux) and analysis (Bench).
+- **Generic Schema Encoder**: New schema-driven encoding engine that replaces hardcoded protocol logic. Supports any bit-aligned binary format defined in YAML.
+- **Inline Simulation**: Support for quick protocol testing via CLI without configuration files.
+
 # Release Notes - v0.2.6
 
 ## 🚀 New Features
