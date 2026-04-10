@@ -50,8 +50,8 @@ jobs:
     - name: Extract Latest Release Notes
       shell: bash
       run: |
-        # Extract content between the first two "# Release Notes" headers
-        sed -n '/^# Release Notes - v/{p;n;:a;n;/^# Release Notes - v/q;p;ba}' RELEASE_NOTES.md > LATEST_RELEASE_NOTES.md
+        # Extract content between the first and second "# Release Notes" headers using portable awk
+        awk '/^# Release Notes - v/ { if (n++) exit } { if (n) print }' RELEASE_NOTES.md > LATEST_RELEASE_NOTES.md
 
     - name: Upload Release Asset
       uses: softprops/action-gh-release@v2
