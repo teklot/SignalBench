@@ -39,24 +39,25 @@ public partial class MainWindowViewModel
                         };
 
                         // Use SchemaPath if available, but skip for delimited files (indicated by CsvSettings)
-                        bool isDelimited = p.SourceType == PlotSourceType.File && p.CsvSettings != null && !string.IsNullOrEmpty(p.CsvSettings.Delimiter);
-                        if (!isDelimited)
-                        {
-                            tab.SchemaPath = p.SchemaPath;
-                        }
+                         var csvSettings = p.SourceType == PlotSourceType.File ? p.CsvSettings : null;
+                         bool isDelimited = csvSettings != null && !string.IsNullOrEmpty(csvSettings.Delimiter);
+                         if (!isDelimited)
+                         {
+                             tab.SchemaPath = p.SchemaPath;
+                         }
 
-                        // Only save settings relevant to the source type
-                        if (p.SourceType == PlotSourceType.Serial) tab.SerialSettings = p.SerialSettings;
-                        if (p.SourceType == PlotSourceType.Network) tab.NetworkSettings = p.NetworkSettings;
-                        if (isDelimited)
-                        {
-                            tab.CsvSettings = new CsvSettings
-                            {
-                                Delimiter = p.CsvSettings.Delimiter,
-                                TimestampColumn = p.CsvSettings.TimestampColumn,
-                                HasHeader = p.CsvSettings.HasHeader
-                            };
-                        }
+                         // Only save settings relevant to the source type
+                         if (p.SourceType == PlotSourceType.Serial) tab.SerialSettings = p.SerialSettings;
+                         if (p.SourceType == PlotSourceType.Network) tab.NetworkSettings = p.NetworkSettings;
+                         if (isDelimited && csvSettings is { } cs)
+                         {
+                             tab.CsvSettings = new CsvSettings
+                             {
+                                 Delimiter = cs.Delimiter,
+                                 TimestampColumn = cs.TimestampColumn,
+                                 HasHeader = cs.HasHeader
+                             };
+                         }
                         tabSessions.Add(tab);
                     }
                 }

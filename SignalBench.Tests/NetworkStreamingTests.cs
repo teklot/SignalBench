@@ -31,6 +31,7 @@ public class NetworkStreamingTests
         var tcs = new TaskCompletionSource<DecodedPacket>();
         source.PacketReceived += (packet) => tcs.TrySetResult(packet);
 
+        var ct = TestContext.Current.CancellationToken;
         try
         {
             source.Start();
@@ -39,10 +40,10 @@ public class NetworkStreamingTests
             using var client = new UdpClient();
             // Packet: AA 55 (sync) 34 12 (val1=0x1234=4660) 78 56 34 12 (val2=0x12345678=305419896)
             byte[] data = [0xAA, 0x55, 0x34, 0x12, 0x78, 0x56, 0x34, 0x12];
-            await client.SendAsync(data, data.Length, "127.0.0.1", port);
+            await client.SendAsync(data, "127.0.0.1", port, ct);
 
             // 4. Wait for receipt
-            var receivedPacket = await Task.WhenAny(tcs.Task, Task.Delay(2000)) == tcs.Task 
+            var receivedPacket = await Task.WhenAny(tcs.Task, Task.Delay(2000, ct)) == tcs.Task 
                 ? await tcs.Task 
                 : null;
 
@@ -80,21 +81,22 @@ public class NetworkStreamingTests
         var tcs = new TaskCompletionSource<DecodedPacket>();
         source.PacketReceived += (packet) => tcs.TrySetResult(packet);
 
+        var ct = TestContext.Current.CancellationToken;
         var serverTask = Task.Run(async () => {
-            using var client = await listener.AcceptTcpClientAsync();
+            using var client = await listener.AcceptTcpClientAsync(ct);
             using var stream = client.GetStream();
             // Packet: AA 55 (sync) 34 12 (val1=0x1234=4660) 78 56 34 12 (val2=0x12345678=305419896)
             byte[] data = [0xAA, 0x55, 0x34, 0x12, 0x78, 0x56, 0x34, 0x12];
-            await stream.WriteAsync(data);
-            await stream.FlushAsync();
-        });
+            await stream.WriteAsync(data, ct);
+            await stream.FlushAsync(ct);
+        }, ct);
 
         try
         {
             source.Start();
 
             // 3. Wait for receipt
-            var receivedPacket = await Task.WhenAny(tcs.Task, Task.Delay(2000)) == tcs.Task 
+            var receivedPacket = await Task.WhenAny(tcs.Task, Task.Delay(2000, ct)) == tcs.Task 
                 ? await tcs.Task 
                 : null;
 

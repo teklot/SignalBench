@@ -27,7 +27,7 @@
     <PackageReference Include="Material.Icons.Avalonia" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
     <PackageReference Include="Microsoft.Extensions.Logging.Console" />
-    <PackageReference Include="MsBox.Avalonia" />
+    <PackageReference Include="MessageBox.Avalonia" />
     <PackageReference Include="ScottPlot.Avalonia" />
   </ItemGroup>
 

@@ -14,72 +14,66 @@ class Program
         var rootCommand = new RootCommand("SignalFlux - Binary Protocol Signal Generation Engine");
 
         // Config file option
-        var configOption = new Option<FileInfo?>("--config", "Path to the .conf file");
-        configOption.AddAlias("-c");
+        var configOption = new Option<FileInfo?>("--config", "-c") { Description = "Path to the .conf file" };
         
         // Protocol options
-        var protocolOption = new Option<string?>("--protocol", "Protocol name (e.g. mavlink, can)");
-        protocolOption.AddAlias("-p");
-        var messageOption = new Option<string?>("--message", "Message name (e.g. ATTITUDE)");
-        messageOption.AddAlias("-m");
-        var schemaOption = new Option<FileInfo?>("--schema", "Path to a .yaml schema file");
-        schemaOption.AddAlias("-s");
+        var protocolOption = new Option<string?>("--protocol", "-p") { Description = "Protocol name (e.g. mavlink, can)" };
+        var messageOption = new Option<string?>("--message", "-m") { Description = "Message name (e.g. ATTITUDE)" };
+        var schemaOption = new Option<FileInfo?>("--schema", "-s") { Description = "Path to a .yaml schema file" };
 
         // Transport options
-        var transportTypeOption = new Option<string?>("--transport-type", "Transport type (udp, tcp, serial)");
-        transportTypeOption.AddAlias("-t");
-        var targetOption = new Option<string?>("--target", "Target endpoint (e.g. 127.0.0.1:14550)");
-        targetOption.AddAlias("-g");
+        var transportTypeOption = new Option<string?>("--transport-type", "-t") { Description = "Transport type (udp, tcp, serial)" };
+        var targetOption = new Option<string?>("--target", "-g") { Description = "Target endpoint (e.g. 127.0.0.1:14550)" };
 
         // Signal options
-        var signalTypeOption = new Option<string?>("--signal-type", "Signal type (sine, constant)");
-        var freqOption = new Option<double>("--freq", "Signal frequency in Hz");
-        freqOption.AddAlias("-f");
-        var ampOption = new Option<double>("--amp", "Signal amplitude");
-        ampOption.AddAlias("-a");
+        var signalTypeOption = new Option<string?>("--signal-type") { Description = "Signal type (sine, constant)" };
+        var freqOption = new Option<double>("--freq", "-f") { Description = "Signal frequency in Hz" };
+        var ampOption = new Option<double>("--amp", "-a") { Description = "Signal amplitude" };
 
-        var schemaDirOption = new Option<DirectoryInfo?>("--schema-dir", "Directory containing .yaml schemas");
+        var schemaDirOption = new Option<DirectoryInfo?>("--schema-dir") { Description = "Directory containing .yaml schemas" };
 
-        rootCommand.AddOption(configOption);
-        rootCommand.AddOption(protocolOption);
-        rootCommand.AddOption(messageOption);
-        rootCommand.AddOption(schemaOption);
-        rootCommand.AddOption(transportTypeOption);
-        rootCommand.AddOption(targetOption);
-        rootCommand.AddOption(signalTypeOption);
-        rootCommand.AddOption(freqOption);
-        rootCommand.AddOption(ampOption);
-        rootCommand.AddOption(schemaDirOption);
+        rootCommand.Options.Add(configOption);
+        rootCommand.Options.Add(protocolOption);
+        rootCommand.Options.Add(messageOption);
+        rootCommand.Options.Add(schemaOption);
+        rootCommand.Options.Add(transportTypeOption);
+        rootCommand.Options.Add(targetOption);
+        rootCommand.Options.Add(signalTypeOption);
+        rootCommand.Options.Add(freqOption);
+        rootCommand.Options.Add(ampOption);
+        rootCommand.Options.Add(schemaDirOption);
 
-        rootCommand.SetHandler(async (context) =>
+        rootCommand.SetAction(async (parseResult, ct) =>
         {
-            var config = context.ParseResult.GetValueForOption(configOption);
-            var protocol = context.ParseResult.GetValueForOption(protocolOption);
-            var message = context.ParseResult.GetValueForOption(messageOption);
-            var schema = context.ParseResult.GetValueForOption(schemaOption);
-            var transportType = context.ParseResult.GetValueForOption(transportTypeOption);
-            var target = context.ParseResult.GetValueForOption(targetOption);
-            var signalType = context.ParseResult.GetValueForOption(signalTypeOption);
-            var freq = context.ParseResult.GetValueForOption(freqOption);
-            var amp = context.ParseResult.GetValueForOption(ampOption);
-            var schemaDir = context.ParseResult.GetValueForOption(schemaDirOption);
+            var config = parseResult.GetValue(configOption);
+            var protocol = parseResult.GetValue(protocolOption);
+            var message = parseResult.GetValue(messageOption);
+            var schema = parseResult.GetValue(schemaOption);
+            var transportType = parseResult.GetValue(transportTypeOption);
+            var target = parseResult.GetValue(targetOption);
+            var signalType = parseResult.GetValue(signalTypeOption);
+            var freq = parseResult.GetValue(freqOption);
+            var amp = parseResult.GetValue(ampOption);
+            var schemaDir = parseResult.GetValue(schemaDirOption);
 
             if (config != null)
             {
                 await RunFluxWithConfigAsync(config, schemaDir);
+                return 0;
             }
             else if (protocol != null || schema != null)
             {
                 await RunFluxInlineAsync(protocol, message, schema, transportType, target, signalType, freq, amp);
+                return 0;
             }
             else
             {
                 Console.WriteLine("Error: Please specify --config or inline parameters (--protocol/--schema)");
-                context.ExitCode = 1;
+                return 1;
             }
         });
 
-        return await rootCommand.InvokeAsync(args);
+        return await rootCommand.Parse(args).InvokeAsync();
     }
 
     static async Task RunFluxWithConfigAsync(FileInfo configFile, DirectoryInfo? schemaDir)
