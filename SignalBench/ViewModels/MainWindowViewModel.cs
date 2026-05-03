@@ -209,7 +209,7 @@ public partial class MainWindowViewModel : ViewModelBase
             }
 
             SyncSignalCheckboxes();
-            if (value is PlotViewModel p) UpdatePlot(p);
+            if (value is PlotViewModel p && (!p.IsStreaming || p.IsPaused)) UpdatePlot(p);
         }
     }
 
@@ -270,7 +270,9 @@ public partial class MainWindowViewModel : ViewModelBase
         CreateThresholdRuleCommand?.NotifyCanExecuteChanged();
         SaveSessionCommand?.NotifyCanExecuteChanged();
         ExportCsvCommand?.NotifyCanExecuteChanged();
-        if (SelectedPlot != null) UpdatePlot(SelectedPlot);
+        // Only update plot if not actively streaming (avoids hang)
+        if (SelectedPlot != null && (!SelectedPlot.IsStreaming || SelectedPlot.IsPaused))
+            UpdatePlot(SelectedPlot);
     }
 
     private void NotifyPlaybackCommands()
@@ -690,10 +692,14 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private void UpdatePlot(PlotViewModel? targetPlot = null)
     {
-        try {
-            var plot = targetPlot ?? SelectedPlot;
-            if (plot == null) return;
+        var plot = targetPlot ?? SelectedPlot;
+        if (plot == null) return;
 
+        // Skip UpdatePlot during active streaming (it blocks UI)
+        // Thresholds/signals will be updated when streaming stops or pauses
+        if (plot.IsStreaming && !plot.IsPaused) return;
+
+        try {
             int rowCount = plot.DataStore.GetRowCount();
             plot.TotalRecords = rowCount;
             
@@ -711,14 +717,39 @@ public partial class MainWindowViewModel : ViewModelBase
                 OnPropertyChanged(nameof(TotalRecords));
             }
             
-            var maxPlotPoints = 10000;
-            var shouldDownsample = rowCount > maxPlotPoints;
-            var timestamps = plot.DataStore.GetTimestamps(shouldDownsample ? maxPlotPoints : null);
-            var invalidIndices = plot.DataStore.GetInvalidIndices(shouldDownsample ? maxPlotPoints : null);
+            // For streaming-type plots (even when paused), use rolling window view
+            int? windowSeconds = null;
+            if (plot.SourceType == PlotSourceType.Serial && plot.SerialSettings != null)
+                windowSeconds = plot.SerialSettings.RollingWindowSeconds;
+            else if (plot.SourceType == PlotSourceType.Network && plot.NetworkSettings != null)
+                windowSeconds = plot.NetworkSettings.RollingWindowSeconds;
+
+            double? forceXMax = null;
+            var timestamps = plot.DataStore.GetTimestamps();
+            List<int>? invalidIndices = plot.DataStore.GetInvalidIndices();
+
+            if (windowSeconds.HasValue && windowSeconds.Value > 0 && timestamps.Count > 0)
+            {
+                DateTime latestTs = timestamps[^1];
+                DateTime startTs = latestTs.AddSeconds(-windowSeconds.Value);
+
+                timestamps = plot.DataStore.GetTimestamps(startTs);
+                invalidIndices = plot.DataStore.GetInvalidIndices(startTs);
+                if (timestamps.Count > 0)
+                    forceXMax = timestamps[^1].ToOADate();
+            }
 
             var plotData = new Dictionary<string, List<double>>();
             foreach (var signalName in plot.SelectedSignalNames)
-                plotData[signalName] = plot.DataStore.GetSignalData(signalName, shouldDownsample ? maxPlotPoints : null);
+            {
+                if (windowSeconds.HasValue && windowSeconds.Value > 0 && timestamps.Count > 0)
+                    plotData[signalName] = plot.DataStore.GetSignalData(signalName, ((Func<DateTime>)(() => {
+                        var ts = timestamps[^1];
+                        return ts.AddSeconds(-windowSeconds.Value);
+                    }))());
+                else
+                    plotData[signalName] = plot.DataStore.GetSignalData(signalName);
+            }
 
             // Evaluate Thresholds
             var violations = new List<ThresholdViolation>();
@@ -761,7 +792,7 @@ public partial class MainWindowViewModel : ViewModelBase
                 }
             }
 
-            plot.RequestPlotUpdate?.Invoke(timestamps, plotData, null, null, null, violations, invalidIndices);
+            plot.RequestPlotUpdate?.Invoke(timestamps, plotData, null, forceXMax, windowSeconds, violations, invalidIndices!);
             
             // Update current values for the signals pane
             if (plot == SelectedPlot) RefreshCurrentValues();

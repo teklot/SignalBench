@@ -51,6 +51,7 @@ public sealed class InMemoryDataStore : IDataStore
                 {
                     if (packet.Fields.TryGetValue(name, out var val))
                     {
+                        if (!_signals.ContainsKey(name)) _signals[name] = new List<double>();
                         if (val is double d) _signals[name].Add(d);
                         else if (val is float f) _signals[name].Add(f);
                         else if (val is int i) _signals[name].Add(i);
@@ -62,6 +63,7 @@ public sealed class InMemoryDataStore : IDataStore
                     }
                     else
                     {
+                        if (!_signals.ContainsKey(name)) _signals[name] = new List<double>();
                         _signals[name].Add(double.NaN);
                     }
                 }

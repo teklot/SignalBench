@@ -87,7 +87,6 @@ public sealed partial class PlotViewModel : TabViewModelBase
     }
 
     public IStreamingSource? ActiveSource { get; set; }
-
     public SerialSettings SerialSettings { get; } = new();
     public NetworkSettings NetworkSettings { get; } = new();
     public CsvSettings CsvSettings { get; set; } = new();
@@ -115,7 +114,8 @@ public sealed partial class PlotViewModel : TabViewModelBase
     private string GetSerialInfo()
     {
         var s = SerialSettings;
-        string sb = s.StopBits switch {
+        string sb = s.StopBits switch
+        {
             "One" => "1",
             "Two" => "2",
             "OnePointFive" => "1.5",
@@ -197,7 +197,8 @@ public sealed partial class PlotViewModel : TabViewModelBase
         DataStore = dataStore;
         Statistics = new SignalStatsViewModel(dataStore);
 
-        SelectedSignalNames.CollectionChanged += (s, e) => {
+        SelectedSignalNames.CollectionChanged += (s, e) =>
+        {
             if (Statistics.SelectedSignal == null && SelectedSignalNames.Count > 0)
             {
                 var first = AvailableSignals.FirstOrDefault(sig => sig.Name == SelectedSignalNames[0]);

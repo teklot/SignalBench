@@ -167,33 +167,13 @@ public partial class PlotView : UserControl
         {
             if (fixedXMax.HasValue && rollingWindowSize.HasValue)
             {
-                // Streaming mode with rolling window
+                // Streaming mode: Task Manager style - newest data on right edge
                 double xMax = fixedXMax.Value;
                 mainPlot.Plot.Axes.Bottom.Max = xMax;
-                
-                // Estimate window width based on current frequency if we don't have enough points
-                double windowWidth;
-                if (timestamps.Count > 1)
-                {
-                    // Calculate current timespan of the buffer
-                    double actualSpan = timestamps[^1].ToOADate() - timestamps[0].ToOADate();
-                    
-                    if (timestamps.Count >= rollingWindowSize.Value)
-                    {
-                        // Buffer is full, window width is the actual span
-                        windowWidth = actualSpan;
-                    }
-                    else
-                    {
-                        // Buffer filling up, project expected span for full buffer
-                        windowWidth = (actualSpan / (timestamps.Count - 1)) * rollingWindowSize.Value;
-                    }
-                }
-                else
-                {
-                    windowWidth = 0.0001; // Tiny default (~8 seconds)
-                }
-                
+
+                // Fixed window width based on rollingWindowSize (converted from seconds to OADate)
+                // rollingWindowSize is in seconds, convert to OADate fraction
+                double windowWidth = rollingWindowSize.Value / (24.0 * 3600.0);
                 mainPlot.Plot.Axes.Bottom.Min = xMax - windowWidth;
             }
             else
@@ -209,7 +189,24 @@ public partial class PlotView : UserControl
                 mainPlot.Plot.Axes.Bottom.Max = mainPlot.Plot.Axes.Bottom.Min + 0.00001;
             }
 
-            mainPlot.Plot.Axes.Bottom.TickGenerator = new ScottPlot.TickGenerators.DateTimeAutomatic();
+            var tickGen = new ScottPlot.TickGenerators.DateTimeAutomatic();
+
+            // Streaming source (or paused streaming): show time only (no date)
+            // Detect by checking if this is a streaming plot with rolling window configured
+            bool isStreamingSource = fixedXMax.HasValue && rollingWindowSize.HasValue;
+            if (!isStreamingSource && DataContext is PlotViewModel vm)
+            {
+                // Check if this plot has streaming settings (even if paused)
+                isStreamingSource = vm.SourceType == PlotSourceType.Serial && vm.SerialSettings?.RollingWindowSeconds > 0
+                    || vm.SourceType == PlotSourceType.Network && vm.NetworkSettings?.RollingWindowSeconds > 0;
+            }
+
+            if (isStreamingSource)
+            {
+                tickGen.LabelFormatter = dt => dt.ToString("HH:mm:ss.fff");
+            }
+
+            mainPlot.Plot.Axes.Bottom.TickGenerator = tickGen;
         }
 
         if (minY != double.MaxValue && maxY != double.MinValue)

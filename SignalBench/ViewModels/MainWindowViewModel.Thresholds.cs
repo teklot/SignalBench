@@ -91,7 +91,11 @@ public partial class MainWindowViewModel
                     Description = result.Description 
                 };
                 SelectedPlot.ThresholdRules.Add(rule);
-                UpdatePlot(SelectedPlot);
+
+                // During streaming, don't call UpdatePlot (it blocks UI)
+                // Thresholds will be visible when streaming stops or pauses
+                if (SelectedPlot == null || (!SelectedPlot.IsStreaming || SelectedPlot.IsPaused))
+                    UpdatePlot(SelectedPlot);
             }
         } catch (Exception ex) { await ShowError("Threshold Error", "Failed to create threshold rule.", ex); }
     }
@@ -114,20 +118,22 @@ public partial class MainWindowViewModel
             };
             var result = await dialog.ShowDialog<ThresholdRuleResult?>(topLevel);
 
-            if (result != null) {
-                if (result.IsDeleted) {
-                    await RemoveThresholdRuleAsync(name);
-                    return;
-                }
+                if (result != null) {
+                    if (result.IsDeleted) {
+                        await RemoveThresholdRuleAsync(name);
+                        return;
+                    }
 
-                rule.Name = result.Name;
-                rule.Formula = result.Formula;
-                rule.Color = result.Color;
-                rule.IsActive = result.IsActive;
-                rule.Description = result.Description;
-                
-                UpdatePlot(SelectedPlot);
-            }
+                    rule.Name = result.Name;
+                    rule.Formula = result.Formula;
+                    rule.Color = result.Color;
+                    rule.IsActive = result.IsActive;
+                    rule.Description = result.Description;
+
+                    // During streaming, don't call UpdatePlot (it blocks UI)
+                    if (SelectedPlot == null || (!SelectedPlot.IsStreaming || SelectedPlot.IsPaused))
+                        UpdatePlot(SelectedPlot);
+                }
         } catch (Exception ex) { await ShowError("Threshold Error", "Failed to edit threshold rule.", ex); }
     }
 
@@ -138,7 +144,10 @@ public partial class MainWindowViewModel
         if (rule != null)
         {
             SelectedPlot.ThresholdRules.Remove(rule);
-            UpdatePlot(SelectedPlot);
+
+            // During streaming, don't call UpdatePlot (it blocks UI)
+            if (SelectedPlot == null || (!SelectedPlot.IsStreaming || SelectedPlot.IsPaused))
+                UpdatePlot(SelectedPlot);
         }
         await Task.CompletedTask;
     }

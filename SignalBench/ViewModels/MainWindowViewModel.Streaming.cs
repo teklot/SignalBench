@@ -1,5 +1,6 @@
 using Avalonia.Threading;
 using SignalBench.Core.Ingestion;
+using SignalBench.Core.Models;
 using SignalBench.SDK.Models;
 
 namespace SignalBench.ViewModels;
@@ -360,7 +361,72 @@ public partial class MainWindowViewModel
             if (timestamps.Count > 0)
             {
                 double? forceXMax = timestamps[^1].ToOADate();
-                targetPlot.RequestPlotUpdate?.Invoke(timestamps, plotData, null, forceXMax, windowSeconds, null, invalidIndices);
+
+                // Evaluate thresholds for streaming - check all points in rolling window
+                var violations = new List<ThresholdViolation>();
+                if (targetPlot.ThresholdRules.Count > 0)
+                {
+                    try
+                    {
+                        // Get all signals referenced in threshold formulas
+                        var allReferencedSignals = new HashSet<string>();
+                        foreach (var rule in targetPlot.ThresholdRules)
+                        {
+                            // Extract signal names from formula (simple approach: split by operators)
+                            var parts = rule.Formula.Split(new[] { ' ', '+', '-', '*', '/', '(', ')', '>', '<', '=', '!' }, StringSplitOptions.RemoveEmptyEntries);
+                            foreach (var part in parts)
+                            {
+                                if (targetPlot.AvailableSignals.Any(s => s.Name.Equals(part, StringComparison.OrdinalIgnoreCase)))
+                                    allReferencedSignals.Add(part);
+                            }
+                        }
+
+                        // Get data for all referenced signals
+                        var allSignalData = new Dictionary<string, List<double>>();
+                        foreach (var signalName in allReferencedSignals)
+                            allSignalData[signalName] = targetStore.GetSignalData(signalName, startTs);
+
+                        // Evaluate thresholds for all points
+                        for (int i = 0; i < timestamps.Count; i++)
+                        {
+                            var parameters = new Dictionary<string, object>();
+                            foreach (var kv in allSignalData)
+                            {
+                                if (kv.Value.Count > i) parameters[kv.Key] = kv.Value[i];
+                            }
+
+                            foreach (var rule in targetPlot.ThresholdRules)
+                            {
+                                if (rule.IsActive && parameters.Count > 0 && _formulaEngine.EvaluateCondition(rule.Formula, parameters))
+                                {
+                                    double? violationValue = null;
+                                    foreach (var paramName in parameters.Keys)
+                                    {
+                                        if (rule.Formula.Contains(paramName, StringComparison.OrdinalIgnoreCase))
+                                        {
+                                            violationValue = Convert.ToDouble(parameters[paramName]);
+                                            break;
+                                        }
+                                    }
+
+                                    violations.Add(new ThresholdViolation
+                                    {
+                                        Timestamp = timestamps[i],
+                                        RuleName = rule.Name,
+                                        Color = rule.Color,
+                                        Value = violationValue
+                                    });
+                                }
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        StatusText = $"Threshold error: {ex.Message}";
+                    }
+                }
+
+                targetPlot.RequestPlotUpdate?.Invoke(timestamps, plotData, null, forceXMax, windowSeconds, violations, invalidIndices);
             }
         }
     }

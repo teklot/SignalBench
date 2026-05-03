@@ -1,3 +1,14 @@
+# Release Notes - v0.3.1
+
+## 🛠️ Fixes & Improvements
+- Fixed streaming plot freeze when adding or editing thresholds during live data
+- Fixed session loading crash when derived signals are not in the schema
+- Threshold markers now appear across the entire visible rolling window during streaming
+- Streaming plot now uses Task Manager-style display with newest data anchored to the right
+- X-axis shows time-only format (HH:mm:ss.fff) during streaming
+
+---
+
 # Release Notes - v0.3.0
 
 ## 🚀 New Features (SignalFlux Integration)
