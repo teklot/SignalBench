@@ -46,11 +46,18 @@ public partial class MainWindowViewModel
                 if (SetProperty(ref _currentPlaybackIndex, val))
                 {
                     SelectedPlot.CurrentPlaybackIndex = val;
+
+                    // Keep saved elapsed in sync when not actively playing
+                    if (!IsPlaying && SelectedPlot.PlaybackTimestamps.Count > val)
+                    {
+                        _savedElapsedSeconds = (SelectedPlot.PlaybackTimestamps[val] - SelectedPlot.PlaybackTimestamps[0]).TotalSeconds;
+                    }
+
                     OnPropertyChanged(nameof(PlaybackProgress));
                     OnPropertyChanged(nameof(CurrentPlaybackTime));
                     OnPropertyChanged(nameof(FormattedPlaybackTime));
                     RefreshCurrentValues();
-                    
+
                     // Update the plot cursor
                     if (SelectedPlot.PlaybackTimestamps.Count > val)
                     {
@@ -61,10 +68,13 @@ public partial class MainWindowViewModel
         }
     }
 
-    private double _playbackProgressValue;
     public double PlaybackProgress
     {
-        get => _playbackProgressValue;
+        get
+        {
+            if (SelectedPlot == null || SelectedPlot.TotalRecords <= 1) return 0;
+            return (double)_currentPlaybackIndex / (SelectedPlot.TotalRecords - 1) * 100;
+        }
         set
         {
             if (SelectedPlot != null && SelectedPlot.TotalRecords > 1)
@@ -72,7 +82,6 @@ public partial class MainWindowViewModel
                 var index = (int)(value / 100.0 * (SelectedPlot.TotalRecords - 1));
                 CurrentPlaybackIndex = index;
             }
-            SetProperty(ref _playbackProgressValue, value);
         }
     }
 

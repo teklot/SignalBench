@@ -149,6 +149,15 @@ public sealed partial class PlotViewModel : TabViewModelBase
     public ObservableCollection<ThresholdRule> ThresholdRules { get; } = [];
     public ObservableCollection<string> SelectedSignalNames { get; } = [];
 
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasFilter))]
+    private string? _signalSearchText;
+
+    public ObservableCollection<SignalItemViewModel> SelectedSignalsList { get; } = [];
+    public ObservableCollection<SignalItemViewModel> FilteredUnselectedSignals { get; } = [];
+
+    public bool HasFilter => !string.IsNullOrEmpty(SignalSearchText);
+
     // Playback state per plot
     public List<DateTime> PlaybackTimestamps { get; set; } = [];
     public Dictionary<string, List<double>> PlaybackSignalData { get; set; } = [];
@@ -196,6 +205,7 @@ public sealed partial class PlotViewModel : TabViewModelBase
         Name = name;
         DataStore = dataStore;
         Statistics = new SignalStatsViewModel(dataStore);
+        _searchDebounceTimer.Tick += OnSearchDebounceTick;
 
         SelectedSignalNames.CollectionChanged += (s, e) =>
         {
@@ -256,8 +266,145 @@ public sealed partial class PlotViewModel : TabViewModelBase
         if (settings.TryGetValue("IsSignalsPaneOpen", out var paneOpen)) IsSignalsPaneOpen = (bool)paneOpen;
     }
 
+    private readonly Avalonia.Threading.DispatcherTimer _searchDebounceTimer = new()
+    {
+        Interval = TimeSpan.FromMilliseconds(200)
+    };
+
+    partial void OnSignalSearchTextChanged(string? value)
+    {
+        _searchDebounceTimer.Stop();
+        _searchDebounceTimer.Start();
+    }
+
+    public void AttachSignalFilterHandlers()
+    {
+        // Init both lists from current state
+        SelectedSignalsList.Clear();
+        foreach (var s in RegularSignals)
+        {
+            s.PropertyChanged -= OnSignalPropertyChanged;
+            s.PropertyChanged += OnSignalPropertyChanged;
+            if (s.IsSelected)
+                SelectedSignalsList.Add(s);
+        }
+        ApplyFilter();
+    }
+
+    public void DetachSignalFilterHandlers()
+    {
+        foreach (var s in RegularSignals)
+            s.PropertyChanged -= OnSignalPropertyChanged;
+        _searchDebounceTimer.Stop();
+    }
+
+    public void ClearAllSignals()
+    {
+        DetachSignalFilterHandlers();
+        AvailableSignals.Clear();
+        RegularSignals.Clear();
+        SelectedSignalNames.Clear();
+        DerivedSignals.Clear();
+        SelectedSignalsList.Clear();
+        FilteredUnselectedSignals.Clear();
+    }
+
+    private void OnSearchDebounceTick(object? sender, EventArgs e)
+    {
+        _searchDebounceTimer.Stop();
+        ApplyFilter();
+    }
+
+    private void OnSignalPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(SignalItemViewModel.IsSelected)) return;
+        if (sender is not SignalItemViewModel signal) return;
+        if (signal.IsSelected)
+        {
+            FilteredUnselectedSignals.Remove(signal);
+            InsertSorted(SelectedSignalsList, signal);
+            SelectedSignalNames.Add(signal.Name);
+        }
+        else
+        {
+            SelectedSignalsList.Remove(signal);
+            SelectedSignalNames.Remove(signal.Name);
+            if (MatchesFilter(signal))
+                InsertSorted(FilteredUnselectedSignals, signal);
+        }
+    }
+
+    private void ApplyFilter()
+    {
+        FilteredUnselectedSignals.Clear();
+        var query = string.IsNullOrEmpty(SignalSearchText)
+            ? RegularSignals.Where(s => !s.IsSelected)
+            : RegularSignals.Where(s => !s.IsSelected && MatchesFilter(s));
+        foreach (var s in query)
+            FilteredUnselectedSignals.Add(s);
+    }
+
+    private static readonly HashSet<string> AutoSelectFields = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "HEARTBEAT.system_status",
+        "SYS_STATUS.voltage_battery",
+        "VFR_HUD.groundspeed",
+        "VFR_HUD.alt",
+    };
+
+    public SignalItemViewModel? TryAddSignal(string name, int systemId = 0, int componentId = 0)
+    {
+        if (RegularSignals.Any(s => s.Name == name)) return null;
+        bool autoSelect = AutoSelectFields.Contains(name);
+        var signal = new SignalItemViewModel
+        {
+            Name = name,
+            ColorIndex = AvailableSignals.Count,
+            SystemId = systemId,
+            ComponentId = componentId,
+            IsSelected = autoSelect
+        };
+        AvailableSignals.Add(signal);
+        RegularSignals.Add(signal);
+        signal.PropertyChanged += OnSignalPropertyChanged;
+        if (signal.IsSelected)
+        {
+            SelectedSignalNames.Add(signal.Name);
+            InsertSorted(SelectedSignalsList, signal);
+        }
+        else if (MatchesFilter(signal))
+        {
+            InsertSorted(FilteredUnselectedSignals, signal);
+        }
+        return signal;
+    }
+
+    private static void InsertSorted(ObservableCollection<SignalItemViewModel> list, SignalItemViewModel item)
+    {
+        for (int i = 0; i < list.Count; i++)
+        {
+            if (string.Compare(item.Name, list[i].Name, StringComparison.OrdinalIgnoreCase) < 0)
+            {
+                list.Insert(i, item);
+                return;
+            }
+        }
+        list.Add(item);
+    }
+
+    private bool MatchesFilter(SignalItemViewModel s)
+    {
+        if (string.IsNullOrEmpty(SignalSearchText)) return true;
+        var filter = SignalSearchText;
+        return s.DisplayName.Contains(filter, StringComparison.OrdinalIgnoreCase)
+            || (s.MessageType?.Contains(filter, StringComparison.OrdinalIgnoreCase) ?? false)
+            || s.SystemId.ToString().Contains(filter)
+            || s.ComponentId.ToString().Contains(filter);
+    }
+
     public override void Dispose()
     {
+        DetachSignalFilterHandlers();
         if (ActiveSource != null)
         {
             var s = ActiveSource;

@@ -32,13 +32,32 @@ public partial class SerialDialogViewModel : ViewModelBase
     private string? _loadedSchemaPath;
 
     [ObservableProperty]
+    private string _schemaProtocol = "Custom";
+
+    [ObservableProperty]
     private string[] _availablePorts = [];
 
     public int[] AvailableBaudRates { get; } = [9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600];
     public string[] ParityOptions { get; } = ["None", "Odd", "Even", "Mark", "Space"];
     public string[] StopBitsOptions { get; } = ["None", "One", "Two", "OnePointFive"];
+    public string[] SchemaProtocolOptions { get; } = ["Custom", "MAVLink"];
+
+    public bool IsMavlinkProtocol => SchemaProtocol == "MAVLink";
+    public bool IsCustomProtocol => SchemaProtocol == "Custom";
+    public string SchemaLabel => IsMavlinkProtocol ? "MAVLINK SCHEMA (OPTIONAL)" : "SCHEMA FILE";
+    public bool IsSchemaHelperVisible => IsMavlinkProtocol;
+    public string SchemaHelper => "Leave empty to use default built-in MAVLink dialect";
 
     public event Action<bool>? RequestClose;
+
+    partial void OnSchemaProtocolChanged(string value)
+    {
+        OnPropertyChanged(nameof(IsMavlinkProtocol));
+        OnPropertyChanged(nameof(IsCustomProtocol));
+        OnPropertyChanged(nameof(SchemaLabel));
+        OnPropertyChanged(nameof(IsSchemaHelperVisible));
+        OnPropertyChanged(nameof(SchemaHelper));
+    }
 
     [RelayCommand]
     private async Task Save()
@@ -49,7 +68,7 @@ public partial class SerialDialogViewModel : ViewModelBase
             return;
         }
 
-        if (string.IsNullOrWhiteSpace(LoadedSchemaPath))
+        if (IsCustomProtocol && string.IsNullOrWhiteSpace(LoadedSchemaPath))
         {
             await ShowError("Validation Error", "Please select a Schema File for Serial streaming.");
             return;
@@ -79,11 +98,15 @@ public partial class SerialDialogViewModel : ViewModelBase
             var topLevel = (App.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)?.MainWindow;
             if (topLevel == null) return;
 
+            var filter = IsMavlinkProtocol
+                ? new Avalonia.Platform.Storage.FilePickerFileType("MAVLink Dialect") { Patterns = ["*.xml"] }
+                : new Avalonia.Platform.Storage.FilePickerFileType("YAML Schema") { Patterns = ["*.yaml", "*.yml"] };
+
             var files = await topLevel.StorageProvider.OpenFilePickerAsync(new Avalonia.Platform.Storage.FilePickerOpenOptions
             {
-                Title = "Open Packet Schema",
+                Title = IsMavlinkProtocol ? "Open MAVLink Dialect" : "Open Packet Schema",
                 AllowMultiple = false,
-                FileTypeFilter = [new Avalonia.Platform.Storage.FilePickerFileType("YAML Files") { Patterns = ["*.yaml", "*.yml"] }]
+                FileTypeFilter = [filter]
             });
 
             if (files.Count > 0)
@@ -103,6 +126,7 @@ public partial class SerialDialogViewModel : ViewModelBase
         _stopBits = settings.StopBits;
         _rollingWindowSeconds = settings.RollingWindowSeconds;
         _loadedSchemaPath = currentSchemaPath;
+        _schemaProtocol = settings.SchemaProtocol;
 
         RefreshPorts();
     }
@@ -125,5 +149,6 @@ public partial class SerialDialogViewModel : ViewModelBase
         settings.DataBits = DataBits;
         settings.StopBits = StopBits;
         settings.RollingWindowSeconds = RollingWindowSeconds;
+        settings.SchemaProtocol = SchemaProtocol;
     }
 }

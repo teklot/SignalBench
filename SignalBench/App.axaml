@@ -71,5 +71,10 @@
             <Setter Property="Padding" Value="8,0"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
         </Style>
+
+        <!-- Input Control Gray Borders (modern look) -->
+        <Style Selector="TextBox, ComboBox, NumericUpDown">
+            <Setter Property="BorderBrush" Value="#C0C0C0"/>
+        </Style>
     </Application.Styles>
 </Application>

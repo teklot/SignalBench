@@ -61,11 +61,12 @@ public sealed class InMemoryDataStore : IDataStore
                         else
                             _signals[name].Add(double.NaN);
                     }
-                    else
-                    {
-                        if (!_signals.ContainsKey(name)) _signals[name] = new List<double>();
-                        _signals[name].Add(double.NaN);
-                    }
+                else
+                {
+                    if (!_signals.ContainsKey(name)) _signals[name] = new List<double>();
+                    var list = _signals[name];
+                    list.Add(list.Count > 0 ? list[^1] : double.NaN);
+                }
                 }
             }
         }

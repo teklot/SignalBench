@@ -131,15 +131,14 @@ public partial class MainWindowViewModel
                         targetStore.InitializeSchema(schema);
                         targetStore.InsertPackets(packets);
 
-                        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                        await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(async () =>
                         {
                             targetPlot.TelemetryPath = path; targetPlot.Schema = schema;
                             targetPlot.SourceType = PlotSourceType.File;
                             targetPlot.CsvSettings = csvSettings;
 
-                            targetPlot.AvailableSignals.Clear();
-                            targetPlot.RegularSignals.Clear();
-                            PopulateSignals(targetPlot, schema.Fields);
+                            targetPlot.ClearAllSignals();
+                            await PopulateSignalsAsync(targetPlot, schema.Fields);
 
                             if (targetPlot == SelectedPlot)
                             {
@@ -226,13 +225,12 @@ public partial class MainWindowViewModel
                     }
                     targetStore.InsertPackets(packets);
 
-                    Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                    await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(async () =>
                     {
                         targetPlot.TelemetryPath = path; targetPlot.Schema = schema;
                         targetPlot.SourceType = PlotSourceType.File;
-                        targetPlot.AvailableSignals.Clear();
-                        targetPlot.RegularSignals.Clear();
-                        PopulateSignals(targetPlot, schema.Fields);
+                        targetPlot.ClearAllSignals();
+                        await PopulateSignalsAsync(targetPlot, schema.Fields);
 
                         if (SelectedPlot == targetPlot)
                         {

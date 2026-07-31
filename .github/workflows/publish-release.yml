@@ -32,10 +32,10 @@ jobs:
         dotnet-version: 10.0.x
 
     - name: Publish SignalBench (GUI)
-      run: dotnet publish SignalBench/SignalBench.csproj -c Release -r ${{ matrix.runtime }} --self-contained true -p:PublishSingleFile=true -o ./publish/${{ matrix.runtime }}
+      run: dotnet publish SignalBench/SignalBench.csproj -c Release -r ${{ matrix.runtime }} --self-contained true -p:PublishSingleFile=true -p:ErrorOnDuplicatePublishOutputFiles=false -o ./publish/${{ matrix.runtime }}
 
     - name: Publish SignalFlux (CLI)
-      run: dotnet publish SignalFlux/SignalFlux.csproj -c Release -r ${{ matrix.runtime }} --self-contained true -p:PublishSingleFile=true -o ./publish/${{ matrix.runtime }}
+      run: dotnet publish SignalFlux/SignalFlux.csproj -c Release -r ${{ matrix.runtime }} --self-contained true -p:PublishSingleFile=true -p:ErrorOnDuplicatePublishOutputFiles=false -o ./publish/${{ matrix.runtime }}
 
     - name: Create Plugins Directory
       shell: bash

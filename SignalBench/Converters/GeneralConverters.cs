@@ -68,7 +68,7 @@ public class ValueWithUnitConverter : IMultiValueConverter
     {
         if (values.Count < 1 || values[0] == null || values[0] is not double d) return "n/a";
         
-        string val = d.ToString("G5");
+        string val = d.ToString("0.#####");
         string? unit = null;
         if (values.Count > 1)
         {

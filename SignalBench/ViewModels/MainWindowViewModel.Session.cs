@@ -111,6 +111,7 @@ public partial class MainWindowViewModel
                     plot.SerialSettings.DataBits = tab.SerialSettings.DataBits;
                     plot.SerialSettings.StopBits = tab.SerialSettings.StopBits;
                     plot.SerialSettings.RollingWindowSeconds = tab.SerialSettings.RollingWindowSeconds;
+                    plot.SerialSettings.SchemaProtocol = tab.SerialSettings.SchemaProtocol;
                 }
                 if (tab.NetworkSettings != null)
                 {
@@ -118,6 +119,7 @@ public partial class MainWindowViewModel
                     plot.NetworkSettings.IpAddress = tab.NetworkSettings.IpAddress;
                     plot.NetworkSettings.Port = tab.NetworkSettings.Port;
                     plot.NetworkSettings.RollingWindowSeconds = tab.NetworkSettings.RollingWindowSeconds;
+                    plot.NetworkSettings.SchemaProtocol = tab.NetworkSettings.SchemaProtocol;
                 }
                 // Load Schema
                 PacketSchema? schema = null;
@@ -227,6 +229,7 @@ public partial class MainWindowViewModel
                         plot.SerialSettings.DataBits = tab.SerialSettings.DataBits;
                         plot.SerialSettings.StopBits = tab.SerialSettings.StopBits;
                         plot.SerialSettings.RollingWindowSeconds = tab.SerialSettings.RollingWindowSeconds;
+                        plot.SerialSettings.SchemaProtocol = tab.SerialSettings.SchemaProtocol;
                     }
 
                     if (tab.NetworkSettings != null)
@@ -235,6 +238,7 @@ public partial class MainWindowViewModel
                         plot.NetworkSettings.IpAddress = tab.NetworkSettings.IpAddress;
                         plot.NetworkSettings.Port = tab.NetworkSettings.Port;
                         plot.NetworkSettings.RollingWindowSeconds = tab.NetworkSettings.RollingWindowSeconds;
+                        plot.NetworkSettings.SchemaProtocol = tab.NetworkSettings.SchemaProtocol;
                     }
                     // Load Schema from path
                     PacketSchema? schema = null;

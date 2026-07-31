@@ -1,4 +1,4 @@
-# SignalBench & SignalFlux v0.3.1
+# SignalBench & SignalFlux v0.4.0
 
 **A professional-grade binary protocol platform for satellite, aerospace, automotive, and industrial telemetry decoding, analysis, and signal generation.**
 
@@ -10,7 +10,7 @@ The ecosystem is split into five main projects:
 
 - **SignalBench**: The main Avalonia UI application for visualization and analysis.
 - **SignalFlux**: The high-performance CLI engine for headless signal generation and protocol simulation.
-- **SignalBench.Core**: The unified engine responsible for schema-driven encoding/decoding, transport, and data storage.
+- **SignalBench.Core**: The unified engine responsible for schema-driven encoding/decoding, MAVLink frame parsing, transport, and data storage.
 - **SignalBench.SDK**: The public bridge for plugin developers.
 - **SignalBench.Tests**: Unit and integration tests for the unified core.
 
@@ -67,7 +67,7 @@ SignalBench is the visual workbench for engineers to monitor and analyze telemet
 ### ✨ GUI Features
 - **Workspace-Centric UI**: Independent workspaces per tab with their own data sources and plot configurations.
 - **Intelligent Data Import**: specialized, format-aware dialogs for Delimited Text (CSV, TSV, TXT, LOG) and Binary data with live previews.
-- **Live Streaming**: Connect via **TCP (Client)**, **UDP (Listener)**, or **Serial** to visualize data in real-time.
+- **Live Streaming**: Connect via **TCP (Client)**, **UDP (Listener)**, or **Serial** to visualize data in real-time with support for both custom binary protocols and native **MAVLink v1/v2**.
 - **Visualization**: Interactive plots with a **Time-Based Rolling Window** (e.g., show the last 10 seconds of live data).
 - **Derived Signals**: Create custom calculated signals using math expressions (e.g., `sqrt(battery_voltage)`).
 - **Integrity Validation**: Visual red "X" markers for packets failing CRC checks. Corrupted data points are visually flagged directly on the signal traces.
@@ -75,14 +75,22 @@ SignalBench is the visual workbench for engineers to monitor and analyze telemet
 - **Session Management**: Save and restore complete workspace states to `.sbs` files.
 
 ### 🚀 SignalBench Quick Start
-1.  **Load a Schema**: Click **"Open Schema"** in the **SCHEMA** group and select a `.yaml` file.
+1.  **Load a Schema**: Click **"Open Schema"** in the **SCHEMA** group and select a `.yaml` file, or use a **MAVLink XML dialect** for native MAVLink decoding.
 2.  **Import Data**: Click the **Text** or **Binary** icons in the **DATA FILE** group to load static logs.
-3.  **Start Streaming**: Click the **Network** or **Serial** icons in the **STREAM** group to connect to live hardware.
-4.  **Analyze**: Select signals from the sidebar to add them to the plot.
+3.  **Start Streaming**: Click the **Network** or **Serial** icons in the **STREAM** group. Choose **MAVLink** mode and optionally select an XML dialect file, or leave empty for built-in defaults.
+4.  **Analyze**: Select signals from the sidebar to add them to the plot. Essential telemetry fields (HEARTBEAT.system_status, voltage, groundspeed, altitude) are auto-selected when they appear.
 
 ### 🛠️ Threshold & Integrity Monitoring
 - **Formula-Based Thresholds**: Use the expression engine to define conditions (e.g., `temp > 85 AND pressure > 120`). Violations are marked with diamond indicators.
 - **Violation Export**: Export a complete list of all triggered alerts to a CSV file.
+
+### 🛩️ MAVLink Protocol Support
+- **Native Frame Decoding**: Automatic MAVLink v1 (0xFE) and v2 (0xFD) sync-byte detection, CRC validation, and field extraction via MavLinkSharp.
+- **XML Dialect Loading**: Load standard MAVLink XML dialect files at connect time, or use built-in default dialects (common.xml, ardupilotmega.xml, minimal.xml).
+- **Dynamic Signal Creation**: Signals appear in the sidebar only when their fields are actually received in the stream — no pre-generation of thousands of unused fields.
+- **Context-Rich Display**: Each signal shows its message type and sysid:compid pairing in a subtitle row below the name.
+- **Auto-Selected Essentials**: 4 curated fields are automatically selected on arrival:
+  `HEARTBEAT.system_status`, `SYS_STATUS.voltage_battery`, `VFR_HUD.groundspeed`, `VFR_HUD.alt`
 
 ### 🔌 Extensibility & Plugins
 - **Standalone SDK**: `SignalBench.SDK` allows building custom plugins without modifying core code.
@@ -162,7 +170,7 @@ Maps fields defined in the schema to mathematical signal generators. The section
 
 - **Platform**: Windows, Linux, macOS (via Avalonia)
 - **Runtime**: .NET 10.0 SDK
-- **Dependencies**: Avalonia UI, ScottPlot, YamlDotNet, SQLite, NCalc.
+- **Dependencies**: Avalonia UI, ScottPlot, YamlDotNet, SQLite, NCalc, MavLinkSharp.
 
 ### Building & Testing
 ```bash

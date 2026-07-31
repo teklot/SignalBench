@@ -13,9 +13,14 @@ public enum NetworkProtocol
     Udp
 }
 
-public sealed class NetworkTelemetrySource(string ipAddress, int port, PacketSchema schema, NetworkProtocol protocol = NetworkProtocol.Tcp) : IStreamingSource
+public sealed class NetworkTelemetrySource : IStreamingSource
 {
-    private readonly StreamingPacketScanner _scanner = new(schema);
+    private readonly string _ipAddress;
+    private readonly int _port;
+    private readonly NetworkProtocol _protocol;
+    private readonly StreamingPacketScanner? _scanner;
+    private readonly MavlinkDecoder? _mavlinkDecoder;
+
     private TcpClient? _tcpClient;
     private UdpClient? _udpClient;
     private CancellationTokenSource? _cancellationSource;
@@ -34,40 +39,56 @@ public sealed class NetworkTelemetrySource(string ipAddress, int port, PacketSch
     public long PacketCount => _packetCount;
     public long ErrorCount => _errorCount;
 
+    public NetworkTelemetrySource(string ipAddress, int port, PacketSchema schema, NetworkProtocol protocol = NetworkProtocol.Tcp)
+    {
+        _ipAddress = ipAddress;
+        _port = port;
+        _protocol = protocol;
+        _scanner = new StreamingPacketScanner(schema);
+    }
+
+    public NetworkTelemetrySource(string ipAddress, int port, MavlinkDecoder decoder, NetworkProtocol protocol = NetworkProtocol.Tcp)
+    {
+        _ipAddress = ipAddress;
+        _port = port;
+        _protocol = protocol;
+        _mavlinkDecoder = decoder;
+    }
+
     public void Start()
     {
         if (_receiveTask != null) return;
 
         try
         {
-            if (protocol == NetworkProtocol.Tcp)
+            if (_protocol == NetworkProtocol.Tcp)
             {
                 _tcpClient = new TcpClient();
-                _tcpClient.Connect(ipAddress, port);
+                _tcpClient.Connect(_ipAddress, _port);
                 _networkStream = _tcpClient.GetStream();
                 _networkStream.ReadTimeout = 1000;
-                
+
                 _cancellationSource = new CancellationTokenSource();
                 _receiveTask = Task.Run(() => TcpReceiveLoop(_cancellationSource.Token));
-                
-                ErrorReceived?.Invoke($"TCP client connected to {ipAddress}:{port}");
+
+                ErrorReceived?.Invoke($"TCP client connected to {_ipAddress}:{_port}");
             }
             else
             {
-                if (IPAddress.TryParse(ipAddress, out var localAddress))
+                if (IPAddress.TryParse(_ipAddress, out var localAddress))
                 {
-                    var localEndPoint = new IPEndPoint(localAddress, port);
+                    var localEndPoint = new IPEndPoint(localAddress, _port);
                     _udpClient = new UdpClient(localEndPoint);
-                    ErrorReceived?.Invoke($"UDP listener started on {ipAddress}:{port}");
+                    ErrorReceived?.Invoke($"UDP listener started on {_ipAddress}:{_port}");
                 }
                 else
                 {
-                    _udpClient = new UdpClient(port);
-                    ErrorReceived?.Invoke($"UDP listener started on all interfaces, port {port}");
+                    _udpClient = new UdpClient(_port);
+                    ErrorReceived?.Invoke($"UDP listener started on all interfaces, port {_port}");
                 }
 
                 _udpClient.Client.ReceiveTimeout = 1000;
-                
+
                 _cancellationSource = new CancellationTokenSource();
                 _receiveTask = Task.Run(() => UdpReceiveLoop(_cancellationSource.Token));
             }
@@ -75,10 +96,10 @@ public sealed class NetworkTelemetrySource(string ipAddress, int port, PacketSch
         catch (Exception ex)
         {
             Stop();
-            if (protocol == NetworkProtocol.Tcp)
-                ErrorReceived?.Invoke($"Failed to connect to {ipAddress}:{port}: {ex.Message}");
+            if (_protocol == NetworkProtocol.Tcp)
+                ErrorReceived?.Invoke($"Failed to connect to {_ipAddress}:{_port}: {ex.Message}");
             else
-                ErrorReceived?.Invoke($"Failed to start UDP listener on port {port}: {ex.Message}");
+                ErrorReceived?.Invoke($"Failed to start UDP listener on port {_port}: {ex.Message}");
             throw;
         }
     }
@@ -86,15 +107,15 @@ public sealed class NetworkTelemetrySource(string ipAddress, int port, PacketSch
     private async Task TcpReceiveLoop(CancellationToken cancellationToken)
     {
         byte[] buffer = new byte[4096];
-        
+
         while (!cancellationToken.IsCancellationRequested && _tcpClient?.Connected == true)
         {
             try
             {
                 if (_networkStream == null) break;
-                
+
                 int bytesRead = await _networkStream.ReadAsync(buffer, 0, buffer.Length, cancellationToken);
-                
+
                 if (bytesRead > 0)
                 {
                     ProcessReceivedData(buffer, bytesRead);
@@ -160,19 +181,31 @@ public sealed class NetworkTelemetrySource(string ipAddress, int port, PacketSch
         var receiveBuffer = new byte[length];
         Buffer.BlockCopy(data, 0, receiveBuffer, 0, length);
 
-        var scanResult = _scanner.PushData(receiveBuffer);
-
-        if (scanResult.MisalignmentDetected)
+        if (_mavlinkDecoder != null)
         {
-            _errorCount++;
-            ErrorReceived?.Invoke($"Packet misalignment detected, resyncing");
-            StatsUpdated?.Invoke(_packetCount, _errorCount);
+            _mavlinkDecoder.PushData(receiveBuffer);
+            while (_mavlinkDecoder.TryReadPacket(out var packet) && packet != null)
+            {
+                _packetCount++;
+                PacketReceived?.Invoke(packet with { Timestamp = DateTime.Now });
+            }
         }
-
-        foreach (var packet in scanResult.Packets)
+        else if (_scanner != null)
         {
-            _packetCount++;
-            PacketReceived?.Invoke(packet with { Timestamp = DateTime.Now });
+            var scanResult = _scanner.PushData(receiveBuffer);
+
+            if (scanResult.MisalignmentDetected)
+            {
+                _errorCount++;
+                ErrorReceived?.Invoke($"Packet misalignment detected, resyncing");
+                StatsUpdated?.Invoke(_packetCount, _errorCount);
+            }
+
+            foreach (var packet in scanResult.Packets)
+            {
+                _packetCount++;
+                PacketReceived?.Invoke(packet with { Timestamp = DateTime.Now });
+            }
         }
 
         if (_packetCount % 100 == 0)
@@ -208,7 +241,7 @@ public sealed class NetworkTelemetrySource(string ipAddress, int port, PacketSch
 
         try
         {
-            if (protocol == NetworkProtocol.Tcp)
+            if (_protocol == NetworkProtocol.Tcp)
             {
                 _networkStream?.Close();
                 _tcpClient?.Close();
@@ -220,7 +253,7 @@ public sealed class NetworkTelemetrySource(string ipAddress, int port, PacketSch
         }
         catch { }
 
-        if (protocol == NetworkProtocol.Tcp)
+        if (_protocol == NetworkProtocol.Tcp)
         {
             _networkStream?.Dispose();
             _tcpClient?.Dispose();

@@ -7,64 +7,83 @@
         Title="Network Configuration"
         WindowStartupLocation="CenterOwner"
         SizeToContent="Height"
-        Width="450"
+        Width="440"
         CanResize="False">
 
     <Grid RowDefinitions="*, Auto">
         <ScrollViewer Grid.Row="0">
             <Border Padding="20">
-                <StackPanel Spacing="20">
-                    <Grid ColumnDefinitions="150, *" RowDefinitions="Auto, Auto, Auto, Auto, Auto">
-                        <!-- Protocol -->
-                        <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                            <TextBlock Text="PROTOCOL" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
-                            <Button Background="Transparent" BorderThickness="0" Padding="2" ToolTip.Tip="For TCP: Enter the server IP and port to connect to.&#x0a;For UDP: Enter the local port to listen on. IP can be used to bind to a specific interface (optional).">
-                                <mi:MaterialIcon Kind="InformationOutline" Width="14" Height="14" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
-                            </Button>
-                        </StackPanel>
-                        <ComboBox Grid.Row="0" Grid.Column="1" Width="180" HorizontalAlignment="Left"
-                                  ItemsSource="{Binding NetworkProtocols}" 
-                                  SelectedItem="{Binding NetworkProtocol}"/>
+                <StackPanel Spacing="16">
+                    <!-- CONNECTION -->
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="CONNECTION" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                        <Border Height="1" Background="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" Margin="0,0,0,4"/>
+                        <Grid ColumnDefinitions="180, *" RowDefinitions="Auto, Auto, Auto">
+                            <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                <TextBlock Text="PROTOCOL" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                                <Button Background="Transparent" BorderThickness="0" Padding="2" ToolTip.Tip="For TCP: Enter the server IP and port to connect to.&#x0a;For UDP: Enter the local port to listen on. IP can be used to bind to a specific interface (optional).">
+                                    <mi:MaterialIcon Kind="InformationOutline" Width="14" Height="14" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                                </Button>
+                            </StackPanel>
+                            <ComboBox Grid.Row="0" Grid.Column="1" Width="180" HorizontalAlignment="Left" Margin="0,4,0,4"
+                                      ItemsSource="{Binding NetworkProtocols}"
+                                      SelectedItem="{Binding NetworkProtocol}"/>
 
-                        <!-- IP Address -->
-                        <TextBlock Grid.Row="1" Grid.Column="0" Text="IP ADDRESS" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" VerticalAlignment="Center" Margin="0,15,0,0"/>
-                        <TextBox Grid.Row="1" Grid.Column="1" Width="180" HorizontalAlignment="Left" Margin="0,15,0,0"
-                                 Text="{Binding NetworkIp}" Watermark="127.0.0.1"/>
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="IP ADDRESS" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" VerticalAlignment="Center" Margin="0,4,0,0"/>
+                            <TextBox Grid.Row="1" Grid.Column="1" Width="180" HorizontalAlignment="Left" Margin="0,4,0,0"
+                                     Text="{Binding NetworkIp}" Watermark="127.0.0.1"/>
 
-                        <!-- Port -->
-                        <TextBlock Grid.Row="2" Grid.Column="0" Text="PORT" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" VerticalAlignment="Center" Margin="0,15,0,0"/>
-                        <NumericUpDown Grid.Row="2" Grid.Column="1" Width="180" HorizontalAlignment="Left" Margin="0,15,0,0"
-                                       Value="{Binding NetworkPort}" Minimum="1024" Maximum="65535" Increment="1" FormatString="0"/>
-
-                        <!-- Rolling Window -->
-                        <StackPanel Grid.Row="3" Grid.Column="0" VerticalAlignment="Center" Margin="0,15,0,0">
-                            <TextBlock Text="ROLLING WINDOW (SEC)" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
-                            <TextBlock Text="Live data to show" FontSize="11" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
-                        </StackPanel>
-                        <NumericUpDown Grid.Row="3" Grid.Column="1" Width="180" Margin="0,15,0,0"
-                                       Value="{Binding RollingWindowSeconds}" Minimum="1" Maximum="3600" Increment="1" HorizontalAlignment="Left"/>
-
-                        <!-- Schema File -->
-                        <TextBlock Grid.Row="4" Grid.Column="0" Text="SCHEMA FILE" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" VerticalAlignment="Center" Margin="0,15,0,0"/>
-                        <Grid Grid.Row="4" Grid.Column="1" ColumnDefinitions="*, Auto" Margin="0,15,0,0">
-                            <TextBox Grid.Column="0"
-                                     Text="{Binding LoadedSchemaPath}"
-                                     IsReadOnly="True"
-                                     Watermark="Please select a schema..."/>
-                            <Button Grid.Column="1"
-                                    Command="{Binding OpenSchemaCommand}"
-                                    Margin="8,0,0,0"
-                                    ToolTip.Tip="Open Schema File">
-                                <mi:MaterialIcon Kind="FolderOpenOutline" Width="16" Height="16"/>
-                            </Button>
+                            <TextBlock Grid.Row="2" Grid.Column="0" Text="PORT" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" VerticalAlignment="Center" Margin="0,4,0,0"/>
+                            <NumericUpDown Grid.Row="2" Grid.Column="1" Width="180" HorizontalAlignment="Left" Margin="0,4,0,0"
+                                           Value="{Binding NetworkPort}" Minimum="1024" Maximum="65535" Increment="1" FormatString="0"/>
                         </Grid>
-                    </Grid>
+                    </StackPanel>
+
+                    <!-- SCHEMA -->
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="SCHEMA" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                        <Border Height="1" Background="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" Margin="0,0,0,4"/>
+                        <Grid ColumnDefinitions="180, *" RowDefinitions="Auto, Auto, Auto">
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="PROTOCOL" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" VerticalAlignment="Center"/>
+                            <ComboBox Grid.Row="0" Grid.Column="1" Width="180" HorizontalAlignment="Left" Margin="0,4,0,4"
+                                      ItemsSource="{Binding SchemaProtocolOptions}"
+                                      SelectedItem="{Binding SchemaProtocol}"/>
+
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="{Binding SchemaLabel}" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" VerticalAlignment="Center" Margin="0,4,0,0"/>
+                            <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Spacing="8" Margin="0,4,0,0">
+                                <TextBox Width="180"
+                                         Text="{Binding LoadedSchemaPath}"
+                                         IsReadOnly="True"/>
+                                <Button Command="{Binding OpenSchemaCommand}"
+                                        ToolTip.Tip="Browse schema file"
+                                        VerticalAlignment="Center">
+                                    <mi:MaterialIcon Kind="FolderOpenOutline" Width="16" Height="16"/>
+                                </Button>
+                            </StackPanel>
+
+                            <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding SchemaHelper}" FontSize="10" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" Opacity="0.85" Margin="0,2,0,0" TextWrapping="Wrap"
+                                       IsVisible="{Binding IsSchemaHelperVisible}"/>
+                        </Grid>
+                    </StackPanel>
+
+                    <!-- DISPLAY -->
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="DISPLAY" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                        <Border Height="1" Background="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" Margin="0,0,0,4"/>
+                        <Grid ColumnDefinitions="180, *" RowDefinitions="Auto">
+                            <StackPanel Grid.Row="0" Grid.Column="0" VerticalAlignment="Center">
+                                <TextBlock Text="ROLLING WINDOW" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                                <TextBlock Text="Live data to show" FontSize="10" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" Opacity="0.85"/>
+                            </StackPanel>
+                            <NumericUpDown Grid.Row="0" Grid.Column="1" Width="180" HorizontalAlignment="Left" Margin="0,4,0,4"
+                                           Value="{Binding RollingWindowSeconds}" Minimum="1" Maximum="3600" Increment="1"/>
+                        </Grid>
+                    </StackPanel>
                 </StackPanel>
             </Border>
         </ScrollViewer>
 
-        <!-- Footer -->
-        <Border Grid.Row="1" Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}" Padding="20,15" BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" BorderThickness="0,1,0,0">
+        <Border Grid.Row="1" Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}" Padding="20,12" BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" BorderThickness="0,1,0,0">
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="12">
                 <Button Content="Cancel" Command="{Binding CancelCommand}" Width="100" HorizontalContentAlignment="Center"/>
                 <Button Content="Connect" Command="{Binding SaveCommand}" Width="100" HorizontalContentAlignment="Center" Classes="accent"/>

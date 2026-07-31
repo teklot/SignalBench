@@ -176,7 +176,6 @@ public partial class MainWindowViewModel : ViewModelBase
                 _playbackTimestamps = plot.PlaybackTimestamps;
                 _playbackSignalData = plot.PlaybackSignalData;
                 _totalRecords = plot.TotalRecords;
-                _playbackProgressValue = _totalRecords > 1 ? (double)_currentPlaybackIndex / (_totalRecords - 1) * 100 : 0;
                 
                 // Sync Status
                 _statusText = plot.StatusMessage;
@@ -440,15 +439,16 @@ public partial class MainWindowViewModel : ViewModelBase
         }
     }
 
-    private void PopulateSignals(PlotViewModel plot, IEnumerable<FieldDefinition> fields, string prefix = "")
+    private async Task PopulateSignalsAsync(PlotViewModel plot, IEnumerable<FieldDefinition> fields, string prefix = "")
     {
+        int batchCount = 0;
         foreach (var field in fields)
         {
             string fullName = string.IsNullOrEmpty(prefix) ? field.Name : $"{prefix}/{field.Name}";
 
             if (field.Fields != null && field.Fields.Count > 0)
             {
-                PopulateSignals(plot, field.Fields, fullName);
+                await PopulateSignalsAsync(plot, field.Fields, fullName);
                 continue;
             }
 
@@ -467,7 +467,11 @@ public partial class MainWindowViewModel : ViewModelBase
             if (shouldSelect) plot.SelectedSignalNames.Add(fullName);
             plot.AvailableSignals.Add(item);
             plot.RegularSignals.Add(item);
+
+            if (++batchCount % 15 == 0)
+                await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() => { }, Avalonia.Threading.DispatcherPriority.Background);
         }
+        plot.AttachSignalFilterHandlers();
     }
 
     private void AddTab(ITabFactory factory)
@@ -495,10 +499,7 @@ public partial class MainWindowViewModel : ViewModelBase
             
             // Clear old state
             p.DataStore.Clear();
-            p.AvailableSignals.Clear();
-            p.RegularSignals.Clear();
-            p.DerivedSignals.Clear();
-            p.SelectedSignalNames.Clear();
+            p.ClearAllSignals();
             p.TotalRecords = 0;
             p.IsStreaming = false;
             p.RequestPlotClear?.Invoke();
@@ -613,16 +614,24 @@ public partial class MainWindowViewModel : ViewModelBase
             {
                 dialogVm.ApplyTo(SelectedPlot.SerialSettings);
                 SelectedPlot.SerialSchemaPath = dialogVm.LoadedSchemaPath;
-                if (!string.IsNullOrEmpty(SelectedPlot.SerialSchemaPath))
+                if (SelectedPlot.SerialSettings.SchemaProtocol == "Custom")
                 {
-                    var yaml = await File.ReadAllTextAsync(SelectedPlot.SerialSchemaPath);
-                    var schema = new SchemaLoader().Load(yaml);
-                    if (schema != null)
+                    if (!string.IsNullOrEmpty(SelectedPlot.SerialSchemaPath))
                     {
-                        SelectedPlot.Schema = schema;
-                        OnPropertyChanged(nameof(SelectedSchema));
-                        StatusText = $"Schema loaded: {schema.Name}";
+                        var yaml = await File.ReadAllTextAsync(SelectedPlot.SerialSchemaPath);
+                        var schema = new SchemaLoader().Load(yaml);
+                        if (schema != null)
+                        {
+                            SelectedPlot.Schema = schema;
+                            OnPropertyChanged(nameof(SelectedSchema));
+                            StatusText = $"Schema loaded: {schema.Name}";
+                        }
                     }
+                }
+                else
+                {
+                    SelectedPlot.Schema = null;
+                    StatusText = "MAVLink protocol selected";
                 }
             }
             
@@ -646,16 +655,24 @@ public partial class MainWindowViewModel : ViewModelBase
             {
                 dialogVm.ApplyTo(SelectedPlot.NetworkSettings);
                 SelectedPlot.NetworkSchemaPath = dialogVm.LoadedSchemaPath;
-                if (!string.IsNullOrEmpty(SelectedPlot.NetworkSchemaPath))
+                if (SelectedPlot.NetworkSettings.SchemaProtocol == "Custom")
                 {
-                    var yaml = await File.ReadAllTextAsync(SelectedPlot.NetworkSchemaPath);
-                    var schema = new SchemaLoader().Load(yaml);
-                    if (schema != null)
+                    if (!string.IsNullOrEmpty(SelectedPlot.NetworkSchemaPath))
                     {
-                        SelectedPlot.Schema = schema;
-                        OnPropertyChanged(nameof(SelectedSchema));
-                        StatusText = $"Schema loaded: {schema.Name}";
+                        var yaml = await File.ReadAllTextAsync(SelectedPlot.NetworkSchemaPath);
+                        var schema = new SchemaLoader().Load(yaml);
+                        if (schema != null)
+                        {
+                            SelectedPlot.Schema = schema;
+                            OnPropertyChanged(nameof(SelectedSchema));
+                            StatusText = $"Schema loaded: {schema.Name}";
+                        }
                     }
+                }
+                else
+                {
+                    SelectedPlot.Schema = null;
+                    StatusText = "MAVLink protocol selected";
                 }
             }
             

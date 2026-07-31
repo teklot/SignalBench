@@ -19,36 +19,70 @@
                            TextWrapping="Wrap"
                            IsVisible="{Binding RegularSignals.Count, Converter={x:Static converters:CollectionEmptyToBoolConverter.Instance}}"/>
 
-                <!-- Regular Signals -->
-                <ListBox ItemsSource="{Binding RegularSignals}"
-                         Background="Transparent"
-                         BorderThickness="0"
-                         Margin="10,5,5,5">
-                    <ListBox.Styles>
-                        <Style Selector="ListBoxItem">
-                            <Setter Property="Padding" Value="0,2"/>
-                            <Setter Property="Background" Value="Transparent"/>
-                        </Style>
-                    </ListBox.Styles>
-                    <ListBox.ItemTemplate>
-                        <DataTemplate x:DataType="vm:SignalItemViewModel">
-                            <Grid ColumnDefinitions="Auto, *, Auto">
-                                <CheckBox Grid.Column="0" IsChecked="{Binding IsSelected}"
-                                          Margin="0,0,5,0" VerticalAlignment="Center"/>
-                                <TextBlock Grid.Column="1" Text="{Binding Name}"
-                                           FontSize="13"
-                                           VerticalAlignment="Center"/>
-                                <TextBlock Grid.Column="2" Text="{Binding FormattedValue}"
-                                           FontSize="12"
-                                           FontWeight="SemiBold"
-                                           VerticalAlignment="Center"
-                                           Margin="8,0,0,0"
-                                           IsVisible="{Binding IsSelected}"
-                                           Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
-                            </Grid>
-                        </DataTemplate>
-                    </ListBox.ItemTemplate>
-                </ListBox>
+                <!-- Signal Search -->
+                <TextBox Text="{Binding SignalSearchText, Mode=TwoWay}"
+                         Watermark="Search signals..."
+                         FontSize="13"
+                         Margin="10,5,5,0"
+                         IsVisible="{Binding RegularSignals.Count, Converter={x:Static converters:CollectionNotEmptyToBoolConverter.Instance}}"/>
+
+                <!-- Selected Signals -->
+                <StackPanel IsVisible="{Binding SelectedSignalsList.Count, Converter={x:Static converters:CollectionNotEmptyToBoolConverter.Instance}}" Margin="10,5,5,0">
+                    <TextBlock Text="SELECTED" Classes="SectionHeader"/>
+                    <Border Height="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" Margin="0,0,0,3"/>
+                    <ItemsControl ItemsSource="{Binding SelectedSignalsList}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:SignalItemViewModel">
+                                <StackPanel Margin="0,2">
+                                    <TextBlock Text="{Binding Subtitle}"
+                                               FontSize="11"
+                                               Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                                    <Grid ColumnDefinitions="Auto, *, Auto">
+                                        <CheckBox Grid.Column="0" IsChecked="{Binding IsSelected}"
+                                                  Margin="0,0,5,0" VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding DisplayName}"
+                                                   FontSize="13" VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="2" Text="{Binding FormattedValue}"
+                                                   FontSize="12" FontWeight="SemiBold"
+                                                   VerticalAlignment="Center"
+                                                   Margin="8,0,0,0"
+                                                   Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                                    </Grid>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+
+                <!-- All Signals (filtered) -->
+                <StackPanel Margin="10,8,5,0"
+                            IsVisible="{Binding FilteredUnselectedSignals.Count, Converter={x:Static converters:CollectionNotEmptyToBoolConverter.Instance}}">
+                    <TextBlock Text="UNSELECTED" Classes="SectionHeader"/>
+                    <Border Height="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" Margin="0,0,0,3"/>
+                    <ItemsControl ItemsSource="{Binding FilteredUnselectedSignals}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:SignalItemViewModel">
+                                <StackPanel Margin="0,2">
+                                    <TextBlock Text="{Binding Subtitle}"
+                                               FontSize="11"
+                                               Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                                    <Grid ColumnDefinitions="Auto, *, Auto">
+                                        <CheckBox Grid.Column="0" IsChecked="{Binding IsSelected}"
+                                                  Margin="0,0,5,0" VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding DisplayName}"
+                                                   FontSize="13" VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="2" Text="{Binding FormattedValue}"
+                                                   FontSize="12" FontWeight="SemiBold"
+                                                   VerticalAlignment="Center"
+                                                   Margin="8,0,0,0"
+                                                   IsVisible="{Binding IsSelected}"
+                                                   Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                                    </Grid>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
 
                 <!-- Derived Signals Section -->
                 <StackPanel IsVisible="{Binding DerivedSignals.Count}" Margin="10,10,5,5">

@@ -1,4 +1,7 @@
 using Avalonia.Threading;
+using MavLinkSharp;
+using MavLinkSharp.Enums;
+using SignalBench.Core.Decoding;
 using SignalBench.Core.Ingestion;
 using SignalBench.Core.Models;
 using SignalBench.SDK.Models;
@@ -124,8 +127,26 @@ public partial class MainWindowViewModel
         if (SelectedPlot == null) return;
         var settings = SelectedPlot.NetworkSettings;
         var schema = SelectedPlot.Schema;
-        
-        if (string.IsNullOrEmpty(settings.IpAddress) || settings.Port <= 0 || schema == null)
+
+        if (string.IsNullOrEmpty(settings.IpAddress) || settings.Port <= 0)
+        {
+            await ShowError("Configuration Error", "Please configure Network settings."); return;
+        }
+
+        var isMavlink = settings.SchemaProtocol == "MAVLink";
+        if (isMavlink && schema == null)
+        {
+            if (!string.IsNullOrEmpty(SelectedPlot.NetworkSchemaPath))
+                MavLink.Initialize(SelectedPlot.NetworkSchemaPath);
+            else
+                MavLink.Initialize(DialectType.Common);
+
+            schema = MavlinkDecoder.CreateSchemaFromDialect();
+            SelectedPlot.Schema = schema;
+            OnPropertyChanged(nameof(SelectedSchema));
+        }
+
+        if (schema == null)
         {
             await ShowError("Configuration Error", "Please configure Network settings."); return;
         }
@@ -140,14 +161,14 @@ public partial class MainWindowViewModel
             }
 
             var protocol = settings.Protocol == "UDP" ? NetworkProtocol.Udp : NetworkProtocol.Tcp;
-            var plotName = !string.IsNullOrEmpty(schema.Name) ? schema.Name : (protocol == NetworkProtocol.Udp 
-                ? $"UDP:{settings.Port}" 
+            var plotName = !string.IsNullOrEmpty(schema.Name) ? schema.Name : (protocol == NetworkProtocol.Udp
+                ? $"UDP:{settings.Port}"
                 : $"TCP:{settings.IpAddress}:{settings.Port}");
-            
+
             SelectedPlot.Name = plotName;
             var targetPlot = SelectedPlot;
             var targetStore = targetPlot.DataStore;
-            
+
             // Clear old state
             targetStore.Clear();
             targetPlot.TotalRecords = 0;
@@ -159,37 +180,39 @@ public partial class MainWindowViewModel
             OnPropertyChanged(nameof(TotalRecords));
 
             // CRITICAL: Clear old signals so new ones from schema can be added
-            targetPlot.AvailableSignals.Clear();
-            targetPlot.RegularSignals.Clear();
-            targetPlot.SelectedSignalNames.Clear();
-            targetPlot.DerivedSignals.Clear();
+            targetPlot.ClearAllSignals();
 
             targetPlot.IsStreaming = true;
             targetPlot.IsPaused = false;
             targetPlot.SourceType = PlotSourceType.Network;
             targetStore.InitializeSchema(schema);
 
-            // Populate signals IMMEDIATELY before starting the source
-            PopulateSignals(targetPlot, schema.Fields);
-
-            if (targetPlot == SelectedPlot)
+            if (isMavlink)
             {
-                SyncSignalCheckboxes();
-                OnPropertyChanged(nameof(HasData));
-                OnPropertyChanged(nameof(IsPlaybackBarVisible));
+                var decoder = new MavlinkDecoder();
+                var source = new NetworkTelemetrySource(settings.IpAddress, settings.Port, decoder, protocol);
+                SelectedPlot.ActiveSource = source;
+                source.PacketReceived += (p) => HandleLivePacket(targetPlot, p);
+                source.ErrorReceived += msg =>
+                {
+                    Dispatcher.UIThread.Post(() => { StatusText = $"Network Error: {msg}"; });
+                };
+                await Task.Run(() => source.Start());
+            }
+            else
+            {
+                var source = new NetworkTelemetrySource(settings.IpAddress, settings.Port, schema, protocol);
+                SelectedPlot.ActiveSource = source;
+                source.PacketReceived += (p) => HandleLivePacket(targetPlot, p);
+                source.ErrorReceived += msg =>
+                {
+                    Dispatcher.UIThread.Post(() => { StatusText = $"Network Error: {msg}"; });
+                };
+                await Task.Run(() => source.Start());
             }
 
-            var source = new NetworkTelemetrySource(settings.IpAddress, settings.Port, schema, protocol);
-            SelectedPlot.ActiveSource = source;
-            source.PacketReceived += (p) => HandleLivePacket(targetPlot, p);
-            source.ErrorReceived += msg =>
-            {
-                Dispatcher.UIThread.Post(() => { StatusText = $"Network Error: {msg}"; });
-            };
-
-            await Task.Run(() => source.Start());
             NotifySourceStateChanged();
-            
+
             // Force status bar info refresh
             if (SelectedPlot != null)
             {
@@ -198,8 +221,24 @@ public partial class MainWindowViewModel
             }
 
             StatusText = protocol == NetworkProtocol.Udp
-                ? $"Listening on UDP port {settings.Port}..." 
+                ? $"Listening on UDP port {settings.Port}..."
                 : $"Connected to TCP {settings.IpAddress}:{settings.Port}...";
+
+            if (!isMavlink)
+            {
+                _ = PopulateSignalsAsync(targetPlot, schema.Fields).ContinueWith(_ =>
+                {
+                    Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                    {
+                        if (targetPlot == SelectedPlot)
+                        {
+                            SyncSignalCheckboxes();
+                            OnPropertyChanged(nameof(HasData));
+                            OnPropertyChanged(nameof(IsPlaybackBarVisible));
+                        }
+                    });
+                });
+            }
         }
         catch (Exception ex)
         {
@@ -213,7 +252,24 @@ public partial class MainWindowViewModel
         var settings = SelectedPlot.SerialSettings;
         var schema = SelectedPlot.Schema;
 
-        if (string.IsNullOrEmpty(settings.Port) || schema == null) {
+        if (string.IsNullOrEmpty(settings.Port)) {
+            await ShowError("Configuration Error", "Please configure Serial settings."); return;
+        }
+
+        var isMavlink = settings.SchemaProtocol == "MAVLink";
+        if (isMavlink && schema == null)
+        {
+            if (!string.IsNullOrEmpty(SelectedPlot.SerialSchemaPath))
+                MavLink.Initialize(SelectedPlot.SerialSchemaPath);
+            else
+                MavLink.Initialize(DialectType.Common);
+
+            schema = MavlinkDecoder.CreateSchemaFromDialect();
+            SelectedPlot.Schema = schema;
+            OnPropertyChanged(nameof(SelectedSchema));
+        }
+
+        if (schema == null) {
             await ShowError("Configuration Error", "Please configure Serial settings."); return;
         }
 
@@ -241,37 +297,38 @@ public partial class MainWindowViewModel
             OnPropertyChanged(nameof(TotalRecords));
 
             // CRITICAL: Clear old signals so new ones from schema can be added
-            targetPlot.AvailableSignals.Clear();
-            targetPlot.RegularSignals.Clear();
-            targetPlot.SelectedSignalNames.Clear();
-            targetPlot.DerivedSignals.Clear();
+            targetPlot.ClearAllSignals();
 
             SelectedPlot.IsStreaming = true;
             SelectedPlot.IsPaused = false;
             SelectedPlot.SourceType = PlotSourceType.Serial;
             targetStore.InitializeSchema(schema);
 
-            // Populate signals IMMEDIATELY before starting the source
-            PopulateSignals(targetPlot, schema.Fields);
+            var parity = System.Enum.Parse<System.IO.Ports.Parity>(settings.Parity);
+            var stopBits = System.Enum.Parse<System.IO.Ports.StopBits>(settings.StopBits);
 
-            if (targetPlot == SelectedPlot)
+            if (isMavlink)
             {
-                SyncSignalCheckboxes();
-                OnPropertyChanged(nameof(HasData));
-                OnPropertyChanged(nameof(IsPlaybackBarVisible));
+                var decoder = new MavlinkDecoder();
+                var source = new SerialTelemetrySource(settings.Port, settings.BaudRate, decoder, parity, settings.DataBits, stopBits);
+                SelectedPlot.ActiveSource = source;
+                source.PacketReceived += (p) => HandleLivePacket(targetPlot, p);
+                source.ErrorReceived += msg => {
+                    Dispatcher.UIThread.Post(() => { StatusText = $"Serial Error: {msg}"; targetPlot.IsStreaming = false; NotifySourceStateChanged(); });
+                };
+                await Task.Run(() => source.Start());
+            }
+            else
+            {
+                var source = new SerialTelemetrySource(settings.Port, settings.BaudRate, schema, parity, settings.DataBits, stopBits);
+                SelectedPlot.ActiveSource = source;
+                source.PacketReceived += (p) => HandleLivePacket(targetPlot, p);
+                source.ErrorReceived += msg => {
+                    Dispatcher.UIThread.Post(() => { StatusText = $"Serial Error: {msg}"; targetPlot.IsStreaming = false; NotifySourceStateChanged(); });
+                };
+                await Task.Run(() => source.Start());
             }
 
-            var parity = Enum.Parse<System.IO.Ports.Parity>(settings.Parity);
-            var stopBits = Enum.Parse<System.IO.Ports.StopBits>(settings.StopBits);
-
-            var source = new SerialTelemetrySource(settings.Port, settings.BaudRate, schema, parity, settings.DataBits, stopBits);
-            SelectedPlot.ActiveSource = source;
-            source.PacketReceived += (p) => HandleLivePacket(targetPlot, p);
-            source.ErrorReceived += msg => {
-                Dispatcher.UIThread.Post(() => { StatusText = $"Serial Error: {msg}"; targetPlot.IsStreaming = false; NotifySourceStateChanged(); });
-            };
-            
-            await Task.Run(() => source.Start());
             NotifySourceStateChanged();
 
             // Force status bar info refresh
@@ -282,14 +339,30 @@ public partial class MainWindowViewModel
             }
 
             StatusText = $"Streaming from {settings.Port}...";
+
+            if (!isMavlink)
+            {
+                _ = PopulateSignalsAsync(targetPlot, schema.Fields).ContinueWith(_ =>
+                {
+                    Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                    {
+                        if (targetPlot == SelectedPlot)
+                        {
+                            SyncSignalCheckboxes();
+                            OnPropertyChanged(nameof(HasData));
+                            OnPropertyChanged(nameof(IsPlaybackBarVisible));
+                        }
+                    });
+                });
+            }
         } catch (Exception ex) { await ShowError("Connection Error", $"Failed to start streaming: {ex.Message}"); }
     }
 
     private void HandleLivePacket(PlotViewModel plot, DecodedPacket packet)
     {
-        lock (_liveDataLock) { 
+        lock (_liveDataLock) {
             if (!_livePacketBuffers.ContainsKey(plot)) _livePacketBuffers[plot] = new();
-            _livePacketBuffers[plot].Add(packet); 
+            _livePacketBuffers[plot].Add(packet);
         }
         if ((DateTime.Now - _lastLivePlotUpdate).TotalMilliseconds > 100) {
             _lastLivePlotUpdate = DateTime.Now;
@@ -300,7 +373,7 @@ public partial class MainWindowViewModel
     private void UpdateLivePlot()
     {
         Dictionary<PlotViewModel, List<DecodedPacket>> batches;
-        lock (_liveDataLock) { 
+        lock (_liveDataLock) {
             batches = new Dictionary<PlotViewModel, List<DecodedPacket>>(_livePacketBuffers);
             _livePacketBuffers.Clear();
         }
@@ -314,6 +387,26 @@ public partial class MainWindowViewModel
             var targetStore = targetPlot.DataStore;
             bool wasEmpty = targetPlot.TotalRecords == 0;
             targetStore.InsertPackets(batch);
+
+            // Propagate MAVLink sysid/compid metadata to signal view models
+            foreach (var packet in batch)
+            {
+                if (packet.SystemId == 0 && packet.ComponentId == 0) continue;
+                foreach (var fieldName in packet.Fields.Keys)
+                {
+                    var signal = targetPlot.RegularSignals.FirstOrDefault(s => s.Name == fieldName);
+                    if (signal != null && (signal.SystemId != packet.SystemId || signal.ComponentId != packet.ComponentId))
+                    {
+                        signal.SystemId = packet.SystemId;
+                        signal.ComponentId = packet.ComponentId;
+                    }
+                }
+            }
+
+            // Dynamically create signal view models for MAVLink fields not yet in the list
+            foreach (var packet in batch)
+                foreach (var fieldName in packet.Fields.Keys)
+                    targetPlot.TryAddSignal(fieldName, packet.SystemId, packet.ComponentId);
 
             // Re-compute derived signals if any exist for this plot
             if (targetPlot.DerivedSignals.Count > 0)
@@ -338,15 +431,15 @@ public partial class MainWindowViewModel
                     OnPropertyChanged(nameof(HasData));
                     OnPropertyChanged(nameof(IsPlaybackBarVisible));
                 }
-                
+
                 // Update CurrentPlaybackIndex to latest during streaming
                 CurrentPlaybackIndex = rowCount - 1;
                 RefreshCurrentValues();
             }
 
             // Determine rolling window in seconds
-            int windowSeconds = targetPlot.SourceType == PlotSourceType.Serial 
-                ? targetPlot.SerialSettings.RollingWindowSeconds 
+            int windowSeconds = targetPlot.SourceType == PlotSourceType.Serial
+                ? targetPlot.SerialSettings.RollingWindowSeconds
                 : targetPlot.NetworkSettings.RollingWindowSeconds;
 
             DateTime latestTs = targetStore.GetTimestamp(targetPlot.TotalRecords - 1);
@@ -445,7 +538,7 @@ public partial class MainWindowViewModel
                 }
             }
         }
-        
+
         NotifySourceStateChanged();
         StatusText = "Streaming stopped.";
     }
@@ -457,7 +550,7 @@ public partial class MainWindowViewModel
 
         if (SelectedPlot.IsRecording)
         {
-            source.StopRecording(); 
+            source.StopRecording();
             SelectedPlot.IsRecording = false;
             if (SelectedPlot == SelectedPlot) IsRecording = false;
             StatusText = "Recording stopped.";
@@ -474,7 +567,7 @@ public partial class MainWindowViewModel
             });
             if (file != null)
             {
-                source.StartRecording(file.Path.LocalPath); 
+                source.StartRecording(file.Path.LocalPath);
                 SelectedPlot.IsRecording = true;
                 if (SelectedPlot == SelectedPlot) IsRecording = true;
                 StatusText = $"Recording to {file.Name}...";

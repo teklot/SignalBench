@@ -9,4 +9,6 @@ public sealed record DecodedPacket
     public required DateTime Timestamp { get; init; }
     public Dictionary<string, object> Fields { get; init; } = [];
     public bool IsValid { get; init; } = true;
+    public int SystemId { get; init; }
+    public int ComponentId { get; init; }
 }

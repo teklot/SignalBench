@@ -1,3 +1,20 @@
+# Release Notes - v0.4.0
+
+## 🚀 New Features (MAVLink Integration)
+- **MAVLink Protocol Support**: Native MAVLink v1/v2 frame decoding via MavlinkSharp integration for both Serial and Network streaming sources.
+- **MavlinkDecoder**: Streaming binary decoder that auto-detects sync bytes, parses frames, and exposes all message fields as flat signal entries with sysid:compid context.
+- **Runtime XML Dialect Loading**: Load MAVLink XML dialect files at connect time, or use built-in defaults (common.xml, ardupilotmega.xml, minimal.xml) when no dialect is specified.
+- **Dynamic On-Arrival Signal Creation**: Signals are created only from fields actually seen in the stream, eliminating the overhead of pre-generating thousands of unused ViewModels from full dialect schemas.
+- **Auto-Selected Essentials**: 4 curated telemetry fields (HEARTBEAT.system_status, SYS_STATUS.voltage_battery, VFR_HUD.groundspeed, VFR_HUD.alt) are automatically selected when they first appear.
+
+## 🛠️ Improvements & Fixes
+- **Persistent Search Filtering**: Search debounce timer subscription moved to constructor, ensuring search always works regardless of streaming mode or signal list rebuilds.
+- **Cleaner Numeric Display**: Value formatting changed from `G5` (significant digits) to `0.#####` (max 5 decimal places, no scientific notation, no trailing zeros).
+- **Modern Input Styling**: TextBox, ComboBox, and NumericUpDown borders set to silver-gray (`#C0C0C0`) for a cleaner modern look.
+- **Reduced Auto-Select Noise**: Auto-selected fields trimmed from 11 to 4 essential signals.
+
+---
+
 # Release Notes - v0.3.1
 
 ## 🛠️ Fixes & Improvements

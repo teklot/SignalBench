@@ -6,12 +6,19 @@ using SignalBench.SDK.Models;
 
 namespace SignalBench.Core.Ingestion;
 
-public sealed class SerialTelemetrySource(string portName, int baudRate, PacketSchema schema, Parity parity = Parity.None, int dataBits = 8, StopBits stopBits = StopBits.One) : IStreamingSource
+public sealed class SerialTelemetrySource : IStreamingSource
 {
+    private readonly string _portName;
+    private readonly int _baudRate;
+    private readonly Parity _parity;
+    private readonly int _dataBits;
+    private readonly StopBits _stopBits;
+    private readonly StreamingPacketScanner? _scanner;
+    private readonly MavlinkDecoder? _mavlinkDecoder;
+
     private SerialPort? _serialPort;
     private bool _isRunning;
     private Thread? _readThread;
-    private readonly StreamingPacketScanner _scanner = new(schema);
     private FileStream? _rawLogStream;
     private long _frameErrorCount;
     private long _misalignmentCount;
@@ -25,13 +32,33 @@ public sealed class SerialTelemetrySource(string portName, int baudRate, PacketS
     public long FrameErrorCount => _frameErrorCount;
     public long MisalignmentCount => _misalignmentCount;
 
+    public SerialTelemetrySource(string portName, int baudRate, PacketSchema schema, Parity parity = Parity.None, int dataBits = 8, StopBits stopBits = StopBits.One)
+    {
+        _portName = portName;
+        _baudRate = baudRate;
+        _parity = parity;
+        _dataBits = dataBits;
+        _stopBits = stopBits;
+        _scanner = new StreamingPacketScanner(schema);
+    }
+
+    public SerialTelemetrySource(string portName, int baudRate, MavlinkDecoder decoder, Parity parity = Parity.None, int dataBits = 8, StopBits stopBits = StopBits.One)
+    {
+        _portName = portName;
+        _baudRate = baudRate;
+        _parity = parity;
+        _dataBits = dataBits;
+        _stopBits = stopBits;
+        _mavlinkDecoder = decoder;
+    }
+
     public void Start()
     {
         if (_isRunning) return;
 
         try
         {
-            _serialPort = new SerialPort(portName, baudRate, parity, dataBits, stopBits);
+            _serialPort = new SerialPort(_portName, _baudRate, _parity, _dataBits, _stopBits);
             _serialPort.Handshake = Handshake.None;
             _serialPort.ReadTimeout = 500;
             _serialPort.WriteTimeout = 500;
@@ -39,43 +66,37 @@ public sealed class SerialTelemetrySource(string portName, int baudRate, PacketS
             _serialPort.Open();
 
             _isRunning = true;
-            _readThread = new Thread(ReadLoop) { IsBackground = true, Name = $"SerialRead-{portName}" };
+            _readThread = new Thread(ReadLoop) { IsBackground = true, Name = $"SerialRead-{_portName}" };
             _readThread.Start();
         }
         catch (Exception ex)
         {
             _serialPort?.Dispose();
             _serialPort = null;
-            ErrorReceived?.Invoke($"Failed to open port {portName}: {ex.Message}");
+            ErrorReceived?.Invoke($"Failed to open port {_portName}: {ex.Message}");
             throw;
         }
     }
 
     private void SerialPort_ErrorReceived(object sender, SerialErrorReceivedEventArgs e)
     {
-        // Handle various serial port errors
         switch (e.EventType)
         {
             case SerialError.Frame:
-                // Framing error - the hardware detected a framing error
                 _frameErrorCount++;
                 ErrorReceived?.Invoke($"Framing error detected (count: {_frameErrorCount})");
                 StatsUpdated?.Invoke(_frameErrorCount, _misalignmentCount);
                 break;
             case SerialError.Overrun:
-                // A buffer overrun occurred
                 ErrorReceived?.Invoke($"Buffer overrun detected");
                 break;
             case SerialError.RXOver:
-                // Receive buffer overflow
                 ErrorReceived?.Invoke($"Receive buffer overflow");
                 break;
             case SerialError.TXFull:
-                // Transmit buffer full
                 ErrorReceived?.Invoke($"Transmit buffer full");
                 break;
             case SerialError.RXParity:
-                // Parity error detected by hardware
                 _frameErrorCount++;
                 ErrorReceived?.Invoke($"Parity error detected (count: {_frameErrorCount})");
                 StatsUpdated?.Invoke(_frameErrorCount, _misalignmentCount);
@@ -145,23 +166,35 @@ public sealed class SerialTelemetrySource(string portName, int baudRate, PacketS
                         _rawLogStream.Flush();
                     }
 
-                    var data = new byte[bytesRead];
-                    Buffer.BlockCopy(buffer, 0, data, 0, bytesRead);
-                    
-                    var result = _scanner.PushData(data);
-                    
-                    // Track misalignment when sync word search finds multiple non-synced positions
-                    if (result.MisalignmentDetected)
+                    if (_mavlinkDecoder != null)
                     {
-                        _misalignmentCount++;
-                        ErrorReceived?.Invoke($"Packet misalignment detected, resyncing (count: {_misalignmentCount})");
-                        StatsUpdated?.Invoke(_frameErrorCount, _misalignmentCount);
+                        var data = new byte[bytesRead];
+                        Buffer.BlockCopy(buffer, 0, data, 0, bytesRead);
+                        _mavlinkDecoder.PushData(data);
+
+                        while (_mavlinkDecoder.TryReadPacket(out var packet) && packet != null)
+                        {
+                            PacketReceived?.Invoke(packet with { Timestamp = DateTime.Now });
+                        }
                     }
-                    
-                    // Dispatch decoded packets to handlers
-                    foreach (var packet in result.Packets)
+                    else if (_scanner != null)
                     {
-                        PacketReceived?.Invoke(packet with { Timestamp = DateTime.Now });
+                        var data = new byte[bytesRead];
+                        Buffer.BlockCopy(buffer, 0, data, 0, bytesRead);
+
+                        var result = _scanner.PushData(data);
+
+                        if (result.MisalignmentDetected)
+                        {
+                            _misalignmentCount++;
+                            ErrorReceived?.Invoke($"Packet misalignment detected, resyncing (count: {_misalignmentCount})");
+                            StatsUpdated?.Invoke(_frameErrorCount, _misalignmentCount);
+                        }
+
+                        foreach (var packet in result.Packets)
+                        {
+                            PacketReceived?.Invoke(packet with { Timestamp = DateTime.Now });
+                        }
                     }
                 }
                 else
