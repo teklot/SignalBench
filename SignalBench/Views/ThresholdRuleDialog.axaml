@@ -20,14 +20,14 @@
                     <StackPanel Spacing="5">
                         <TextBlock Text="RULE NAME" Classes="InputLabel"/>
                         <TextBox Text="{Binding Name}"
-                                 Watermark="e.g., Battery Low"
+                                 PlaceholderText="e.g., Battery Low"
                                  HorizontalAlignment="Stretch" />
                     </StackPanel>
 
                     <StackPanel Spacing="5">
                         <TextBlock Text="CONDITION (FORMULA)" Classes="InputLabel"/>
                         <TextBox Text="{Binding Formula}"
-                                 Watermark="e.g., battery_voltage &lt; 6.5"
+                                 PlaceholderText="e.g., battery_voltage &lt; 6.5"
                                  HorizontalAlignment="Stretch" />
                         <TextBlock Text="Example: battery_voltage &lt; 6.5"
                                    FontSize="11"
@@ -38,7 +38,7 @@
                         <TextBlock Text="MARKER COLOR (HEX)" Classes="InputLabel"/>
                         <StackPanel Orientation="Horizontal" Spacing="10">
                             <TextBox Text="{Binding Color}"
-                                     Watermark="#FF0000"
+                                     PlaceholderText="#FF0000"
                                      Width="150" />
                             <Border Background="{Binding Color}" Width="30" Height="30" CornerRadius="4" BorderBrush="Gray" BorderThickness="1"/>
                         </StackPanel>
@@ -51,7 +51,7 @@
                     <StackPanel Spacing="5">
                         <TextBlock Text="DESCRIPTION (OPTIONAL)" Classes="InputLabel"/>
                         <TextBox Text="{Binding Description}"
-                                 Watermark="What does this rule detect?"
+                                 PlaceholderText="What does this rule detect?"
                                  AcceptsReturn="True"
                                  Height="60"
                                  HorizontalAlignment="Stretch" />

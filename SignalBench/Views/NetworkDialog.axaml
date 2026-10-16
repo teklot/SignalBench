@@ -31,7 +31,7 @@
 
                             <TextBlock Grid.Row="1" Grid.Column="0" Text="IP ADDRESS" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" VerticalAlignment="Center" Margin="0,4,0,0"/>
                             <TextBox Grid.Row="1" Grid.Column="1" Width="180" HorizontalAlignment="Left" Margin="0,4,0,0"
-                                     Text="{Binding NetworkIp}" Watermark="127.0.0.1"/>
+                                     Text="{Binding NetworkIp}" PlaceholderText="127.0.0.1"/>
 
                             <TextBlock Grid.Row="2" Grid.Column="0" Text="PORT" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" VerticalAlignment="Center" Margin="0,4,0,0"/>
                             <NumericUpDown Grid.Row="2" Grid.Column="1" Width="180" HorizontalAlignment="Left" Margin="0,4,0,0"

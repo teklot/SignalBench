@@ -19,14 +19,14 @@
                 <StackPanel Spacing="5">
                     <TextBlock Text="SIGNAL NAME" Classes="InputLabel"/>
                     <TextBox Text="{Binding Name}"
-                             Watermark="e.g., power_consumption"
+                             PlaceholderText="e.g., power_consumption"
                              HorizontalAlignment="Stretch" />
                 </StackPanel>
 
                 <StackPanel Spacing="5">
                     <TextBlock Text="FORMULA" Classes="InputLabel"/>
                     <TextBox Text="{Binding Formula}"
-                             Watermark="e.g., battery_voltage * battery_current"
+                             PlaceholderText="e.g., battery_voltage * battery_current"
                              HorizontalAlignment="Stretch" />
                     <TextBlock Text="Available fields: battery_voltage, temperature_1, etc."
                                FontSize="11"

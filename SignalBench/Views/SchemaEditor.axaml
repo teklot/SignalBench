@@ -32,12 +32,12 @@
                 <Grid ColumnDefinitions="*, 150, 150">
                     <StackPanel Spacing="8">
                         <TextBlock Text="SCHEMA NAME" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
-                        <TextBox Text="{Binding Name}" Watermark="Enter schema name..."/>
+                        <TextBox Text="{Binding Name}" PlaceholderText="Enter schema name..."/>
                     </StackPanel>
                     
                     <StackPanel Grid.Column="1" Spacing="8" Margin="20,0,0,0">
                         <TextBlock Text="SYNC WORD (HEX)" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
-                        <TextBox Text="{Binding SyncWordHex}" Watermark="e.g. AA55" MaxLength="4"/>
+                        <TextBox Text="{Binding SyncWordHex}" PlaceholderText="e.g. AA55" MaxLength="4"/>
                     </StackPanel>
 
                     <StackPanel Grid.Column="2" Spacing="8" Margin="20,0,0,0">
@@ -134,7 +134,7 @@
                                 
                                 <StackPanel Spacing="5">
                                     <TextBlock Text="UNIT" FontSize="11"/>
-                                    <TextBox Text="{Binding SelectedField.Unit}" Watermark="e.g. V, Hz, °C"/>
+                                    <TextBox Text="{Binding SelectedField.Unit}" PlaceholderText="e.g. V, Hz, °C"/>
                                 </StackPanel>
 
                                 <StackPanel Spacing="5">
@@ -143,7 +143,7 @@
                                             AcceptsReturn="True" 
                                             Height="80" 
                                             TextWrapping="Wrap"
-                                            Watermark="Field notes..."/>
+                                            PlaceholderText="Field notes..."/>
                                 </StackPanel>
 
                                 <Border Height="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" Margin="0,5"/>

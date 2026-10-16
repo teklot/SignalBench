@@ -29,7 +29,7 @@
                             <TextBox Grid.Column="0"
                                      Text="{Binding TelemetryPath}"
                                      IsReadOnly="True"
-                                     Watermark="Select binary telemetry file..."/>
+                                     PlaceholderText="Select binary telemetry file..."/>
                             <Button Grid.Column="1"
                                     Command="{Binding BrowseTelemetryCommand}"
                                     Margin="8,0,0,0"
@@ -50,7 +50,7 @@
                                 <TextBox Grid.Column="0"
                                          Text="{Binding SchemaFilePath}"
                                          IsReadOnly="True"
-                                         Watermark="Select YAML schema file..."/>
+                                         PlaceholderText="Select YAML schema file..."/>
                                 <Button Grid.Column="1"
                                         Command="{Binding BrowseSchemaCommand}"
                                         Margin="8,0,0,0"

@@ -21,7 +21,7 @@
 
                 <!-- Signal Search -->
                 <TextBox Text="{Binding SignalSearchText, Mode=TwoWay}"
-                         Watermark="Search signals..."
+                         PlaceholderText="Search signals..."
                          FontSize="13"
                          Margin="10,5,5,0"
                          IsVisible="{Binding RegularSignals.Count, Converter={x:Static converters:CollectionNotEmptyToBoolConverter.Instance}}"/>

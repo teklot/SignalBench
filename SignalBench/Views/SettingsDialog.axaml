@@ -25,7 +25,7 @@
                                 <StackPanel Spacing="8">
                                     <TextBlock Text="DEFAULT TELEMETRY FOLDER" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
                                     <Grid ColumnDefinitions="*, Auto">
-                                        <TextBox Text="{Binding DefaultTelemetryPath}" Watermark="Not set..."/>
+                                        <TextBox Text="{Binding DefaultTelemetryPath}" PlaceholderText="Not set..."/>
                                         <Button Grid.Column="1" Command="{Binding BrowsePathCommand}" CommandParameter="Telemetry" Margin="5,0,0,0">
                                             <mi:MaterialIcon Kind="FolderOpenOutline" Width="16" Height="16"/>
                                         </Button>
@@ -35,7 +35,7 @@
                                 <StackPanel Spacing="8">
                                     <TextBlock Text="DEFAULT SCHEMA FOLDER" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
                                     <Grid ColumnDefinitions="*, Auto">
-                                        <TextBox Text="{Binding DefaultSchemaPath}" Watermark="Not set..."/>
+                                        <TextBox Text="{Binding DefaultSchemaPath}" PlaceholderText="Not set..."/>
                                         <Button Grid.Column="1" Command="{Binding BrowsePathCommand}" CommandParameter="Schema" Margin="5,0,0,0">
                                             <mi:MaterialIcon Kind="FolderOpenOutline" Width="16" Height="16"/>
                                         </Button>
@@ -88,7 +88,7 @@
                                 <StackPanel Spacing="8">
                                     <TextBlock Text="LICENSE KEY" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
                                     <Grid ColumnDefinitions="*, Auto">
-                                        <TextBox Text="{Binding LicenseKey}" PasswordChar="*" Watermark="Enter your Pro license key..."/>
+                                        <TextBox Text="{Binding LicenseKey}" PasswordChar="*" PlaceholderText="Enter your Pro license key..."/>
                                         <Button Grid.Column="1" Command="{Binding ValidateLicenseCommand}" Margin="5,0,0,0" Classes="accent">
                                             <StackPanel Orientation="Horizontal" Spacing="8">
                                                 <mi:MaterialIcon Kind="Check" Width="14" Height="14"/>

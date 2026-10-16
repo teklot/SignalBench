@@ -29,7 +29,7 @@
                             <TextBox Grid.Column="0" 
                                      Text="{Binding FilePath}" 
                                      IsReadOnly="True"
-                                     Watermark="Select any delimited text file..." />
+                                     PlaceholderText="Select any delimited text file..." />
                             <Button Grid.Column="1" 
                                     Command="{Binding BrowseCommand}" 
                                     Margin="8,0,0,0"
