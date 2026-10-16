@@ -1,4 +1,4 @@
-# SignalBench & SignalFlux v0.4.0
+# SignalBench & SignalFlux
 
 **A professional-grade binary protocol platform for satellite, aerospace, automotive, and industrial telemetry decoding, analysis, and signal generation.**
 

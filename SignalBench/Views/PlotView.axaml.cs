@@ -89,12 +89,12 @@ public partial class PlotView : UserControl
 
         double minY = double.MaxValue;
         double maxY = double.MinValue;
+        double[] x = timestamps.Select(t => t.ToOADate()).ToArray();
 
         foreach (var kv in data)
         {
             if (kv.Value.Count == 0 || kv.Value.Count != timestamps.Count) continue;
-            
-            double[] x = timestamps.Select(t => t.ToOADate()).ToArray();
+
             double[] y = [.. kv.Value];
             
             if (y.Length > 0)

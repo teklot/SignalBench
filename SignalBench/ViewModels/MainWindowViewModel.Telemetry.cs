@@ -54,13 +54,6 @@ public partial class MainWindowViewModel
             await StopStreamingAsync();
         }
 
-        IsLoading = true;
-        LoadProgress = 0;
-        LoadElapsed = "00:00";
-        _statusText = $"Loading {path}...";
-        OnPropertyChanged(nameof(StatusText));
-        var startTime = DateTime.Now;
-
         bool isDelimited = path.EndsWith(".csv", StringComparison.OrdinalIgnoreCase) || 
                            path.EndsWith(".tsv", StringComparison.OrdinalIgnoreCase) || 
                            path.EndsWith(".txt", StringComparison.OrdinalIgnoreCase) || 
@@ -95,6 +88,13 @@ public partial class MainWindowViewModel
                     HasHeader = result.HasHeader
                 };
             }
+
+            IsLoading = true;
+            LoadProgress = 0;
+            LoadElapsed = "00:00";
+            _statusText = $"Loading {path}...";
+            OnPropertyChanged(nameof(StatusText));
+            var startTime = DateTime.Now;
 
             AddPlot(Path.GetFileName(path), path);
             var targetPlot = SelectedPlot;
@@ -187,9 +187,14 @@ public partial class MainWindowViewModel
             
             if (schema == null) 
             {
-                IsLoading = false;
                 return;
             }
+
+            IsLoading = true;
+            LoadProgress = 0;
+            LoadElapsed = "00:00";
+            _statusText = $"Loading {path}...";
+            OnPropertyChanged(nameof(StatusText));
 
             AddPlot(Path.GetFileName(path), path, schema);
             var targetPlot = SelectedPlot;

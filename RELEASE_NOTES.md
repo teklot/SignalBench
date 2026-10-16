@@ -1,3 +1,15 @@
+# Release Notes - v0.4.1
+
+## 🛠️ Fixes
+- Fixed UI freeze when loading large CSV files
+- Fixed playback controls disappearing while a file-open dialog is displayed
+
+## 📦 Package Upgrades
+- Avalonia upgraded to 12.x
+- Upgrade all other dependencies to their latest compatible versions
+
+---
+
 # Release Notes - v0.4.0
 
 ## 🚀 New Features (MAVLink Integration)

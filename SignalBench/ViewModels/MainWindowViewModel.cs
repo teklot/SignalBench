@@ -21,6 +21,8 @@ public class RecentFileViewModel
 
 public partial class MainWindowViewModel : ViewModelBase
 {
+    private const int MaxPlotPoints = 10000;
+
     private readonly IFeatureService _featureService;
     public string AppTitle => string.IsNullOrEmpty(LicenseStatusText) ? $"{AppInfo.Name} v{AppInfo.Version}" : $"{AppInfo.Name} v{AppInfo.Version} - {LicenseStatusText}";
 
@@ -720,11 +722,8 @@ public partial class MainWindowViewModel : ViewModelBase
             int rowCount = plot.DataStore.GetRowCount();
             plot.TotalRecords = rowCount;
             
-            // Sync plot playback data
+            // Full-resolution timestamps are required for playback seeking.
             plot.PlaybackTimestamps = plot.DataStore.GetTimestamps();
-            plot.PlaybackSignalData.Clear();
-            foreach (var signal in plot.AvailableSignals)
-                plot.PlaybackSignalData[signal.Name] = plot.DataStore.GetSignalData(signal.Name);
 
             if (plot == SelectedPlot)
             {
@@ -742,30 +741,32 @@ public partial class MainWindowViewModel : ViewModelBase
                 windowSeconds = plot.NetworkSettings.RollingWindowSeconds;
 
             double? forceXMax = null;
-            var timestamps = plot.DataStore.GetTimestamps();
-            List<int>? invalidIndices = plot.DataStore.GetInvalidIndices();
+            List<DateTime> timestamps;
+            List<int>? invalidIndices;
 
-            if (windowSeconds.HasValue && windowSeconds.Value > 0 && timestamps.Count > 0)
+            bool useWindow = windowSeconds.HasValue && windowSeconds.Value > 0 && plot.PlaybackTimestamps.Count > 0;
+            DateTime? windowStart = useWindow ? plot.PlaybackTimestamps[^1].AddSeconds(-windowSeconds!.Value) : null;
+            int? maxPoints = (!useWindow && rowCount > MaxPlotPoints) ? MaxPlotPoints : null;
+
+            if (useWindow)
             {
-                DateTime latestTs = timestamps[^1];
-                DateTime startTs = latestTs.AddSeconds(-windowSeconds.Value);
-
-                timestamps = plot.DataStore.GetTimestamps(startTs);
-                invalidIndices = plot.DataStore.GetInvalidIndices(startTs);
+                timestamps = plot.DataStore.GetTimestamps(windowStart!.Value);
+                invalidIndices = plot.DataStore.GetInvalidIndices(windowStart.Value);
                 if (timestamps.Count > 0)
                     forceXMax = timestamps[^1].ToOADate();
+            }
+            else
+            {
+                timestamps = plot.DataStore.GetTimestamps(maxPoints);
+                invalidIndices = plot.DataStore.GetInvalidIndices(maxPoints);
             }
 
             var plotData = new Dictionary<string, List<double>>();
             foreach (var signalName in plot.SelectedSignalNames)
             {
-                if (windowSeconds.HasValue && windowSeconds.Value > 0 && timestamps.Count > 0)
-                    plotData[signalName] = plot.DataStore.GetSignalData(signalName, ((Func<DateTime>)(() => {
-                        var ts = timestamps[^1];
-                        return ts.AddSeconds(-windowSeconds.Value);
-                    }))());
-                else
-                    plotData[signalName] = plot.DataStore.GetSignalData(signalName);
+                plotData[signalName] = useWindow
+                    ? plot.DataStore.GetSignalData(signalName, windowStart!.Value)
+                    : plot.DataStore.GetSignalData(signalName, maxPoints);
             }
 
             // Evaluate Thresholds
